@@ -2,6 +2,8 @@
   "name": "@flitdrop/desktop",
   "version": "0.1.0",
   "private": true,
+  "description": "Flitdrop pour le bureau : l'AirDrop de Windows, chiffre de bout en bout.",
+  "author": "Flitdrop",
   "main": "main.cjs",
   "scripts": {
     "prepare:app": "node gen-icon.mjs && node prepare.mjs",
@@ -9,7 +11,7 @@
     "dist:win": "npm run prepare:app && electron-builder --win nsis appx --publish never"
   },
   "devDependencies": {
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8"
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
   }
 }

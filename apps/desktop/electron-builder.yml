@@ -3,6 +3,11 @@ productName: Flitdrop
 # version explicite : evite l'erreur "Cannot compute electron version" quand
 # electron-builder n'introspecte pas le node_modules hoiste du workspace.
 electronVersion: 33.2.1
+# le coeur est bundle en un seul .cjs (aucune dependance runtime npm), donc on
+# desactive l'etape d'install/rebuild d'electron-builder : dans un monorepo elle
+# elague les devDependencies hoistees et se supprime elle-meme (app-builder-bin).
+npmRebuild: false
+buildDependenciesFromSource: false
 directories:
   output: release
   buildResources: build
