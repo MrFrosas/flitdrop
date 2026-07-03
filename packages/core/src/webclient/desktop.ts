@@ -31,15 +31,32 @@ interface OutboxEntry {
   createdAt: string
   downloads: Record<string, string>
 }
+interface ClipEntry {
+  id: string
+  ts: string
+  text: string
+  source: string
+}
 interface State {
   product: string
   version: string
-  config: { deviceName: string; downloadDir: string; maxFileMB: number; requireApproval: boolean; clipboardAutoPush: boolean; port: number }
+  config: {
+    deviceName: string
+    downloadDir: string
+    maxFileMB: number
+    requireApproval: boolean
+    clipboardAutoPush: boolean
+    clipHistoryEnabled: boolean
+    clipHistoryMaxItems: number
+    clipHistoryMaxDays: number
+    port: number
+  }
   hostname: string
   ips: string[]
   devices: DevicePub[]
   history: HistEntry[]
   outbox: OutboxEntry[]
+  clipHistory: ClipEntry[]
 }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
@@ -102,6 +119,7 @@ const VIEW_TITLES: Record<string, string> = {
   radar: 'Radar',
   activity: 'Historique',
   send: 'Envoyer vers le téléphone',
+  clip: 'Presse-papiers',
   settings: 'Réglages',
 }
 
@@ -225,7 +243,51 @@ function renderSettings() {
   ;($('setMax') as unknown as HTMLSelectElement).value = String(state.config.maxFileMB)
   ;($('setApproval') as unknown as HTMLInputElement).checked = state.config.requireApproval
   ;($('setClipboard') as unknown as HTMLInputElement).checked = state.config.clipboardAutoPush
+  ;($('setClipHistory') as unknown as HTMLInputElement).checked = state.config.clipHistoryEnabled
+  ;($('setClipMax') as unknown as HTMLSelectElement).value = String(state.config.clipHistoryMaxItems)
+  ;($('setClipDays') as unknown as HTMLSelectElement).value = String(state.config.clipHistoryMaxDays)
   renderShortcutSection()
+}
+
+let clipFilter = ''
+function renderClipHistory() {
+  if (!state) return
+  const list = $('clipList')
+  list.innerHTML = ''
+  const enabled = state.config.clipHistoryEnabled
+  const q = clipFilter.trim().toLowerCase()
+  const items = state.clipHistory.filter((e) => !q || e.text.toLowerCase().includes(q))
+  $('clipDisabled').classList.toggle('hidden', enabled)
+  $('clipEmpty').classList.toggle('hidden', !enabled || items.length > 0 || q.length > 0)
+  for (const e of items.slice(0, 200)) {
+    const li = document.createElement('li')
+    li.className = 'clip-item'
+    const main = document.createElement('div')
+    main.className = 'hmain'
+    const txt = document.createElement('div')
+    txt.className = 'clip-text'
+    txt.textContent = e.text.length > 400 ? e.text.slice(0, 400) + '…' : e.text
+    const sub = document.createElement('div')
+    sub.className = 'hsub'
+    sub.textContent = [e.source === 'pc' ? 'copié sur ce PC' : `reçu de ${e.source}`, rel(e.ts)].join(' · ')
+    main.append(txt, sub)
+    const btnCopy = document.createElement('button')
+    btnCopy.className = 'hbtn'
+    btnCopy.textContent = 'Copier'
+    btnCopy.onclick = () => void postJSON(`/cliphistory/${e.id}/copy`, {}).then(() => toast('Copié ✓')).catch(() => toast('Impossible de copier'))
+    const btnPhone = document.createElement('button')
+    btnPhone.className = 'hbtn'
+    btnPhone.textContent = 'Téléphone'
+    btnPhone.title = 'Mettre à disposition du téléphone'
+    btnPhone.onclick = () => void postJSON(`/cliphistory/${e.id}/tophone`, {}).then(() => toast('Prêt sur le téléphone ✓', 'Onglet « Recevoir ».')).catch(() => {})
+    const del = document.createElement('button')
+    del.className = 'hbtn x'
+    del.textContent = '✕'
+    del.title = 'Supprimer'
+    del.onclick = () => void postJSON(`/cliphistory/${e.id}/remove`, {}).then(refresh)
+    li.append(main, btnCopy, btnPhone, del)
+    list.appendChild(li)
+  }
 }
 
 function renderShortcutSection() {
@@ -289,6 +351,7 @@ function renderAll() {
   renderRadar()
   renderHistory()
   renderOutbox()
+  renderClipHistory()
   renderSettings()
 }
 
@@ -453,6 +516,9 @@ function connectWS() {
       case 'clip-autopushed':
         toast('Presse-papiers synchronisé ✓', (data as { preview?: string }).preview)
         break
+      case 'cliphistory-changed':
+        void refresh()
+        break
     }
   }
   ws.onclose = () => setTimeout(connectWS, 2500)
@@ -594,6 +660,9 @@ function initUI() {
         maxFileMB: Number(($('setMax') as unknown as HTMLSelectElement).value),
         requireApproval: ($('setApproval') as unknown as HTMLInputElement).checked,
         clipboardAutoPush: ($('setClipboard') as unknown as HTMLInputElement).checked,
+        clipHistoryEnabled: ($('setClipHistory') as unknown as HTMLInputElement).checked,
+        clipHistoryMaxItems: Number(($('setClipMax') as unknown as HTMLSelectElement).value),
+        clipHistoryMaxDays: Number(($('setClipDays') as unknown as HTMLSelectElement).value),
       })
       toast('Réglages enregistrés ✓')
       void refresh()
@@ -604,6 +673,17 @@ function initUI() {
   ;($('shortcutDevice') as unknown as HTMLSelectElement).onchange = () => {
     currentDeviceId = ($('shortcutDevice') as unknown as HTMLSelectElement).value
     renderShortcutSection()
+  }
+
+  const clipSearch = $('clipSearch') as unknown as HTMLInputElement
+  clipSearch.oninput = () => {
+    clipFilter = clipSearch.value
+    renderClipHistory()
+  }
+  $('btnClipClear').onclick = async () => {
+    await postJSON('/cliphistory/clear', {})
+    toast('Historique effacé')
+    void refresh()
   }
 
   window.addEventListener('resize', renderRadar)

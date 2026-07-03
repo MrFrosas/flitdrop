@@ -243,6 +243,34 @@ describe('texte -> presse-papiers', () => {
     const res = openJSON<{ ok: boolean }>(phone.key, body.p, phone.aad('text:res'))
     expect(res.ok).toBe(true)
   })
+
+  it('alimente l’historique du presse-papiers, copiable et effaçable', async () => {
+    const phone = await pairPhone()
+    const marker = `note historique ${Date.now()}`
+    const r = await phone.post('/api/phone/text', 'text', { text: marker, mode: 'clip' })
+    expect(r.status).toBe(200)
+
+    const st = (await (await admin('/state')).json()) as {
+      clipHistory: { id: string; text: string; source: string }[]
+      config: { clipHistoryEnabled: boolean }
+    }
+    expect(st.config.clipHistoryEnabled).toBe(true)
+    const entry = st.clipHistory.find((e) => e.text === marker)
+    expect(entry).toBeDefined()
+    expect(entry!.source).toBe('iPhone de test')
+
+    // re-copier depuis l'historique (clipboard désactivé en test : no-op mais 200)
+    const copy = await admin(`/cliphistory/${entry!.id}/copy`, { method: 'POST' })
+    expect(copy.status).toBe(200)
+    // mettre à disposition du téléphone
+    const tophone = await admin(`/cliphistory/${entry!.id}/tophone`, { method: 'POST' })
+    expect(tophone.status).toBe(200)
+    // suppression unitaire puis globale
+    expect((await admin(`/cliphistory/${entry!.id}/remove`, { method: 'POST' })).status).toBe(200)
+    expect((await admin('/cliphistory/clear', { method: 'POST' })).status).toBe(200)
+    const st2 = (await (await admin('/state')).json()) as { clipHistory: unknown[] }
+    expect(st2.clipHistory.length).toBe(0)
+  })
 })
 
 describe('raccourci iOS (jeton)', () => {

@@ -116,6 +116,11 @@ if (!gotLock) {
     await shareFiles(extractFiles(process.argv))
 
     app.on('activate', () => { if (win) win.show() })
+  }).catch((err) => {
+    const { dialog } = require('electron')
+    dialog.showErrorBox('Flitdrop', 'Flitdrop n\'a pas pu démarrer : ' + (err && err.message ? err.message : err))
+    quitting = true
+    app.quit()
   })
 
   // macOS : fichiers glissés sur l'icône du Dock

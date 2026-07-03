@@ -193,6 +193,23 @@ body {
 .empty { text-align: center; padding: 44px 20px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
 .empty p { font-family: var(--font); font-weight: 600; font-size: 16px; color: var(--text); }
 
+/* ---------- presse-papiers (historique façon Paste) ---------- */
+.clip-toolbar { display: flex; gap: 10px; align-items: center; }
+.clip-toolbar input { flex: 1; }
+.clip-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  background: var(--card); border: 1px solid var(--stroke); border-radius: var(--r-card); padding: 12px 14px;
+  animation: rise 0.18s ease both;
+}
+.clip-item .hmain { flex: 1; min-width: 0; }
+.clip-text {
+  font-size: 13px; color: var(--text); white-space: pre-wrap; word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  margin-bottom: 4px;
+}
+.clip-item .hbtn { flex: none; }
+#clipList { list-style: none; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+
 /* ---------- vue envoyer ---------- */
 .send-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .dropzone {

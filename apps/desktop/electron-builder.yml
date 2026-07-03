@@ -23,6 +23,16 @@ fileAssociations:
     name: Fichier
     role: Viewer
 asar: true
+mac:
+  target:
+    - dmg
+  icon: build/icon.png
+  category: public.app-category.utilities
+  # non signe : suffisant pour tester et pour un lancement GitHub. Pour une
+  # distribution large, ajouter la signature + notarisation Apple.
+  identity: null
+dmg:
+  title: Flitdrop
 win:
   target:
     - nsis

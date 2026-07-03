@@ -26,6 +26,7 @@ import { Hub } from './events.js'
 import { TransferManager, ApiError } from './transfers.js'
 import { NonceCache, open, seal, openFreshJSON, sealJSON, randomToken } from './crypto.js'
 import { readClipboard, writeClipboard } from './clip.js'
+import { ClipHistory } from './cliphistory.js'
 import { saveMultipartFiles } from './uploads.js'
 import {
   b64u,
@@ -109,24 +110,36 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const hub = new Hub()
   const nonces = new NonceCache()
   const transfers = new TransferManager(() => cfg, history, hub)
+  const clipHistory = new ClipHistory(home)
 
-  // ---------- surveillance du presse-papiers du PC (sens PC -> téléphone) ----------
+  // ---------- surveillance du presse-papiers du PC ----------
   // Le seul sens réellement automatisable côté PC : on lit notre propre presse-
-  // papiers (aucune restriction OS pour ça) et, quand il change, on le met à
-  // disposition des téléphones. `lastClip` sert d'anti-boucle : le texte reçu
-  // d'un téléphone (qu'on colle dans le presse-papiers) ne doit pas être renvoyé.
+  // papiers (aucune restriction OS pour ça). Quand il change : on l'enregistre
+  // dans l'historique local (si activé) et on le met à disposition des
+  // téléphones (si la synchro est activée). `lastClip` sert d'anti-boucle : le
+  // texte reçu d'un téléphone ne doit pas être renvoyé.
   let lastClip = ''
   readClipboard().then((t) => (lastClip = t)).catch(() => {})
   const clipTimer = setInterval(async () => {
-    if (!cfg.clipboardAutoPush) return
+    if (!cfg.clipboardAutoPush && !cfg.clipHistoryEnabled) return
     const text = await readClipboard().catch(() => '')
     if (!text || text === lastClip || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) return
     lastClip = text
-    outbox.addText(text)
-    hub.broadcast('outbox-changed', {})
-    hub.broadcast('clip-autopushed', { preview: text.slice(0, 120) })
+    if (cfg.clipHistoryEnabled && clipHistory.add(text, 'pc', cfg)) {
+      hub.broadcast('cliphistory-changed', {})
+    }
+    if (cfg.clipboardAutoPush) {
+      outbox.addText(text)
+      hub.broadcast('outbox-changed', {})
+      hub.broadcast('clip-autopushed', { preview: text.slice(0, 120) })
+    }
   }, 1500)
   clipTimer.unref?.()
+  // purge périodique de l'historique (rétention par âge)
+  const clipPurgeTimer = setInterval(() => {
+    if (clipHistory.size() > 0) clipHistory.purge(cfg)
+  }, 10 * 60 * 1000)
+  clipPurgeTimer.unref?.()
 
   const pendingApprovals = new Map<string, (ok: boolean) => void>()
   transfers.approvalHook = (info) =>
@@ -351,6 +364,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       // anti-écho : ce texte vient du téléphone, le surveilleur ne doit pas le renvoyer
       if (copied) lastClip = text
     }
+    if (cfg.clipHistoryEnabled && clipHistory.add(text, dev.name, cfg)) {
+      hub.broadcast('cliphistory-changed', {})
+    }
     history.add({
       dir: 'in',
       kind: mode === 'clip' ? 'clip' : 'text',
@@ -531,6 +547,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         maxFileMB: cfg.maxFileMB,
         requireApproval: cfg.requireApproval,
         clipboardAutoPush: cfg.clipboardAutoPush,
+        clipHistoryEnabled: cfg.clipHistoryEnabled,
+        clipHistoryMaxItems: cfg.clipHistoryMaxItems,
+        clipHistoryMaxDays: cfg.clipHistoryMaxDays,
         port: actualPort,
       },
       hostname: os.hostname(),
@@ -538,7 +557,44 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       devices: devices.listPublic(),
       history: history.list(),
       outbox: outbox.listAdmin(),
+      clipHistory: clipHistory.list(),
     })
+  })
+
+  // ---------- historique du presse-papiers ----------
+
+  admin.post('/cliphistory/:id/copy', async (req, res) => {
+    const entry = clipHistory.get(String(req.params.id))
+    if (!entry) return res.status(404).json({ error: 'entrée introuvable' })
+    const ok = await writeClipboard(entry.text).then(
+      () => true,
+      () => false
+    )
+    if (!ok) return res.status(500).json({ error: 'impossible d’écrire dans le presse-papiers' })
+    lastClip = entry.text
+    clipHistory.bump(entry.id)
+    hub.broadcast('cliphistory-changed', {})
+    res.json({ ok: true })
+  })
+
+  admin.post('/cliphistory/:id/tophone', (req, res) => {
+    const entry = clipHistory.get(String(req.params.id))
+    if (!entry) return res.status(404).json({ error: 'entrée introuvable' })
+    outbox.addText(entry.text)
+    hub.broadcast('outbox-changed', {})
+    res.json({ ok: true })
+  })
+
+  admin.post('/cliphistory/:id/remove', (req, res) => {
+    if (!clipHistory.remove(String(req.params.id))) return res.status(404).json({ error: 'entrée introuvable' })
+    hub.broadcast('cliphistory-changed', {})
+    res.json({ ok: true })
+  })
+
+  admin.post('/cliphistory/clear', (_req, res) => {
+    clipHistory.clear()
+    hub.broadcast('cliphistory-changed', {})
+    res.json({ ok: true })
   })
 
   admin.post('/pair/new', (_req, res) => {
@@ -644,6 +700,18 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       // pousser d'un coup le contenu déjà présent dans le presse-papiers.
       if (cfg.clipboardAutoPush) readClipboard().then((t) => (lastClip = t)).catch(() => {})
     }
+    if (typeof body.clipHistoryEnabled === 'boolean') {
+      cfg.clipHistoryEnabled = body.clipHistoryEnabled
+      if (cfg.clipHistoryEnabled) readClipboard().then((t) => (lastClip = t)).catch(() => {})
+    }
+    if (body.clipHistoryMaxItems !== undefined) {
+      cfg.clipHistoryMaxItems = clampInt(body.clipHistoryMaxItems, 10, 1000, cfg.clipHistoryMaxItems)
+      clipHistory.purge(cfg)
+    }
+    if (body.clipHistoryMaxDays !== undefined) {
+      cfg.clipHistoryMaxDays = clampInt(body.clipHistoryMaxDays, 1, 90, cfg.clipHistoryMaxDays)
+      clipHistory.purge(cfg)
+    }
     saveConfig(home, cfg)
     hub.broadcast('settings-changed', {})
     res.json({ ok: true })
@@ -685,10 +753,34 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     wss.handleUpgrade(req, socket, head, (ws) => hub.add(ws))
   })
 
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject)
-    server.listen(cfg.port, '0.0.0.0', () => resolve())
-  })
+  // Écoute sur le port voulu, mais si un autre logiciel l'occupe déjà, on bascule
+  // sur un port libre choisi par le système plutôt que de planter. L'app de
+  // bureau et le CLI lisent le port réel, donc c'est transparent.
+  const listenOn = (port: number): Promise<void> =>
+    new Promise((resolve, reject) => {
+      const onError = (err: NodeJS.ErrnoException) => {
+        server.removeListener('listening', onListening)
+        reject(err)
+      }
+      const onListening = () => {
+        server.removeListener('error', onError)
+        resolve()
+      }
+      server.once('error', onError)
+      server.once('listening', onListening)
+      server.listen(port, '0.0.0.0')
+    })
+
+  try {
+    await listenOn(cfg.port)
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+      if (!opts.quiet) console.warn(`Port ${cfg.port} occupé, bascule sur un port libre.`)
+      await listenOn(0)
+    } else {
+      throw e
+    }
+  }
   actualPort = (server.address() as AddressInfo).port
 
   const adminUrl = `http://127.0.0.1:${actualPort}/app/?k=${encodeURIComponent(cfg.adminToken)}`
@@ -723,6 +815,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     addLocalFiles,
     close: async () => {
       clearInterval(clipTimer)
+      clearInterval(clipPurgeTimer)
       await transfers.closeAll()
       wss.close()
       await new Promise<void>((resolve) => server.close(() => resolve()))

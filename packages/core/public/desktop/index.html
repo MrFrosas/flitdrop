@@ -22,6 +22,9 @@
       <button class="nav-btn" data-view="send" title="Envoyer vers le téléphone">
         <svg viewBox="0 0 24 24"><path d="M12 19V6M6 12l6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
+      <button class="nav-btn" data-view="clip" title="Presse-papiers">
+        <svg viewBox="0 0 24 24"><rect x="6" y="4.5" width="12" height="16" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 4.5a2.5 2.5 0 0 1 5 0M9 10h6M9 13.5h6M9 17h3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
       <button class="nav-btn" data-view="settings" title="Réglages">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1M7.7 16.3l-2.1 2.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
       </button>
@@ -98,6 +101,23 @@
       </div>
     </section>
 
+    <!-- PRESSE-PAPIERS -->
+    <section class="view hidden" id="view-clip">
+      <div class="clip-toolbar">
+        <input id="clipSearch" type="search" placeholder="Rechercher dans l’historique…">
+        <button class="btn" id="btnClipClear">Tout effacer</button>
+      </div>
+      <ul class="hist" id="clipList"></ul>
+      <div class="empty hidden" id="clipEmpty">
+        <p>Historique vide</p>
+        <small>Tout ce que tu copies sur ce PC, et les textes reçus des téléphones, apparaîtront ici. Local, jamais envoyé sur internet.</small>
+      </div>
+      <div class="empty hidden" id="clipDisabled">
+        <p>Historique désactivé</p>
+        <small>Active « Historique du presse-papiers » dans les réglages pour retrouver ici tout ce que tu copies.</small>
+      </div>
+    </section>
+
     <!-- RÉGLAGES -->
     <section class="view hidden" id="view-settings">
       <div class="card settings-card">
@@ -127,6 +147,26 @@
           <input type="checkbox" id="setClipboard">
           <span>Synchroniser mon presse-papiers vers les téléphones (quand je copie du texte sur le PC, il devient disponible sur le téléphone, onglet « Recevoir »)</span>
         </label>
+        <label class="check">
+          <input type="checkbox" id="setClipHistory">
+          <span>Historique du presse-papiers (local uniquement, purgé automatiquement)</span>
+        </label>
+        <div class="row">
+          <label class="grow">Garder au maximum
+            <select id="setClipMax">
+              <option value="50">50 éléments</option>
+              <option value="200">200 éléments</option>
+              <option value="500">500 éléments</option>
+            </select>
+          </label>
+          <label class="grow">Effacer après
+            <select id="setClipDays">
+              <option value="1">24 heures</option>
+              <option value="7">7 jours</option>
+              <option value="30">30 jours</option>
+            </select>
+          </label>
+        </div>
         <button class="btn primary" id="btnSaveSettings">Enregistrer</button>
       </div>
 

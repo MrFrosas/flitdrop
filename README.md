@@ -2,108 +2,113 @@
 
 # Flitdrop
 
-### The AirDrop for Windows : send files, photos and clipboard between iPhone, Android and your PC. No app to install on the phone. End-to-end encrypted. Free on your local network.
+### AirDrop for every device. Send files, photos and clipboard between any phone and any computer. Nothing to install on the phone. End-to-end encrypted. Free on your local network.
 
-*L'AirDrop de Windows : envoyez fichiers, photos et presse-papiers entre iPhone, Android et votre PC. Rien à installer sur le téléphone. Chiffré de bout en bout. Gratuit sur votre réseau local.*
+*Français plus bas.*
 
-![Flitdrop : interface PC](docs/screenshots/desktop-dark.png)
+![Flitdrop desktop](docs/screenshots/desktop-dark.png)
+
+[**Download**](https://github.com/MrFrosas/flitdrop/releases/latest) · [How it works](#how-it-works) · [Flitdrop vs AirDrop](#flitdrop-vs-airdrop) · [Français](#flitdrop-en-français)
 
 </div>
 
 ---
 
-## Pourquoi
+## Why
 
-Sur Mac il y a AirDrop. Sur Windows, rien d'équivalent qui soit simple, rapide et sûr : et surtout rien pour un **iPhone vers un PC sans installer d'app**. Ni Microsoft (Phone Link, noté 3,0/5 sur 460 000 avis), ni Google (Quick Share, Android seulement), ni Samsung ne couvrent ce cas. Flitdrop le fait.
+macOS has AirDrop. Windows has nothing as simple, and there is no easy way to send a file from an iPhone to a PC **without installing an app on the phone**. Neither Microsoft (Phone Link, rated 3.0/5 across 460,000 reviews), nor Google (Quick Share, Android only), nor Samsung covers that case. Flitdrop does.
 
-- **iPhone → PC, sans rien installer sur le téléphone.** On scanne un QR code une fois, et on envoie depuis le navigateur ou un Raccourci Apple.
-- **Multi-appareils.** iPhone, Android, Xiaomi, Samsung, et bien sûr Windows 11. Ça marche entre marques, là où AirDrop est bloqué à Apple.
-- **Chiffré de bout en bout.** La clé est échangée par QR code, jamais sur le réseau. Pas de cloud, pas de compte.
-- **Gratuit et illimité sur votre wifi.** Fichiers, photos, vidéos, texte, presse-papiers, dans les deux sens.
+And it works in **every direction, between every brand**: Windows or Mac on one side, iPhone, Android, Samsung or Xiaomi on the other. A Samsung phone talking to a Mac, an iPhone talking to a Windows PC, the same app handles all of it, which is exactly what AirDrop cannot do.
 
-## Aperçu
+- **Phone to computer, nothing to install on the phone.** Scan a QR code once, then send from the browser or an Apple Shortcut.
+- **Every device, every direction.** iPhone, Android, Xiaomi, Samsung, and both Windows and Mac.
+- **End-to-end encrypted.** The key is exchanged through the QR code, never over the network. No cloud, no account.
+- **Free and unlimited on your Wi-Fi.** Files, photos, videos, text, clipboard, both ways.
 
-| Téléphone (iOS 26 « Liquid Glass ») | PC (Windows 11 Fluent) |
+## What it does
+
+| Device page (iOS Liquid Glass look) | Clipboard history (Windows 11 Fluent look) |
 |---|---|
-| ![Page téléphone](docs/screenshots/phone-light.png) | ![Interface PC claire](docs/screenshots/desktop-light.png) |
+| ![Phone page](docs/screenshots/phone-light.png) | ![Clipboard history](docs/screenshots/desktop-clip.png) |
 
-Les deux interfaces prennent l'apparence native de leur système et suivent le mode clair/sombre.
+- **Send files** from phone to computer, with progress, speed, and **automatic resume** if the network drops.
+- **Clipboard sync**: text you copy on the computer becomes available on the phone automatically; text from the phone lands in the computer clipboard in one tap ([what is and isn't possible, and why](docs/clipboard.md)).
+- **Clipboard history** on the computer, like the Paste app: everything you copy is kept locally, searchable, one click to copy again or push to the phone. Retention is configurable (by count and by age) so it never eats storage.
+- **Computer to phone**: drop a file into Flitdrop, or right-click a file in Windows Explorer and choose **Send to → Flitdrop**.
+- **Real-time radar** of paired devices, AirDrop style.
+- **Offline mode**: with no router and no internet, the computer creates its own Wi-Fi network ([details](docs/offline.md)).
+- **End-to-end encryption** with XChaCha20-Poly1305, out-of-band pairing, revocable devices.
 
-## Fonctionnalités
+## Install
 
-- 📤 **Envoi de fichiers** iPhone/Android → PC, avec progression, vitesse, et **reprise automatique** si le réseau coupe.
-- 📋 **Presse-papiers** : le texte du téléphone arrive dans le presse-papiers du PC en un tap ; et le PC peut pousser automatiquement son presse-papiers vers le téléphone ([ce qui est possible et pourquoi](docs/presse-papiers.md)).
-- 📥 **PC → téléphone** : glissez un fichier dans Flitdrop, il apparaît sur le téléphone.
-- 📡 **Radar** temps réel des appareils appairés, façon AirDrop.
-- 📶 **Mode hors-ligne** : sans box ni internet, le PC crée son propre réseau Wi-Fi ([détails](docs/hors-ligne.md)).
-- 🍎 **Raccourci Apple** « Envoyer au PC » dans la feuille de partage iOS ([guide](docs/raccourci-ios.md)).
-- 🔒 **Chiffrement de bout en bout** XChaCha20-Poly1305, appairage hors bande, appareils révocables.
+**Download from the [releases page](https://github.com/MrFrosas/flitdrop/releases/latest).**
 
-## Installation
+- **Windows**: run the `.exe`, done. Installing also adds **Send to → Flitdrop** to the right-click menu in Explorer. (Windows SmartScreen shows an "unknown publisher" prompt at first, since the build is not code-signed yet; that goes away with the Microsoft Store version.)
+- **Mac**: open the `.dmg`, drag Flitdrop into Applications. First open: right-click the app and choose Open, because the build is not notarized yet.
 
-**Utilisateur Windows.** Téléchargez l'installeur `.exe` depuis la [page des releases](https://github.com/MrFrosas/flitdrop/releases), double-cliquez, c'est installé. Au premier lancement, Flitdrop vous guide en trois écrans, puis affiche un QR code : scannez-le avec le téléphone, et c'est appairé pour de bon (même après un redémarrage du PC, pas besoin de re-scanner).
+On first launch, a short walkthrough, then a QR code. Scan it with the phone once, and it stays paired, even after the computer restarts. No re-scanning.
 
-Une fois installé, Flitdrop ajoute **« Envoyer vers Flitdrop »** au clic-droit de l'Explorateur Windows : sélectionnez un fichier, clic-droit, Envoyer vers, Flitdrop, et il attend sur le téléphone.
+**On the phone**, nothing to install. After scanning, you can add the page to the home screen (menu in Flitdrop, "Add to home screen"), and it behaves like a real app, already connected.
 
-**Sur le téléphone**, rien à installer. La page qui s'ouvre après le scan peut être ajoutée à l'écran d'accueil (menu ⋯ dans Flitdrop, puis « Installer sur l'écran d'accueil ») : elle se comporte alors comme une vraie app, connectée au PC, sans re-scanner.
+## How it works
 
-## Comment ça marche
-
-Le PC installe **un seul programme** : Flitdrop, qui fait tourner un petit serveur chiffré **en local**, sur votre réseau. Le téléphone lui parle par le navigateur (ou un Raccourci Apple), sur le même wifi, avec un chiffrement de bout en bout. **Aucun cloud, rien ne transite par un serveur externe.** Si le wifi n'existe pas (train, gare), le PC crée son propre réseau ([mode hors-ligne](docs/hors-ligne.md)).
-
-## Développement
-
-```bash
-npm install
-npm run dev        # serveur local + interfaces (port 47777)
-npm test           # 32 tests : crypto, protocole, reprise, sécurité
-npm run desktop    # application de bureau (fenêtre + icône de notification)
-```
-
-## Build Windows (installeur + Microsoft Store)
-
-Poussez un tag `vX.Y.Z` : le workflow GitHub Actions build sur Windows et publie une release avec l'installeur. Ou en local sur une machine Windows :
-
-```bash
-npm ci
-npm run build -w @flitdrop/core
-npm run dist:win -w @flitdrop/desktop   # -> release/*.exe (site) + *.appx (Store)
-```
+The computer runs one small program that starts a local, encrypted server on your network. The phone talks to it through the browser (or an Apple Shortcut), on the same Wi-Fi, with end-to-end encryption on top. **Nothing goes through a cloud or an external server.** If there is no Wi-Fi at all, the computer makes its own network. Full detail in [docs/architecture.md](docs/architecture.md) and [docs/security.md](docs/security.md).
 
 ## Flitdrop vs AirDrop
 
-| Critère | Flitdrop | AirDrop |
+| | Flitdrop | AirDrop |
 |---|---|---|
-| Fonctionne entre marques (iPhone↔PC, Samsung↔PC) | ✅ | ❌ Apple seulement |
-| Sans app sur le téléphone | ✅ page web + QR | service système |
-| Hors réseau (sans box) | ✅ via point d'accès du PC | ✅ radio-direct (Apple only) |
-| Reprise de transfert après coupure | ✅ | ⚠️ souvent relancé |
-| Réception passive app fermée sur iPhone | ❌ (réservé à Apple) | ✅ |
-| Intégration Windows | ✅ | ❌ inexistant |
-| Chiffrement E2E | ✅ | ✅ |
+| Works across brands (iPhone↔PC, Samsung↔Mac) | ✅ | ❌ Apple only |
+| No app on the phone | ✅ browser + QR | n/a, system service |
+| Windows and Mac | ✅ both | Mac only |
+| Offline (no router) | ✅ via the computer's hotspot | ✅ direct radio (Apple only) |
+| Resume after a dropped connection | ✅ | ⚠️ often restarts |
+| Clipboard history | ✅ | ❌ |
+| Passive receive with the iPhone closed | ❌ (reserved to Apple) | ✅ |
+| End-to-end encryption | ✅ | ✅ |
 
-Comparatif complet et honnête : [docs/comparatif-airdrop.md](docs/comparatif-airdrop.md).
+Full, honest comparison: [docs/airdrop-comparison.md](docs/comparatif-airdrop.md).
 
-## Comment ça marche
+## Development
 
-Une app de bureau fait tourner un petit serveur local chiffré. Le téléphone lui parle en HTTP sur le réseau local (aucun serveur cloud), avec un chiffrement applicatif de bout en bout par-dessus. L'appairage par QR code échange une clé secrète qui ne transite jamais sur le réseau. Détails : [docs/architecture.md](docs/architecture.md) et [docs/securite.md](docs/securite.md).
+```bash
+npm install
+npm run dev        # local server + interfaces (port 47777)
+npm test           # 38 tests: crypto, protocol, resume, security, clipboard history
+npm run desktop    # desktop app (window + tray icon)
+```
+
+## Build the installers
+
+Push a `vX.Y.Z` tag: GitHub Actions builds the Windows `.exe` and the Mac `.dmg` and publishes a release. Locally:
+
+```bash
+npm run build -w @flitdrop/core
+npm run dist:win -w @flitdrop/desktop   # Windows: .exe + .appx (Store)
+npm run dist:mac -w @flitdrop/desktop   # Mac: .dmg
+```
 
 ## Documentation
 
-- [Architecture technique](docs/architecture.md)
-- [Modèle de sécurité](docs/securite.md) (+ revue d'attaque adversariale)
-- [Mode hors-ligne](docs/hors-ligne.md)
-- [Synchronisation du presse-papiers : la vérité](docs/presse-papiers.md)
-- [Raccourci iOS pas à pas](docs/raccourci-ios.md)
-- [Audit de faisabilité « expérience native »](docs/audit-faisabilite-native.md)
-- [Feuille de route apps natives](docs/roadmap-apps-natives.md)
-- [Publication Microsoft Store](docs/microsoft-store.md)
-- [Modèle économique](docs/business.md)
+- [Architecture](docs/architecture.md) · [Security](docs/security.md) (with adversarial attack review)
+- [Clipboard sync: the truth](docs/clipboard.md) · [Offline mode](docs/offline.md) · [iOS Shortcut guide](docs/raccourci-ios.md)
+- [Native feasibility audit](docs/audit-faisabilite-native.md) · [Native apps roadmap](docs/roadmap-apps-natives.md)
+- [Microsoft Store publishing](docs/microsoft-store.md) · [Business model](docs/business.md)
 
-## Statut
-
-v0.1 : fonctionnel et testé (32 tests automatisés : crypto, protocole, reprise, sécurité). L'app PC et la page téléphone sont opérationnelles. Les apps mobiles natives (pour l'icône dans la feuille de partage iOS et l'envoi en veille) sont sur la [feuille de route](docs/roadmap-apps-natives.md).
-
-## Licence
+## License
 
 [MIT](LICENSE). AirDrop is a trademark of Apple Inc. Flitdrop is an independent project and has not been authorized, sponsored, or otherwise approved by Apple Inc.
+
+---
+
+# Flitdrop, en français
+
+**L'AirDrop de tous vos appareils.** Envoyez fichiers, photos et presse-papiers entre n'importe quel téléphone et n'importe quel ordinateur. Rien à installer sur le téléphone. Chiffré de bout en bout. Gratuit sur votre réseau local.
+
+Sur Mac il y a AirDrop, sur Windows rien d'équivalent, et aucun moyen simple d'envoyer un fichier d'un iPhone vers un PC **sans installer d'app sur le téléphone**. Flitdrop le fait, et **dans tous les sens, entre toutes les marques** : Windows ou Mac d'un côté, iPhone, Android, Samsung ou Xiaomi de l'autre. Un Samsung vers un Mac, un iPhone vers un PC, la même app gère tout, ce qu'AirDrop ne sait pas faire.
+
+**Installation** : téléchargez depuis la [page des releases](https://github.com/MrFrosas/flitdrop/releases/latest). Windows : lancez le `.exe` (il ajoute aussi « Envoyer vers Flitdrop » au clic-droit). Mac : ouvrez le `.dmg`, glissez Flitdrop dans Applications. Au premier lancement, un QR code à scanner une fois avec le téléphone, et c'est appairé pour de bon.
+
+**Ce que ça fait** : envoi de fichiers avec reprise automatique, synchro et historique du presse-papiers façon Paste (local, cherchable, rétention réglable), envoi PC vers téléphone (glisser ou clic-droit), radar temps réel, mode hors-ligne sans box, chiffrement de bout en bout.
+
+Documentation complète en français dans le dossier [docs/](docs/) : architecture, sécurité, [synchro presse-papiers](docs/clipboard.md), [mode hors-ligne](docs/offline.md), [comparatif AirDrop](docs/comparatif-airdrop.md), audits de faisabilité, feuille de route.

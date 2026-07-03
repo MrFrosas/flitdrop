@@ -14,6 +14,11 @@ export interface Config {
   // le PC surveille son presse-papiers et le met à disposition des téléphones
   // dès qu'il change (sens PC vers téléphone, seul sens automatisable côté PC).
   clipboardAutoPush: boolean
+  // historique local du presse-papiers (façon Paste) : tout ce qui est copié
+  // sur le PC et reçu des téléphones, purgé automatiquement selon la rétention.
+  clipHistoryEnabled: boolean
+  clipHistoryMaxItems: number
+  clipHistoryMaxDays: number
 }
 
 export function flitdropHome(override?: string): string {
@@ -44,6 +49,9 @@ export function loadConfig(home: string): Config {
     requireApproval: stored.requireApproval === true,
     adminToken: typeof stored.adminToken === 'string' && stored.adminToken.length >= 20 ? stored.adminToken : randomToken(24),
     clipboardAutoPush: stored.clipboardAutoPush === true,
+    clipHistoryEnabled: stored.clipHistoryEnabled !== false,
+    clipHistoryMaxItems: clampInt(stored.clipHistoryMaxItems, 10, 1000, 200),
+    clipHistoryMaxDays: clampInt(stored.clipHistoryMaxDays, 1, 90, 7),
   }
   saveConfig(home, cfg)
   return cfg
