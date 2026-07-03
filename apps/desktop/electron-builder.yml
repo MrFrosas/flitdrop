@@ -1,5 +1,8 @@
 appId: app.flitdrop.desktop
 productName: Flitdrop
+# version explicite : evite l'erreur "Cannot compute electron version" quand
+# electron-builder n'introspecte pas le node_modules hoiste du workspace.
+electronVersion: 33.2.1
 directories:
   output: release
   buildResources: build

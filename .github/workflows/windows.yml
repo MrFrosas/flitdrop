@@ -29,16 +29,17 @@ jobs:
       - name: Tests
         run: npm test -w @flitdrop/core
 
-      - name: Empaqueter (NSIS + MSIX)
-        run: npm run dist:win -w @flitdrop/desktop
+      - name: Preparer l'app
+        run: npm run prepare:app -w @flitdrop/desktop
+
+      - name: Empaqueter l'installeur (NSIS)
+        working-directory: apps/desktop
+        run: npx electron-builder --win nsis --publish never
 
       - uses: actions/upload-artifact@v4
         with:
           name: flitdrop-windows
-          path: |
-            apps/desktop/release/*.exe
-            apps/desktop/release/*.appx
-            apps/desktop/release/*.msix
+          path: apps/desktop/release/*.exe
           if-no-files-found: warn
 
       # sur un tag v*, publie une release GitHub avec l'installeur telechargeable
@@ -46,10 +47,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            apps/desktop/release/*.exe
-            apps/desktop/release/*.appx
+          files: apps/desktop/release/*.exe
           generate_release_notes: true
           body: |
             Flitdrop pour Windows. Telechargez le `.exe`, double-cliquez, c'est installe.
-            Le `.appx` est destine au Microsoft Store.
+            Au premier lancement, un QR code a scanner avec le telephone, et c'est appaire.
