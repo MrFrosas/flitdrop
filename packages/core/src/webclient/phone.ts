@@ -9,6 +9,7 @@ interface HelloRes {
   maxFileMB: number
   chunkSize: number
   requireApproval: boolean
+  hosts?: string[]
 }
 interface OutboxItem {
   id: string
@@ -21,6 +22,7 @@ interface OutboxItem {
 }
 
 const PAIR_KEY = 'wd_pair'
+const HOSTS_KEY = 'wd_hosts'
 const SEND_CHUNK = 4 * 1024 * 1024
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
@@ -133,6 +135,38 @@ function forget() {
   location.reload()
 }
 
+/** Adresses de secours connues (mémorisées au dernier hello réussi). */
+function knownHosts(): string[] {
+  try {
+    const h = JSON.parse(localStorage.getItem(HOSTS_KEY) || '[]') as string[]
+    return Array.isArray(h) ? h.filter((x) => typeof x === 'string' && /^[\w.-]+(:\d+)?$/.test(x)) : []
+  } catch {
+    return []
+  }
+}
+
+/** Si l'IP du PC a changé, proposer les autres adresses connues : un tap et la
+ *  clé suit dans le fragment d'URL (jamais envoyée au réseau), zéro re-scan. */
+function renderAltHosts() {
+  const box = $('altHosts')
+  box.innerHTML = ''
+  const current = location.host
+  const alts = knownHosts().filter((h) => h !== current)
+  if (!pair || alts.length === 0) return box.classList.add('hidden')
+  box.classList.remove('hidden')
+  const title = document.createElement('p')
+  title.className = 'hint'
+  title.textContent = 'Le PC a peut-être changé d’adresse. Essaie :'
+  box.appendChild(title)
+  for (const h of alts.slice(0, 4)) {
+    const a = document.createElement('a')
+    a.className = 'btn wide'
+    a.textContent = `Se reconnecter via ${h.split(':')[0]}`
+    a.href = `http://${h}/s/#${pair.id}.${pair.keyB64}`
+    box.appendChild(a)
+  }
+}
+
 async function connect() {
   const { platform, label } = platformLabel()
   try {
@@ -140,6 +174,10 @@ async function connect() {
     $('pcName').textContent = hello.desktopName
     $('statusDot').classList.remove('off')
     $('menuInfo').textContent = `Ce téléphone est appairé à « ${hello.desktopName} ». Les envois sont chiffrés de bout en bout.`
+    if (hello.hosts?.length) {
+      const merged = [location.host, ...hello.hosts].filter((v, i, arr) => arr.indexOf(v) === i)
+      localStorage.setItem(HOSTS_KEY, JSON.stringify(merged.slice(0, 6)))
+    }
     show('main')
     startPolling()
   } catch (e) {
@@ -147,9 +185,11 @@ async function connect() {
     if (err.status === 403) {
       $('errTitle').textContent = 'Appairage refusé'
       $('errMsg').textContent = 'Ce téléphone a été retiré sur le PC. Re-scanne un QR code pour le reconnecter.'
+      $('altHosts').classList.add('hidden')
     } else {
       $('errTitle').textContent = 'PC introuvable'
       $('errMsg').textContent = 'Vérifie que Flitdrop est ouvert sur le PC et que ton téléphone est sur le même wifi.'
+      renderAltHosts()
     }
     show('error')
   }
@@ -473,6 +513,16 @@ function initUI() {
   $('btnForget2').onclick = forget
   $('btnMenu').onclick = () => $('menuSheet').classList.remove('hidden')
   $('menuClose').onclick = () => $('menuSheet').classList.add('hidden')
+  $('btnInstall').onclick = () => {
+    $('menuSheet').classList.add('hidden')
+    const { platform } = platformLabel()
+    $('installSteps').textContent =
+      platform === 'iphone' || platform === 'ipad'
+        ? 'Dans Safari : bouton Partager (le carré avec une flèche), puis « Sur l’écran d’accueil ». L’icône Flitdrop apparaît comme une app, connectée à ton PC, sans re-scanner le QR code.'
+        : 'Dans Chrome : menu ⋮ en haut à droite, puis « Ajouter à l’écran d’accueil ». L’icône Flitdrop apparaît comme une app, connectée à ton PC, sans re-scanner le QR code.'
+    $('installSheet').classList.remove('hidden')
+  }
+  $('installClose').onclick = () => $('installSheet').classList.add('hidden')
   $('btnCloseImg').onclick = () => {
     const img = $('imgPreview') as HTMLImageElement
     if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src)

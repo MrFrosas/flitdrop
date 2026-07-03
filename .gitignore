@@ -11,4 +11,6 @@ packages/core/public/desktop/app.js
 # artefacts de packaging Electron générés (gen-icon.mjs / prepare.mjs)
 apps/desktop/core/
 apps/desktop/public/
-apps/desktop/build/
+apps/desktop/build/*.png
+# mais on versionne le script d'installation NSIS
+!apps/desktop/build/installer.nsh

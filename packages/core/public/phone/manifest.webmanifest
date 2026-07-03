@@ -1,0 +1,14 @@
+{
+  "name": "Flitdrop",
+  "short_name": "Flitdrop",
+  "description": "Envoie fichiers, photos et presse-papiers vers ton PC, chiffré de bout en bout.",
+  "start_url": "/s/",
+  "scope": "/s/",
+  "display": "standalone",
+  "background_color": "#eef0f5",
+  "theme_color": "#007aff",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

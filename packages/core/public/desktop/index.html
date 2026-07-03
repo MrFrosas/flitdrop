@@ -177,6 +177,24 @@
     </div>
   </div>
 
+  <!-- Bienvenue (premier lancement) -->
+  <div class="modal hidden" id="welcomeModal">
+    <div class="modal-card welcome">
+      <div class="welcome-art" aria-hidden="true">
+        <div class="wring"></div><div class="wring w2"></div><div class="wcore"></div>
+      </div>
+      <h2>Bienvenue dans Flitdrop</h2>
+      <p class="cardhint">L’AirDrop de ton PC. Trois choses à savoir, et c’est tout :</p>
+      <ol class="steps welcome-steps">
+        <li><b>Appaire ton téléphone une seule fois.</b> Un QR code à scanner, la connexion est mémorisée, même après un redémarrage.</li>
+        <li><b>Envoie dans les deux sens.</b> Le téléphone envoie photos et textes ; toi, tu glisses des fichiers ici, il les récupère.</li>
+        <li><b>Tout reste chez toi.</b> Chiffré de bout en bout, sur ton wifi, sans cloud ni compte.</li>
+      </ol>
+      <button class="btn primary" id="btnWelcome">Appairer mon téléphone</button>
+      <button class="btn ghost" id="btnWelcomeSkip">Plus tard</button>
+    </div>
+  </div>
+
   <!-- Modale appareil -->
   <div class="modal hidden" id="devModal">
     <div class="modal-card">

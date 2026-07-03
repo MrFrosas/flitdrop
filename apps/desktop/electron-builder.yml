@@ -9,6 +9,11 @@ files:
   - public/**
   - build/icon.png
   - build/tray.png
+# associe l'app à "Envoyer vers" et à "Ouvrir avec" pour tous les fichiers
+fileAssociations:
+  - ext: '*'
+    name: Fichier
+    role: Viewer
 asar: true
 win:
   target:
@@ -21,7 +26,7 @@ appx:
   identityName: PLACEHOLDER.Flitdrop
   publisher: CN=PLACEHOLDER
   publisherDisplayName: Flitdrop
-  backgroundColor: '#0a0e16'
+  backgroundColor: '#1b1b1b'
   languages:
     - fr-FR
     - en-US
@@ -30,3 +35,5 @@ nsis:
   perMachine: false
   deleteAppDataOnUninstall: false
   license: ''
+  # ajoute "clic-droit > Envoyer vers > Flitdrop" dans l'Explorateur Windows
+  include: build/installer.nsh

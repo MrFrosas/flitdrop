@@ -187,6 +187,8 @@ textarea:focus { border-color: color-mix(in srgb, var(--blue) 55%, transparent);
 .btn.wide { width: 100%; }
 .btn[disabled] { opacity: 0.5; pointer-events: none; }
 .hint { color: var(--muted); font-size: 13.5px; text-align: center; }
+.alt-hosts { display: flex; flex-direction: column; gap: 9px; }
+a.btn { text-decoration: none; display: block; text-align: center; }
 
 .empty { text-align: center; padding: 42px 12px; color: var(--muted); display: flex; flex-direction: column; gap: 8px; }
 .empty p:first-child { font-weight: 650; font-size: 17px; color: var(--text); }

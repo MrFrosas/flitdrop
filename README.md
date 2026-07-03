@@ -39,30 +39,35 @@ Les deux interfaces prennent l'apparence native de leur système et suivent le m
 - 🍎 **Raccourci Apple** « Envoyer au PC » dans la feuille de partage iOS ([guide](docs/raccourci-ios.md)).
 - 🔒 **Chiffrement de bout en bout** XChaCha20-Poly1305, appairage hors bande, appareils révocables.
 
-## Démarrage rapide
+## Installation
+
+**Utilisateur Windows.** Téléchargez l'installeur `.exe` depuis la [page des releases](https://github.com/MrFrosas/flitdrop/releases), double-cliquez, c'est installé. Au premier lancement, Flitdrop vous guide en trois écrans, puis affiche un QR code : scannez-le avec le téléphone, et c'est appairé pour de bon (même après un redémarrage du PC, pas besoin de re-scanner).
+
+Une fois installé, Flitdrop ajoute **« Envoyer vers Flitdrop »** au clic-droit de l'Explorateur Windows : sélectionnez un fichier, clic-droit, Envoyer vers, Flitdrop, et il attend sur le téléphone.
+
+**Sur le téléphone**, rien à installer. La page qui s'ouvre après le scan peut être ajoutée à l'écran d'accueil (menu ⋯ dans Flitdrop, puis « Installer sur l'écran d'accueil ») : elle se comporte alors comme une vraie app, connectée au PC, sans re-scanner.
+
+## Comment ça marche
+
+Le PC installe **un seul programme** : Flitdrop, qui fait tourner un petit serveur chiffré **en local**, sur votre réseau. Le téléphone lui parle par le navigateur (ou un Raccourci Apple), sur le même wifi, avec un chiffrement de bout en bout. **Aucun cloud, rien ne transite par un serveur externe.** Si le wifi n'existe pas (train, gare), le PC crée son propre réseau ([mode hors-ligne](docs/hors-ligne.md)).
+
+## Développement
 
 ```bash
 npm install
 npm run dev        # serveur local + interfaces (port 47777)
+npm test           # 32 tests : crypto, protocole, reprise, sécurité
+npm run desktop    # application de bureau (fenêtre + icône de notification)
 ```
 
-Le terminal affiche l'adresse de l'interface PC. Cliquez « Appairer un téléphone », scannez le QR code, c'est prêt.
+## Build Windows (installeur + Microsoft Store)
 
-Application de bureau (fenêtre + icône de notification) :
-
-```bash
-npm run build
-npm run desktop
-```
-
-## Build Windows (Microsoft Store + installeur)
-
-Sur Windows, ou via le workflow GitHub Actions fourni :
+Poussez un tag `vX.Y.Z` : le workflow GitHub Actions build sur Windows et publie une release avec l'installeur. Ou en local sur une machine Windows :
 
 ```bash
 npm ci
 npm run build -w @flitdrop/core
-npm run dist:win -w @flitdrop/desktop   # -> release/*.exe + *.appx
+npm run dist:win -w @flitdrop/desktop   # -> release/*.exe (site) + *.appx (Store)
 ```
 
 ## Flitdrop vs AirDrop

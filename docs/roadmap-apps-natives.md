@@ -4,11 +4,16 @@ L'app PC + la page web (livrées) couvrent déjà le cas d'usage principal. Cett
 
 ## Étape A : Intégration Windows native (la plus rentable, la moins risquée)
 
-**Objectif :** clic-droit sur un fichier dans l'Explorateur → « Envoyer vers mon téléphone » ; recevoir depuis le menu Partager de Windows ; démarrage automatique discret à l'ouverture de session (comme AirDrop, toujours prêt).
+**Objectif :** clic-droit sur un fichier dans l'Explorateur → « Envoyer vers Flitdrop » ; démarrage automatique discret à l'ouverture de session (comme AirDrop, toujours prêt).
 
-- **Comment :** ajouter une **identité de package Windows** via un *sparse package* posé par-dessus l'installeur Electron actuel (pas de réécriture), plus un handler COM `IExplorerCommand` signé. Certificat de signature : Azure Trusted Signing.
-- **Coût :** modéré, tout en réutilisant le cœur existant. Aucune app mobile requise.
-- **Débloque :** clic-droit Explorateur (1er niveau du menu Windows 11), cible de Partage Windows, démarrage session, et supprime l'invite pare-feu (règles dans le manifeste).
+**LIVRÉ (v0.1) :**
+- **Clic-droit → Envoyer vers → Flitdrop** dans l'Explorateur : l'installeur pose un raccourci dans le dossier `SendTo` de Windows (natif, aucune signature requise). L'app reçoit les fichiers en arguments et les met à disposition du téléphone, avec une notification.
+- **Ouvrir avec / glisser sur l'icône** : mêmes fichiers pris en charge (association de fichiers + `open-file` macOS).
+- **Démarrage au démarrage de la session** (option dans le menu de la zone de notification) : Flitdrop se lance caché et attend en fond.
+- **Instance unique** : les fichiers envoyés vont à l'instance déjà ouverte.
+
+**Reste à faire (pour l'intégration la plus profonde du menu Windows 11) :**
+- **Identité de package Windows** via un *sparse package* + handler COM `IExplorerCommand` signé (Azure Trusted Signing), pour une entrée au 1er niveau du menu contextuel (au lieu du sous-menu « Envoyer vers ») et pour la cible de Partage Windows. Supprime aussi l'invite pare-feu (règles dans le manifeste).
 
 ## Étape B : App iOS native (l'expérience « icône à côté d'AirDrop »)
 

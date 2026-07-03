@@ -290,6 +290,15 @@ details summary { cursor: pointer; font-weight: 600; color: var(--accent-text); 
 .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--stroke-2); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* bienvenue premier lancement */
+.modal-card.welcome { max-width: 470px; align-items: stretch; }
+.welcome-art { position: relative; width: 110px; height: 110px; margin: 4px auto 6px; }
+.wring { position: absolute; inset: 0; border: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 50%; animation: radarpulse 2.8s ease-out infinite; }
+.wring.w2 { animation-delay: 1.4s; }
+.wcore { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 55%, transparent); }
+.welcome-steps { margin: 4px 0 8px; }
+@media (prefers-reduced-motion: reduce) { .wring { animation: none; opacity: 0.3; transform: scale(0.8); } }
+
 .dropoverlay {
   position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
   display: flex; align-items: center; justify-content: center;

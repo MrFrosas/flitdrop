@@ -3,12 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0a0e16">
+  <meta name="theme-color" content="#eef0f5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#05070c" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Flitdrop">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Flitdrop</title>
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="/assets/icon.svg">
-  <link rel="apple-touch-icon" href="/assets/icon.svg">
+  <link rel="apple-touch-icon" href="/assets/icon-180.png">
   <link rel="stylesheet" href="phone.css">
 </head>
 <body>
@@ -31,6 +35,7 @@
     <h1 id="errTitle">PC introuvable</h1>
     <p class="lead" id="errMsg">Vérifie que Flitdrop est ouvert sur le PC et que ton téléphone est sur le même wifi.</p>
     <button class="btn primary" id="btnRetry">Réessayer</button>
+    <div id="altHosts" class="alt-hosts hidden"></div>
     <button class="btn ghost" id="btnForget">Oublier ce PC</button>
   </main>
 
@@ -96,8 +101,17 @@
     <div class="modal-card">
       <h2>Ce téléphone</h2>
       <p class="hint" id="menuInfo"></p>
+      <button class="btn wide" id="btnInstall">Installer sur l’écran d’accueil</button>
       <button class="btn danger wide" id="btnForget2">Oublier ce PC</button>
       <button class="btn ghost wide" id="menuClose">Fermer</button>
+    </div>
+  </div>
+
+  <div id="installSheet" class="modal hidden">
+    <div class="modal-card">
+      <h2>Flitdrop comme une app</h2>
+      <p class="hint" id="installSteps"></p>
+      <button class="btn ghost wide" id="installClose">Fermer</button>
     </div>
   </div>
 

@@ -644,6 +644,23 @@ async function uploadOutbox(files: FileList) {
 
 // ---------- démarrage ----------
 
+function maybeWelcome() {
+  if (localStorage.getItem('fd_onboard') === '1') return
+  $('welcomeModal').classList.remove('hidden')
+  $('btnWelcome').onclick = () => {
+    localStorage.setItem('fd_onboard', '1')
+    $('welcomeModal').classList.add('hidden')
+    void openPairModal()
+  }
+  $('btnWelcomeSkip').onclick = () => {
+    localStorage.setItem('fd_onboard', '1')
+    $('welcomeModal').classList.add('hidden')
+  }
+}
+
 initUI()
 history.replaceState(null, '', location.pathname)
-void refresh().then(() => connectWS())
+void refresh().then(() => {
+  connectWS()
+  maybeWelcome()
+})

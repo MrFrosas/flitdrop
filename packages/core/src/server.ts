@@ -27,7 +27,16 @@ import { TransferManager, ApiError } from './transfers.js'
 import { NonceCache, open, seal, openFreshJSON, sealJSON, randomToken } from './crypto.js'
 import { readClipboard, writeClipboard } from './clip.js'
 import { saveMultipartFiles } from './uploads.js'
-import { b64u, isLoopback, localIPv4s, moduleDir, parseCookies, timingSafeEqualStr } from './util.js'
+import {
+  b64u,
+  isLoopback,
+  localIPv4s,
+  moduleDir,
+  parseCookies,
+  reserveUniquePath,
+  sanitizeFilename,
+  timingSafeEqualStr,
+} from './util.js'
 
 const PUBLIC_DIR = path.join(moduleDir(import.meta.url), '..', 'public')
 const ADMIN_COOKIE = 'wd_admin'
@@ -58,6 +67,9 @@ export interface RunningServer {
   cfg: Config
   home: string
   adminUrl: string
+  /** Met des fichiers locaux à disposition des téléphones (clic-droit
+   *  « Envoyer vers », glisser sur l'icône, ligne de commande). */
+  addLocalFiles: (paths: string[]) => Promise<number>
   close: () => Promise<void>
 }
 
@@ -241,6 +253,12 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
           requireApproval: cfg.requireApproval,
           product: PRODUCT_NAME,
           version: VERSION,
+          // adresses de secours : si l'IP du PC change, la page sait où le
+          // retrouver sans re-scanner le QR code.
+          hosts: [
+            ...localIPv4s().map((ip) => `${ip}:${actualPort}`),
+            `${os.hostname().split('.')[0]}.local:${actualPort}`,
+          ],
         },
         aad(dev.id, 'hello:res')
       ),
@@ -675,12 +693,34 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   const adminUrl = `http://127.0.0.1:${actualPort}/app/?k=${encodeURIComponent(cfg.adminToken)}`
 
+  const addLocalFiles = async (paths: string[]): Promise<number> => {
+    let added = 0
+    for (const p of paths) {
+      try {
+        const st = await fs.promises.stat(p)
+        if (!st.isFile()) continue
+        if (st.size > cfg.maxFileMB * 1024 * 1024) continue
+        const safe = sanitizeFilename(path.basename(p))
+        const reserved = reserveUniquePath(outbox.dir, safe)
+        fs.closeSync(reserved.fd)
+        await fs.promises.copyFile(p, reserved.path)
+        outbox.addFile(path.basename(reserved.path), reserved.path, st.size)
+        added++
+      } catch {
+        // fichier illisible : on passe au suivant
+      }
+    }
+    if (added > 0) hub.broadcast('outbox-changed', {})
+    return added
+  }
+
   return {
     port: actualPort,
     adminToken: cfg.adminToken,
     cfg,
     home,
     adminUrl,
+    addLocalFiles,
     close: async () => {
       clearInterval(clipTimer)
       await transfers.closeAll()
