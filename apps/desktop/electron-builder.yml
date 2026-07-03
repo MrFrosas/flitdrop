@@ -1,0 +1,32 @@
+appId: app.flitdrop.desktop
+productName: Flitdrop
+directories:
+  output: release
+  buildResources: build
+files:
+  - main.cjs
+  - core/**
+  - public/**
+  - build/icon.png
+  - build/tray.png
+asar: true
+win:
+  target:
+    - nsis
+    - appx
+  icon: build/icon.png
+appx:
+  # identityName et publisher sont remplacés par les valeurs du Partner Center
+  # (Microsoft Store > Gestion des produits > Identité du package)
+  identityName: PLACEHOLDER.Flitdrop
+  publisher: CN=PLACEHOLDER
+  publisherDisplayName: Flitdrop
+  backgroundColor: '#0a0e16'
+  languages:
+    - fr-FR
+    - en-US
+nsis:
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: false
+  license: ''

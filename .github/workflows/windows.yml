@@ -1,0 +1,39 @@
+name: build-windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Build du cœur
+        run: npm run build -w @flitdrop/core
+
+      - name: Tests
+        run: npm test -w @flitdrop/core
+
+      - name: Empaqueter (NSIS + MSIX)
+        run: npm run dist:win -w @flitdrop/desktop
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flitdrop-windows
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.appx
+            apps/desktop/release/*.msix
+          if-no-files-found: warn

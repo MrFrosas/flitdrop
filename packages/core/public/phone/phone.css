@@ -1,0 +1,218 @@
+/* Flitdrop — page téléphone. Aesthetic iOS 26 « Liquid Glass » :
+   polices système (SF Pro), verre dépoli, ressorts, clair/sombre auto. */
+
+:root {
+  --blue: #007aff;
+  --blue-press: #0060df;
+  --ok: #34c759;
+  --danger: #ff3b30;
+  --radius-card: 22px;
+  --radius-ctl: 14px;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+
+  /* clair (défaut, façon feuille de partage iOS) */
+  --bg-a: #eef0f5;
+  --bg-b: #e3e6ee;
+  --bloom: rgba(0, 122, 255, 0.14);
+  --text: #10141c;
+  --muted: #6b7280;
+  --glass: rgba(255, 255, 255, 0.58);
+  --glass-strong: rgba(255, 255, 255, 0.78);
+  --hair: rgba(255, 255, 255, 0.75);
+  --hair-line: rgba(10, 20, 40, 0.08);
+  --shadow: 0 10px 40px rgba(20, 30, 60, 0.12);
+  --field: rgba(255, 255, 255, 0.6);
+  --seg: rgba(120, 120, 128, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-a: #05070c;
+    --bg-b: #0e1420;
+    --bloom: rgba(10, 132, 255, 0.22);
+    --text: #f2f5fa;
+    --muted: #97a1b2;
+    --blue: #0a84ff;
+    --blue-press: #409cff;
+    --ok: #30d158;
+    --danger: #ff453a;
+    --glass: rgba(30, 36, 48, 0.5);
+    --glass-strong: rgba(40, 46, 60, 0.62);
+    --hair: rgba(255, 255, 255, 0.12);
+    --hair-line: rgba(255, 255, 255, 0.08);
+    --shadow: 0 12px 44px rgba(0, 0, 0, 0.45);
+    --field: rgba(255, 255, 255, 0.06);
+    --seg: rgba(120, 120, 128, 0.24);
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  background:
+    radial-gradient(120% 80% at 50% -10%, var(--bloom) 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg-a) 0%, var(--bg-b) 100%);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* le grain d'antan est retiré : le verre doit rester net */
+.noise { display: none; }
+.hidden { display: none !important; }
+
+.screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 18px calc(env(safe-area-inset-bottom, 0px) + 22px);
+  max-width: 540px;
+  margin: 0 auto;
+  animation: sheet 0.55s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+@keyframes sheet { from { opacity: 0; transform: translateY(16px) scale(0.99); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .screen, .panel, .qitem, .modal-card, .toast { animation: none !important; } }
+
+/* ---------- écrans scan / erreur ---------- */
+#screen-scan, #screen-error { justify-content: center; text-align: center; gap: 20px; }
+.brand {
+  font-weight: 700; font-size: 21px; letter-spacing: -0.02em;
+  display: inline-flex; align-items: center; gap: 9px; justify-content: center;
+}
+.brand-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue) 18%, transparent); }
+.brand-dot.off { background: var(--danger); box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 18%, transparent); }
+
+.scan-art { position: relative; width: 168px; height: 168px; margin: 6px auto; }
+.ring { position: absolute; inset: 0; border: 1.5px solid color-mix(in srgb, var(--blue) 40%, transparent); border-radius: 50%; animation: sonar 3s ease-out infinite; }
+.ring.r2 { animation-delay: 1s; }
+.ring.r3 { animation-delay: 2s; }
+@keyframes sonar { 0% { transform: scale(0.3); opacity: 0.85; } 100% { transform: scale(1.04); opacity: 0; } }
+.core { position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin: -10px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 24px color-mix(in srgb, var(--blue) 60%, transparent); }
+@media (prefers-reduced-motion: reduce) { .ring { animation: none; opacity: 0.3; transform: scale(0.7); } }
+
+h1 { font-weight: 700; font-size: 27px; line-height: 1.2; letter-spacing: -0.02em; text-wrap: balance; }
+.lead { color: var(--muted); font-size: 16px; max-width: 32ch; margin: 0 auto; }
+
+/* ---------- écran principal ---------- */
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding: 2px 2px 0; }
+.pc { display: flex; align-items: center; gap: 11px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 16%, transparent); flex: none; }
+.dot.off { background: var(--danger); box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 16%, transparent); }
+.pc-label { font-size: 12.5px; color: var(--muted); }
+.pc-name { font-weight: 650; font-size: 19px; letter-spacing: -0.02em; }
+.iconbtn {
+  width: 40px; height: 40px; border-radius: 50%; border: 0.5px solid var(--hair);
+  background: var(--glass); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+  color: var(--text); font-size: 19px; cursor: pointer;
+}
+
+/* segmented control iOS */
+.tabs { display: flex; gap: 2px; background: var(--seg); border-radius: 12px; padding: 3px; margin-bottom: 20px; }
+.tab {
+  flex: 1; padding: 9px 6px; border: 0; border-radius: 9px; background: transparent;
+  color: var(--text); font: 600 14.5px var(--font); cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+.tab.active { background: var(--glass-strong); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 1px 6px rgba(20, 30, 60, 0.12); color: var(--text); }
+.badge { background: var(--blue); color: #fff; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 7px; min-width: 18px; }
+
+.panel { display: flex; flex-direction: column; gap: 13px; animation: fade 0.3s ease both; }
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* carte d'envoi, gros bouton verre */
+.bigsend {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; gap: 9px;
+  padding: 40px 24px; border-radius: 26px; cursor: pointer;
+  border: 0.5px solid var(--hair);
+  background: var(--glass); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+  color: var(--text); text-align: center; box-shadow: var(--shadow);
+  transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.bigsend:active { transform: scale(0.98); }
+.bigsend > svg { color: var(--blue); }
+.bigsend b { font-weight: 650; font-size: 19px; letter-spacing: -0.02em; }
+.bigsend small { color: var(--muted); font-size: 14px; max-width: 30ch; }
+.bigsend-halo { position: absolute; left: 50%; top: 30px; width: 76px; height: 76px; margin-left: -38px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--blue) 40%, transparent); animation: sonar 2.6s ease-out infinite; pointer-events: none; }
+
+.send-summary { font-size: 14px; color: var(--muted); text-align: center; }
+.send-summary b { color: var(--blue); }
+
+.queue { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.qitem {
+  border: 0.5px solid var(--hair); background: var(--glass); backdrop-filter: blur(24px) saturate(180%); -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-radius: var(--radius-card); padding: 14px 15px; display: flex; flex-direction: column; gap: 9px;
+  box-shadow: var(--shadow); animation: fade 0.3s ease both;
+}
+.qhead { display: flex; align-items: center; gap: 11px; }
+.qicon { width: 34px; height: 34px; flex: none; border-radius: 10px; background: color-mix(in srgb, var(--blue) 14%, transparent); color: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.qname { font-weight: 600; font-size: 15px; word-break: break-word; flex: 1; letter-spacing: -0.01em; }
+.qsize { color: var(--muted); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.qbar { height: 6px; border-radius: 999px; background: var(--seg); overflow: hidden; }
+.qbar span { display: block; height: 100%; width: 0%; border-radius: 999px; background: var(--blue); transition: width 0.25s ease; }
+.qstate { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.qitem.done { border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.qitem.done .qstate { color: var(--ok); font-weight: 600; }
+.qitem.err { border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+.qitem.err .qstate { color: var(--danger); }
+.qbtn { border: 0.5px solid var(--hair); background: var(--glass-strong); color: var(--blue); border-radius: 999px; padding: 8px 15px; font: 600 13.5px var(--font); cursor: pointer; }
+
+/* texte */
+textarea {
+  width: 100%; resize: vertical; min-height: 150px;
+  background: var(--field); border: 0.5px solid var(--hair); border-radius: var(--radius-card);
+  color: var(--text); font: 400 17px var(--font); padding: 15px 16px; outline: none;
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+textarea:focus { border-color: color-mix(in srgb, var(--blue) 55%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--blue) 12%, transparent); }
+.txt-meta { display: flex; justify-content: flex-end; color: var(--muted); font-size: 12.5px; margin-top: -4px; }
+
+.btn {
+  border: 0.5px solid transparent; border-radius: 999px; padding: 15px 20px;
+  font: 650 16.5px var(--font); letter-spacing: -0.01em; cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1), background 0.2s;
+  background: var(--glass-strong); color: var(--blue); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+}
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: var(--blue); color: #fff; box-shadow: 0 8px 24px color-mix(in srgb, var(--blue) 35%, transparent); }
+.btn.primary:active { background: var(--blue-press); }
+.btn.ghost { background: transparent; border-color: var(--hair-line); color: var(--text); }
+.btn.danger { background: color-mix(in srgb, var(--danger) 12%, transparent); border-color: color-mix(in srgb, var(--danger) 30%, transparent); color: var(--danger); }
+.btn.wide { width: 100%; }
+.btn[disabled] { opacity: 0.5; pointer-events: none; }
+.hint { color: var(--muted); font-size: 13.5px; text-align: center; }
+
+.empty { text-align: center; padding: 42px 12px; color: var(--muted); display: flex; flex-direction: column; gap: 8px; }
+.empty p:first-child { font-weight: 650; font-size: 17px; color: var(--text); }
+.rtext { font-size: 15px; color: var(--text); background: var(--field); border-radius: 12px; padding: 11px 13px; white-space: pre-wrap; word-break: break-word; max-height: 130px; overflow: auto; }
+
+/* toast + modales (feuilles iOS) */
+.toast {
+  position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
+  transform: translateX(-50%); z-index: 60;
+  background: var(--glass-strong); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 0.5px solid var(--hair); border-radius: 16px;
+  padding: 13px 20px; font-size: 15px; font-weight: 600; box-shadow: var(--shadow);
+  animation: toastup 0.35s cubic-bezier(0.32, 0.72, 0, 1) both; max-width: 90vw; text-align: center;
+}
+@keyframes toastup { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(10, 14, 22, 0.32); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: flex-end; justify-content: center; padding: 12px; }
+.modal-card {
+  width: 100%; max-width: 480px;
+  background: var(--glass-strong); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 0.5px solid var(--hair); border-radius: 26px; padding: 22px;
+  display: flex; flex-direction: column; gap: 13px;
+  animation: sheetup 0.4s cubic-bezier(0.32, 0.72, 0, 1) both;
+  margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+  box-shadow: 0 -4px 60px rgba(10, 20, 40, 0.25);
+}
+@keyframes sheetup { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-card::before { content: ''; width: 38px; height: 5px; border-radius: 3px; background: var(--hair-line); align-self: center; margin-bottom: 4px; }
+.modal-card h2 { font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+.modal-card img { width: 100%; border-radius: 16px; max-height: 55vh; object-fit: contain; background: rgba(0, 0, 0, 0.04); }

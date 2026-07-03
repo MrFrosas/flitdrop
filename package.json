@@ -1,0 +1,19 @@
+{
+  "name": "flitdrop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AirDrop universel pour Windows : envoyez fichiers, photos et presse-papiers entre iPhone/Android et votre PC, sans rien installer sur le téléphone.",
+  "workspaces": [
+    "packages/core",
+    "apps/desktop"
+  ],
+  "scripts": {
+    "dev": "npm -w @flitdrop/core run dev",
+    "build": "npm -w @flitdrop/core run build",
+    "test": "npm -w @flitdrop/core run test",
+    "desktop": "npm -w @flitdrop/desktop run start"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

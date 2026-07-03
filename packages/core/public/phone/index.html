@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0e16">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Flitdrop</title>
+  <link rel="icon" href="/assets/icon.svg">
+  <link rel="apple-touch-icon" href="/assets/icon.svg">
+  <link rel="stylesheet" href="phone.css">
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+
+  <!-- Pas encore appairé -->
+  <main id="screen-scan" class="screen hidden">
+    <div class="brand"><span class="brand-dot"></span>Flitdrop</div>
+    <div class="scan-art" aria-hidden="true">
+      <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
+      <div class="core"></div>
+    </div>
+    <h1>Connecte ce téléphone à ton PC</h1>
+    <p class="lead">Ouvre Flitdrop sur le PC, clique sur « Appairer un téléphone » et scanne le QR code avec l’appareil photo.</p>
+  </main>
+
+  <!-- Erreur / PC injoignable -->
+  <main id="screen-error" class="screen hidden">
+    <div class="brand"><span class="brand-dot off"></span>Flitdrop</div>
+    <h1 id="errTitle">PC introuvable</h1>
+    <p class="lead" id="errMsg">Vérifie que Flitdrop est ouvert sur le PC et que ton téléphone est sur le même wifi.</p>
+    <button class="btn primary" id="btnRetry">Réessayer</button>
+    <button class="btn ghost" id="btnForget">Oublier ce PC</button>
+  </main>
+
+  <!-- Écran principal -->
+  <main id="screen-main" class="screen hidden">
+    <header class="topbar">
+      <div class="pc">
+        <span class="dot" id="statusDot"></span>
+        <div>
+          <div class="pc-label">Connecté à</div>
+          <div class="pc-name" id="pcName">…</div>
+        </div>
+      </div>
+      <button class="iconbtn" id="btnMenu" aria-label="Menu">⋯</button>
+    </header>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="send" role="tab">Envoyer</button>
+      <button class="tab" data-tab="text" role="tab">Texte</button>
+      <button class="tab" data-tab="recv" role="tab">Recevoir <span class="badge hidden" id="recvBadge">0</span></button>
+    </nav>
+
+    <section class="panel" id="panel-send">
+      <button class="bigsend" id="btnPick">
+        <span class="bigsend-halo" aria-hidden="true"></span>
+        <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M12 19V6M6 12l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <b>Choisir des fichiers</b>
+        <small>Photos, vidéos, documents. Ils arrivent dans le dossier Flitdrop du PC.</small>
+      </button>
+      <div id="sendSummary" class="send-summary hidden"></div>
+      <ul id="sendQueue" class="queue"></ul>
+    </section>
+
+    <section class="panel hidden" id="panel-text">
+      <textarea id="txtInput" rows="7" placeholder="Colle ou écris ton texte ici…" maxlength="500000"></textarea>
+      <div class="txt-meta"><span id="txtCount">0 caractère</span></div>
+      <button class="btn primary wide" id="btnSendText">Envoyer sur le PC</button>
+      <p class="hint">Le texte atterrit directement dans le presse-papiers du PC. Ctrl+V, et c’est collé.</p>
+    </section>
+
+    <section class="panel hidden" id="panel-recv">
+      <ul id="recvList" class="queue"></ul>
+      <div id="recvEmpty" class="empty">
+        <p>Rien en attente.</p>
+        <p class="hint">Sur le PC, glisse un fichier dans Flitdrop, onglet « Envoyer », et il apparaîtra ici.</p>
+      </div>
+    </section>
+  </main>
+
+  <input type="file" id="filepick" multiple hidden>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <div id="imgModal" class="modal hidden">
+    <div class="modal-card">
+      <img id="imgPreview" alt="Image reçue">
+      <p class="hint">Reste appuyé sur l’image pour l’enregistrer dans tes photos.</p>
+      <button class="btn ghost wide" id="btnCloseImg">Fermer</button>
+    </div>
+  </div>
+
+  <div id="menuSheet" class="modal hidden">
+    <div class="modal-card">
+      <h2>Ce téléphone</h2>
+      <p class="hint" id="menuInfo"></p>
+      <button class="btn danger wide" id="btnForget2">Oublier ce PC</button>
+      <button class="btn ghost wide" id="menuClose">Fermer</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

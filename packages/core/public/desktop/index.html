@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flitdrop</title>
+  <link rel="icon" href="/assets/icon.svg">
+  <link rel="stylesheet" href="desktop.css">
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+
+  <aside class="side">
+    <div class="mark" title="Flitdrop"><span></span></div>
+    <nav>
+      <button class="nav-btn active" data-view="radar" title="Radar">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".7"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/></svg>
+      </button>
+      <button class="nav-btn" data-view="activity" title="Historique">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <button class="nav-btn" data-view="send" title="Envoyer vers le téléphone">
+        <svg viewBox="0 0 24 24"><path d="M12 19V6M6 12l6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="nav-btn" data-view="settings" title="Réglages">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1M7.7 16.3l-2.1 2.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+    </nav>
+    <div class="side-foot" id="versionTag">v0.1</div>
+  </aside>
+
+  <main class="main">
+    <header class="head">
+      <div>
+        <h1 id="viewTitle">Radar</h1>
+        <div class="head-sub"><span id="pcNameHead">…</span> · <span id="netInfo">…</span></div>
+      </div>
+      <button class="btn primary" id="btnPair">Appairer un téléphone</button>
+    </header>
+
+    <!-- RADAR -->
+    <section class="view" id="view-radar">
+      <div class="radar-wrap">
+        <div class="radar" id="radar">
+          <div class="rring rr1"></div>
+          <div class="rring rr2"></div>
+          <div class="rring rr3"></div>
+          <div class="rpulse p1"></div>
+          <div class="rpulse p2"></div>
+          <div class="pcnode">
+            <div class="pcnode-core">
+              <svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="5" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9 20h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            </div>
+            <span id="pcNodeName">Ce PC</span>
+          </div>
+          <div id="deviceLayer"></div>
+          <div class="radar-empty hidden" id="radarEmpty">
+            <p>Aucun téléphone appairé</p>
+            <button class="btn primary" id="btnPair2">Appairer un téléphone</button>
+            <small>30 secondes, un QR code, et c’est réglé.</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORIQUE -->
+    <section class="view hidden" id="view-activity">
+      <ul class="hist" id="historyList"></ul>
+      <div class="empty hidden" id="histEmpty">
+        <p>Encore rien ici</p>
+        <small>Chaque fichier ou texte échangé apparaîtra dans cet historique.</small>
+      </div>
+    </section>
+
+    <!-- ENVOYER -->
+    <section class="view hidden" id="view-send">
+      <div class="send-grid">
+        <div class="card dropzone" id="dropzone">
+          <svg viewBox="0 0 24 24" width="30" height="30"><path d="M12 16V5m-5 4 5-5 5 5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <b>Glisse des fichiers ici</b>
+          <small>ou <u>clique pour parcourir</u>. Le téléphone les récupère dans son onglet « Recevoir ».</small>
+          <div class="upbar hidden" id="upBar"><span id="upProgress"></span></div>
+        </div>
+        <div class="card">
+          <h3>Envoyer du texte</h3>
+          <textarea id="outText" rows="4" placeholder="Un lien, une adresse, un mot de passe wifi…"></textarea>
+          <div class="row">
+            <button class="btn primary" id="btnQueueText">Mettre à disposition</button>
+            <button class="btn" id="btnPushClip">Envoyer mon presse-papiers</button>
+          </div>
+        </div>
+      </div>
+      <h3 class="listtitle">À récupérer sur le téléphone</h3>
+      <ul class="hist" id="outboxList"></ul>
+      <div class="empty hidden" id="outboxEmpty">
+        <p>Rien en attente</p>
+        <small>Tout ce que tu déposes ici reste disponible pour tes téléphones appairés.</small>
+      </div>
+    </section>
+
+    <!-- RÉGLAGES -->
+    <section class="view hidden" id="view-settings">
+      <div class="card settings-card">
+        <h3>Ce PC</h3>
+        <label>Nom visible par les téléphones
+          <input id="setName" maxlength="40">
+        </label>
+        <label>Dossier de réception
+          <input id="setDir">
+        </label>
+        <div class="row">
+          <label class="grow">Taille max par fichier
+            <select id="setMax">
+              <option value="512">512 Mo</option>
+              <option value="1024">1 Go</option>
+              <option value="4096">4 Go</option>
+              <option value="8192">8 Go</option>
+              <option value="16384">16 Go</option>
+            </select>
+          </label>
+          <label class="check">
+            <input type="checkbox" id="setApproval">
+            <span>Me demander avant chaque réception</span>
+          </label>
+        </div>
+        <button class="btn primary" id="btnSaveSettings">Enregistrer</button>
+      </div>
+
+      <div class="card settings-card">
+        <h3>Partage direct depuis l’iPhone (Raccourci)</h3>
+        <p class="cardhint">Avec un Raccourci Apple, « Envoyer au PC » apparaît dans la feuille de partage de l’iPhone : Photos → Partager → Envoyer au PC. Aucune app à installer.</p>
+        <label>Téléphone concerné
+          <select id="shortcutDevice"></select>
+        </label>
+        <div id="shortcutInfo"></div>
+        <details>
+          <summary>Créer le raccourci (2 minutes, à faire une fois)</summary>
+          <ol class="steps">
+            <li>Sur l’iPhone, ouvre l’app <b>Raccourcis</b> puis crée un nouveau raccourci.</li>
+            <li>Dans ses réglages (icône ⓘ), active <b>« Afficher dans la feuille de partage »</b>.</li>
+            <li>Ajoute l’action <b>« Obtenir le contenu de l’URL »</b> avec l’adresse « Envoyer des fichiers » ci-dessus.</li>
+            <li>Méthode <b>POST</b>, corps <b>Formulaire</b> : ajoute un champ de type <b>Fichier</b>, nommé <code>file</code>, avec la variable <b>Entrée du raccourci</b>.</li>
+            <li>Nomme-le <b>« Envoyer au PC »</b>, choisis une icône, enregistre.</li>
+            <li>Depuis Photos ou n’importe quelle app : Partager → Envoyer au PC. Terminé.</li>
+          </ol>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <aside class="feed">
+    <h2>En direct</h2>
+    <ul id="feedList"></ul>
+    <div class="empty" id="feedEmpty">
+      <p>Tout est calme</p>
+      <small>Les réceptions apparaissent ici en temps réel.</small>
+    </div>
+  </aside>
+
+  <!-- Modale d'appairage -->
+  <div class="modal hidden" id="pairModal">
+    <div class="modal-card">
+      <h2>Appairer un téléphone</h2>
+      <p class="cardhint">Scanne ce QR code avec l’appareil photo du téléphone (même wifi que le PC).</p>
+      <div class="qrbox"><img id="qrImg" alt="QR code d’appairage"></div>
+      <div class="pairurl" id="pairUrlText"></div>
+      <div class="pairstate" id="pairState"><span class="spin"></span>En attente du scan…</div>
+      <div class="row hidden" id="pairRenameRow">
+        <input id="pairRenameInput" maxlength="40" placeholder="Nom de l’appareil">
+        <button class="btn primary" id="btnPairDone">Terminer</button>
+      </div>
+      <button class="btn ghost" id="btnPairCancel">Fermer</button>
+    </div>
+  </div>
+
+  <!-- Modale appareil -->
+  <div class="modal hidden" id="devModal">
+    <div class="modal-card">
+      <h2 id="devTitle">Appareil</h2>
+      <p class="cardhint" id="devSeen"></p>
+      <div class="row">
+        <input id="devRenameInput" maxlength="40">
+        <button class="btn primary" id="btnDevRename">Renommer</button>
+      </div>
+      <button class="btn" id="btnDevShortcut">Configurer le raccourci iPhone</button>
+      <button class="btn danger" id="btnDevRevoke">Retirer cet appareil</button>
+      <button class="btn ghost" id="btnDevClose">Fermer</button>
+    </div>
+  </div>
+
+  <!-- Modale validation -->
+  <div class="modal hidden" id="apprModal">
+    <div class="modal-card">
+      <h2>Réception entrante</h2>
+      <p id="apprText"></p>
+      <div class="row">
+        <button class="btn primary grow" id="btnAccept">Accepter</button>
+        <button class="btn danger grow" id="btnRefuse">Refuser</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="dropoverlay hidden" id="dropOverlay"><div>Dépose pour mettre à disposition du téléphone</div></div>
+  <div id="toasts"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

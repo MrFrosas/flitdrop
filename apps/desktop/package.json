@@ -1,0 +1,15 @@
+{
+  "name": "@flitdrop/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "prepare:app": "node gen-icon.mjs && node prepare.mjs",
+    "start": "npm run prepare:app && electron .",
+    "dist:win": "npm run prepare:app && electron-builder --win nsis appx --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  }
+}
