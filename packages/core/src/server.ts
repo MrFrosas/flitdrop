@@ -98,6 +98,24 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const nonces = new NonceCache()
   const transfers = new TransferManager(() => cfg, history, hub)
 
+  // ---------- surveillance du presse-papiers du PC (sens PC -> téléphone) ----------
+  // Le seul sens réellement automatisable côté PC : on lit notre propre presse-
+  // papiers (aucune restriction OS pour ça) et, quand il change, on le met à
+  // disposition des téléphones. `lastClip` sert d'anti-boucle : le texte reçu
+  // d'un téléphone (qu'on colle dans le presse-papiers) ne doit pas être renvoyé.
+  let lastClip = ''
+  readClipboard().then((t) => (lastClip = t)).catch(() => {})
+  const clipTimer = setInterval(async () => {
+    if (!cfg.clipboardAutoPush) return
+    const text = await readClipboard().catch(() => '')
+    if (!text || text === lastClip || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) return
+    lastClip = text
+    outbox.addText(text)
+    hub.broadcast('outbox-changed', {})
+    hub.broadcast('clip-autopushed', { preview: text.slice(0, 120) })
+  }, 1500)
+  clipTimer.unref?.()
+
   const pendingApprovals = new Map<string, (ok: boolean) => void>()
   transfers.approvalHook = (info) =>
     new Promise<boolean>((resolve) => {
@@ -312,6 +330,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         () => true,
         () => false
       )
+      // anti-écho : ce texte vient du téléphone, le surveilleur ne doit pas le renvoyer
+      if (copied) lastClip = text
     }
     history.add({
       dir: 'in',
@@ -353,7 +373,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     res.setHeader('Content-Type', 'application/octet-stream')
     res.setHeader('Cache-Control', 'no-store')
     // si le client se déconnecte (téléphone qui quitte le wifi, onglet fermé),
-    // on détruit le flux disque immédiatement — sinon fuite de descripteur.
+    // on détruit le flux disque immédiatement : sinon fuite de descripteur.
     let aborted = false
     const onClose = () => {
       aborted = true
@@ -492,6 +512,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         downloadDir: cfg.downloadDir,
         maxFileMB: cfg.maxFileMB,
         requireApproval: cfg.requireApproval,
+        clipboardAutoPush: cfg.clipboardAutoPush,
         port: actualPort,
       },
       hostname: os.hostname(),
@@ -599,6 +620,12 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
     if (body.maxFileMB !== undefined) cfg.maxFileMB = clampInt(body.maxFileMB, 1, 128 * 1024, cfg.maxFileMB)
     if (typeof body.requireApproval === 'boolean') cfg.requireApproval = body.requireApproval
+    if (typeof body.clipboardAutoPush === 'boolean') {
+      cfg.clipboardAutoPush = body.clipboardAutoPush
+      // en (ré)activant, on prend l'état courant comme référence pour ne pas
+      // pousser d'un coup le contenu déjà présent dans le presse-papiers.
+      if (cfg.clipboardAutoPush) readClipboard().then((t) => (lastClip = t)).catch(() => {})
+    }
     saveConfig(home, cfg)
     hub.broadcast('settings-changed', {})
     res.json({ ok: true })
@@ -655,6 +682,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     home,
     adminUrl,
     close: async () => {
+      clearInterval(clipTimer)
       await transfers.closeAll()
       wss.close()
       await new Promise<void>((resolve) => server.close(() => resolve()))

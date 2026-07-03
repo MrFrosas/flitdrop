@@ -2,11 +2,11 @@
 
 # Flitdrop
 
-### The AirDrop for Windows — send files, photos and clipboard between iPhone, Android and your PC. No app to install on the phone. End-to-end encrypted. Free on your local network.
+### The AirDrop for Windows : send files, photos and clipboard between iPhone, Android and your PC. No app to install on the phone. End-to-end encrypted. Free on your local network.
 
 *L'AirDrop de Windows : envoyez fichiers, photos et presse-papiers entre iPhone, Android et votre PC. Rien à installer sur le téléphone. Chiffré de bout en bout. Gratuit sur votre réseau local.*
 
-![Flitdrop — interface PC](docs/screenshots/desktop-dark.png)
+![Flitdrop : interface PC](docs/screenshots/desktop-dark.png)
 
 </div>
 
@@ -14,7 +14,7 @@
 
 ## Pourquoi
 
-Sur Mac il y a AirDrop. Sur Windows, rien d'équivalent qui soit simple, rapide et sûr — et surtout rien pour un **iPhone vers un PC sans installer d'app**. Ni Microsoft (Phone Link, noté 3,0/5 sur 460 000 avis), ni Google (Quick Share, Android seulement), ni Samsung ne couvrent ce cas. Flitdrop le fait.
+Sur Mac il y a AirDrop. Sur Windows, rien d'équivalent qui soit simple, rapide et sûr : et surtout rien pour un **iPhone vers un PC sans installer d'app**. Ni Microsoft (Phone Link, noté 3,0/5 sur 460 000 avis), ni Google (Quick Share, Android seulement), ni Samsung ne couvrent ce cas. Flitdrop le fait.
 
 - **iPhone → PC, sans rien installer sur le téléphone.** On scanne un QR code une fois, et on envoie depuis le navigateur ou un Raccourci Apple.
 - **Multi-appareils.** iPhone, Android, Xiaomi, Samsung, et bien sûr Windows 11. Ça marche entre marques, là où AirDrop est bloqué à Apple.
@@ -32,7 +32,7 @@ Les deux interfaces prennent l'apparence native de leur système et suivent le m
 ## Fonctionnalités
 
 - 📤 **Envoi de fichiers** iPhone/Android → PC, avec progression, vitesse, et **reprise automatique** si le réseau coupe.
-- 📋 **Texte et presse-papiers** : le texte envoyé atterrit directement dans le presse-papiers du PC.
+- 📋 **Presse-papiers** : le texte du téléphone arrive dans le presse-papiers du PC en un tap ; et le PC peut pousser automatiquement son presse-papiers vers le téléphone ([ce qui est possible et pourquoi](docs/presse-papiers.md)).
 - 📥 **PC → téléphone** : glissez un fichier dans Flitdrop, il apparaît sur le téléphone.
 - 📡 **Radar** temps réel des appareils appairés, façon AirDrop.
 - 📶 **Mode hors-ligne** : sans box ni internet, le PC crée son propre réseau Wi-Fi ([détails](docs/hors-ligne.md)).
@@ -70,7 +70,7 @@ npm run dist:win -w @flitdrop/desktop   # -> release/*.exe + *.appx
 | Critère | Flitdrop | AirDrop |
 |---|---|---|
 | Fonctionne entre marques (iPhone↔PC, Samsung↔PC) | ✅ | ❌ Apple seulement |
-| Sans app sur le téléphone | ✅ page web + QR | — service système |
+| Sans app sur le téléphone | ✅ page web + QR | service système |
 | Hors réseau (sans box) | ✅ via point d'accès du PC | ✅ radio-direct (Apple only) |
 | Reprise de transfert après coupure | ✅ | ⚠️ souvent relancé |
 | Réception passive app fermée sur iPhone | ❌ (réservé à Apple) | ✅ |
@@ -88,6 +88,7 @@ Une app de bureau fait tourner un petit serveur local chiffré. Le téléphone l
 - [Architecture technique](docs/architecture.md)
 - [Modèle de sécurité](docs/securite.md) (+ revue d'attaque adversariale)
 - [Mode hors-ligne](docs/hors-ligne.md)
+- [Synchronisation du presse-papiers : la vérité](docs/presse-papiers.md)
 - [Raccourci iOS pas à pas](docs/raccourci-ios.md)
 - [Audit de faisabilité « expérience native »](docs/audit-faisabilite-native.md)
 - [Feuille de route apps natives](docs/roadmap-apps-natives.md)
@@ -96,7 +97,7 @@ Une app de bureau fait tourner un petit serveur local chiffré. Le téléphone l
 
 ## Statut
 
-v0.1 — fonctionnel et testé (32 tests automatisés : crypto, protocole, reprise, sécurité). L'app PC et la page téléphone sont opérationnelles. Les apps mobiles natives (pour l'icône dans la feuille de partage iOS et l'envoi en veille) sont sur la [feuille de route](docs/roadmap-apps-natives.md).
+v0.1 : fonctionnel et testé (32 tests automatisés : crypto, protocole, reprise, sécurité). L'app PC et la page téléphone sont opérationnelles. Les apps mobiles natives (pour l'icône dans la feuille de partage iOS et l'envoi en veille) sont sur la [feuille de route](docs/roadmap-apps-natives.md).
 
 ## Licence
 

@@ -1,8 +1,8 @@
-# Feuille de route — apps natives et intégration OS
+# Feuille de route : apps natives et intégration OS
 
 L'app PC + la page web (livrées) couvrent déjà le cas d'usage principal. Cette feuille de route décrit ce qu'il faut construire pour atteindre l'expérience « vraiment comme AirDrop », dans l'ordre de valeur.
 
-## Étape A — Intégration Windows native (la plus rentable, la moins risquée)
+## Étape A : Intégration Windows native (la plus rentable, la moins risquée)
 
 **Objectif :** clic-droit sur un fichier dans l'Explorateur → « Envoyer vers mon téléphone » ; recevoir depuis le menu Partager de Windows ; démarrage automatique discret à l'ouverture de session (comme AirDrop, toujours prêt).
 
@@ -10,7 +10,7 @@ L'app PC + la page web (livrées) couvrent déjà le cas d'usage principal. Cett
 - **Coût :** modéré, tout en réutilisant le cœur existant. Aucune app mobile requise.
 - **Débloque :** clic-droit Explorateur (1er niveau du menu Windows 11), cible de Partage Windows, démarrage session, et supprime l'invite pare-feu (règles dans le manifeste).
 
-## Étape B — App iOS native (l'expérience « icône à côté d'AirDrop »)
+## Étape B : App iOS native (l'expérience « icône à côté d'AirDrop »)
 
 **Objectif :** Photos → Partager → l'icône **Flitdrop** dans la feuille de partage → ça envoie direct au PC, sans ouvrir d'app en plein écran ; envoi qui survit à la veille ; détection automatique du PC.
 
@@ -19,14 +19,14 @@ L'app PC + la page web (livrées) couvrent déjà le cas d'usage principal. Cett
 - **Distribution :** App Store, 99 $/an, review 24-48 h. Pas de risque « anti-AirDrop » (mythe : LocalSend & co sont en ligne). **Aucun** écran de paiement dans l'app.
 - **Prérequis d'ingénierie :** nécessite un Mac + Xcode + un iPhone de test. Ne peut pas être buildé/publié sans ces outils.
 
-## Étape C — App Android native
+## Étape C : App Android native
 
 **Objectif :** partage natif, envoi écran éteint, Wi-Fi Direct hors réseau, presse-papiers.
 
 - **Comment :** Kotlin, `foreground service` type `dataSync` (survit à la veille, plafond 6 h/24 h depuis Android 15), WorkManager pour reprise, Wi-Fi Direct/SoftAP pour le hors-réseau automatique, Web Share Target pour recevoir le partage natif.
 - **Distribution :** Google Play, 25 $ une fois.
 
-## Étape D — Le compte Pro et le paiement (0 % de commission)
+## Étape D : Le compte Pro et le paiement (0 % de commission)
 
 - Le Pro se vend **sur l'app PC / le site** via Stripe (ou Paddle/Lemon Squeezy pour la TVA). Les apps mobiles, gratuites, ne font qu'authentifier un compte déjà Pro. Résultat : **0 %** de commission Apple/Google, légalement.
 - Ce que débloque le Pro : relais internet chiffré (hors réseau local), multi-PC, historique étendu. Paiement unique conseillé (le marché rejette l'abonnement).

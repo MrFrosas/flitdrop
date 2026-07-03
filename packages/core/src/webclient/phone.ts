@@ -231,7 +231,7 @@ async function sendFile(file: File): Promise<void> {
     let n = 0
     let resumes = 0
     // boucle reprennable : si le réseau coupe (téléphone en veille, wifi perdu),
-    // on demande au PC combien de morceaux il a reçus et on repart de là — sans
+    // on demande au PC combien de morceaux il a reçus et on repart de là : sans
     // renvoyer ce qui est déjà arrivé.
     while (n < chunks) {
       try {

@@ -1,10 +1,10 @@
 # Mode hors-ligne (sans wifi, sans internet)
 
-La question : « à la gare, dans le train, en pleine nature sans réseau — est-ce que ça marche quand même, comme AirDrop ? »
+La question : « à la gare, dans le train, en pleine nature sans réseau : est-ce que ça marche quand même, comme AirDrop ? »
 
 ## La vérité technique (vérifiée, juillet 2026)
 
-AirDrop fonctionne hors réseau parce que les deux appareils sont des **Apple** : ils créent un lien Wi-Fi direct (AWDL) entre eux. **Apple verrouille cette technologie à son écosystème** — aucune app tierce, sur aucun téléphone, ne peut créer ce lien direct vers un PC Windows. Et Windows n'a aucune API équivalente (Wi-Fi Aware). Donc le « vrai » P2P sans-fil iPhone ↔ Windows est **impossible pour tout le monde**, pas seulement pour nous. C'est une limite d'Apple et de Windows, pas de Flitdrop.
+AirDrop fonctionne hors réseau parce que les deux appareils sont des **Apple** : ils créent un lien Wi-Fi direct (AWDL) entre eux. **Apple verrouille cette technologie à son écosystème** : aucune app tierce, sur aucun téléphone, ne peut créer ce lien direct vers un PC Windows. Et Windows n'a aucune API équivalente (Wi-Fi Aware). Donc le « vrai » P2P sans-fil iPhone ↔ Windows est **impossible pour tout le monde**, pas seulement pour nous. C'est une limite d'Apple et de Windows, pas de Flitdrop.
 
 Le Bluetooth ne sauve pas la mise non plus : iOS interdit aux apps tierces d'envoyer des fichiers à un PC Windows en Bluetooth classique, et le Bluetooth basse consommation (le seul autorisé) est ~100× trop lent pour une photo.
 

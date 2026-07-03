@@ -34,7 +34,7 @@ interface OutboxEntry {
 interface State {
   product: string
   version: string
-  config: { deviceName: string; downloadDir: string; maxFileMB: number; requireApproval: boolean; port: number }
+  config: { deviceName: string; downloadDir: string; maxFileMB: number; requireApproval: boolean; clipboardAutoPush: boolean; port: number }
   hostname: string
   ips: string[]
   devices: DevicePub[]
@@ -224,6 +224,7 @@ function renderSettings() {
   ;($('setDir') as unknown as HTMLInputElement).value = state.config.downloadDir
   ;($('setMax') as unknown as HTMLSelectElement).value = String(state.config.maxFileMB)
   ;($('setApproval') as unknown as HTMLInputElement).checked = state.config.requireApproval
+  ;($('setClipboard') as unknown as HTMLInputElement).checked = state.config.clipboardAutoPush
   renderShortcutSection()
 }
 
@@ -449,6 +450,9 @@ function connectWS() {
       case 'outbox-changed':
         void refresh()
         break
+      case 'clip-autopushed':
+        toast('Presse-papiers synchronisé ✓', (data as { preview?: string }).preview)
+        break
     }
   }
   ws.onclose = () => setTimeout(connectWS, 2500)
@@ -589,6 +593,7 @@ function initUI() {
         downloadDir: ($('setDir') as unknown as HTMLInputElement).value,
         maxFileMB: Number(($('setMax') as unknown as HTMLSelectElement).value),
         requireApproval: ($('setApproval') as unknown as HTMLInputElement).checked,
+        clipboardAutoPush: ($('setClipboard') as unknown as HTMLInputElement).checked,
       })
       toast('Réglages enregistrés ✓')
       void refresh()

@@ -8,7 +8,7 @@ async function main() {
 
   const ip = localIPv4s()[0] ?? '127.0.0.1'
   console.log(`
-  ${PRODUCT_NAME} v${VERSION} — prêt.
+  ${PRODUCT_NAME} v${VERSION} : prêt.
 
   Interface du PC   ${info.adminUrl}
   Réseau local      http://${ip}:${info.port}  (les téléphones s'appairent par QR code depuis l'interface)

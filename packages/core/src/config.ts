@@ -11,6 +11,9 @@ export interface Config {
   maxFileMB: number
   requireApproval: boolean
   adminToken: string
+  // le PC surveille son presse-papiers et le met à disposition des téléphones
+  // dès qu'il change (sens PC vers téléphone, seul sens automatisable côté PC).
+  clipboardAutoPush: boolean
 }
 
 export function flitdropHome(override?: string): string {
@@ -40,6 +43,7 @@ export function loadConfig(home: string): Config {
     maxFileMB: clampInt(stored.maxFileMB, 1, 128 * 1024, DEFAULT_MAX_FILE_MB),
     requireApproval: stored.requireApproval === true,
     adminToken: typeof stored.adminToken === 'string' && stored.adminToken.length >= 20 ? stored.adminToken : randomToken(24),
+    clipboardAutoPush: stored.clipboardAutoPush === true,
   }
   saveConfig(home, cfg)
   return cfg

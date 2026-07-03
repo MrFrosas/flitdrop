@@ -44,7 +44,7 @@ if (!gotLock) {
 
     try {
       tray = new Tray(path.join(__dirname, 'build', 'tray.png'))
-      tray.setToolTip('Flitdrop — prêt à recevoir')
+      tray.setToolTip('Flitdrop : prêt à recevoir')
       tray.setContextMenu(
         Menu.buildFromTemplate([
           { label: 'Ouvrir Flitdrop', click: () => { win.show(); win.focus() } },

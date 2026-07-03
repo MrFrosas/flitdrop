@@ -40,7 +40,7 @@
 
 ## Revue d'attaque du 3 juillet 2026
 
-Une revue adversariale (4 auditeurs sur des angles distincts — autz/crypto, système de fichiers, déni de service, sécurité des clients web — puis contre-vérification de chaque faille sur le code réel) a été menée. Résultat : 3 faux positifs écartés (dont un « appareil appairé peut lire toute l'outbox », qui est le comportement voulu d'une file de diffusion) et **4 vrais défauts, tous corrigés le jour même** :
+Une revue adversariale (4 auditeurs sur des angles distincts : autz/crypto, système de fichiers, déni de service, sécurité des clients web : puis contre-vérification de chaque faille sur le code réel) a été menée. Résultat : 3 faux positifs écartés (dont un « appareil appairé peut lire toute l'outbox », qui est le comportement voulu d'une file de diffusion) et **4 vrais défauts, tous corrigés le jour même** :
 
 1. **Course sur les noms de fichiers** (`uniquePath` non atomique) → remplacée par `reserveUniquePath` qui crée le fichier en mode exclusif (`O_CREAT|O_EXCL`) et boucle sur collision. Deux envois du même nom obtiennent « nom » et « nom (2) », jamais un écrasement.
 2. **Corps bufferisé avant authentification** sur les routes `/api/phone/*` → une garde d'appareil + une limite de débit sont désormais montées **avant** tout parseur de corps : un attaquant non appairé est rejeté sans qu'on lise son corps.

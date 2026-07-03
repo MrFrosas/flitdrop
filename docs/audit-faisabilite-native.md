@@ -4,14 +4,14 @@ Réponse honnête aux demandes : icône dans la feuille de partage iOS, presse-p
 
 ## Le verdict en une phrase
 
-Le « zéro app sur le téléphone » a atteint son plafond. Tout ce que tu demandes maintenant est **possible**, mais exige des **apps natives** — sauf **une** chose qu'aucun tiers au monde ne peut faire, même avec une app.
+Le « zéro app sur le téléphone » a atteint son plafond. Tout ce que tu demandes maintenant est **possible**, mais exige des **apps natives** : sauf **une** chose qu'aucun tiers au monde ne peut faire, même avec une app.
 
 ## 1. Ce qui marche SANS aucune app (aujourd'hui)
 
 - **Recevoir depuis l'iPhone via la page web appairée par QR.** Déjà en place.
 - **Transfert hors réseau** (gare, sans box) via le **point d'accès Wi-Fi du PC** : le téléphone rejoint le PC, réseau local formé, ça marche pour iPhone et Android. Voir [hors-ligne.md](hors-ligne.md).
-- **Le look natif** (Liquid Glass iOS / Fluent Windows) à ~85-90 % en pur HTML/CSS : c'est ce qui vient d'être livré (polices système, verre dépoli, clair/sombre). *Nuance vérifiée : la vraie réfraction « lentille » de Liquid Glass n'existe que sur Chromium, pas sur Safari iOS — on a le flou et la teinte, pas la déformation. Invisible pour l'utilisateur.*
-- **Un Raccourci Flitdrop** dans la feuille de partage iOS, avec icône personnalisée — mais dans la **bande d'actions du bas**, jamais dans la rangée d'apps où trône AirDrop.
+- **Le look natif** (Liquid Glass iOS / Fluent Windows) à ~85-90 % en pur HTML/CSS : c'est ce qui vient d'être livré (polices système, verre dépoli, clair/sombre). *Nuance vérifiée : la vraie réfraction « lentille » de Liquid Glass n'existe que sur Chromium, pas sur Safari iOS : on a le flou et la teinte, pas la déformation. Invisible pour l'utilisateur.*
+- **Un Raccourci Flitdrop** dans la feuille de partage iOS, avec icône personnalisée : mais dans la **bande d'actions du bas**, jamais dans la rangée d'apps où trône AirDrop.
 - **Reprise de transfert** à l'octet près : déjà implémenté côté web.
 
 ## 2. Ce qui exige une app native (et ce que ça débloque)
@@ -35,13 +35,13 @@ Le « zéro app sur le téléphone » a atteint son plafond. Tout ce que tu dema
 
 ## 4. L'architecture recommandée (4 couches complémentaires)
 
-1. **App PC (le cœur, déjà construit)** — serveur local chiffré + hub de transfert. À enrichir d'une identité de package Windows (sparse package) pour le clic-droit et le démarrage session. C'est là que se vend le Pro (Stripe, 0 % de commission Store).
-2. **Transport hors-ligne** — point d'accès Wi-Fi du PC (SoftAP). iPhone + Android, sans box ni internet.
-3. **Apps natives optionnelles** — iOS (Share Extension + background URLSession) et Android (foreground service + Wi-Fi Direct). Débloquent l'icône dans le partage, la veille, la détection permanente.
-4. **Fallback web zéro-app** — la page web appairée par QR reste l'entrée sans friction pour qui ne veut rien installer.
+1. **App PC (le cœur, déjà construit)** : serveur local chiffré + hub de transfert. À enrichir d'une identité de package Windows (sparse package) pour le clic-droit et le démarrage session. C'est là que se vend le Pro (Stripe, 0 % de commission Store).
+2. **Transport hors-ligne** : point d'accès Wi-Fi du PC (SoftAP). iPhone + Android, sans box ni internet.
+3. **Apps natives optionnelles** : iOS (Share Extension + background URLSession) et Android (foreground service + Wi-Fi Direct). Débloquent l'icône dans le partage, la veille, la détection permanente.
+4. **Fallback web zéro-app** : la page web appairée par QR reste l'entrée sans friction pour qui ne veut rien installer.
 
 Règle de com : **« AirDrop multi-OS » oui, réception passive app-fermée sur iPhone non.**
 
 ## 5. Monétisation vérifiée : 0 % de commission Apple/Google, légalement
 
-Si les apps mobiles sont **gratuites** et que le paiement du Pro se fait **sur l'app PC (ou le web) via Stripe**, Apple et Google ne prennent **aucune** commission — c'est hors de leur juridiction (fondé sur la règle Apple 3.1.1, « déblocage de fonctionnalités *dans* l'app »). Les apps mobiles ne font qu'authentifier un compte déjà Pro. Coût : ~2,9 % Stripe, ou ~5 % via un *merchant of record* (Paddle / Lemon Squeezy) qui gère la TVA mondiale. Ne jamais mettre d'écran de paiement *dans* l'app iOS (anti-steering).
+Si les apps mobiles sont **gratuites** et que le paiement du Pro se fait **sur l'app PC (ou le web) via Stripe**, Apple et Google ne prennent **aucune** commission : c'est hors de leur juridiction (fondé sur la règle Apple 3.1.1, « déblocage de fonctionnalités *dans* l'app »). Les apps mobiles ne font qu'authentifier un compte déjà Pro. Coût : ~2,9 % Stripe, ou ~5 % via un *merchant of record* (Paddle / Lemon Squeezy) qui gère la TVA mondiale. Ne jamais mettre d'écran de paiement *dans* l'app iOS (anti-steering).

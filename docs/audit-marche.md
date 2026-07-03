@@ -1,4 +1,4 @@
-# Audit du marché — « AirDrop pour Windows » (3 juillet 2026)
+# Audit du marché : « AirDrop pour Windows » (3 juillet 2026)
 
 Méthode : 8 recherches web thématiques menées en parallèle, puis contre-vérification adversariale des affirmations décisives (chaque vérificateur avait pour mission de RÉFUTER), puis passage critique sur les trous restants. 17 agents, ~480 requêtes et lectures de sources. Les faits ci-dessous sont sourcés et datés ; les corrections issues de la contre-vérification sont intégrées.
 
@@ -16,7 +16,7 @@ Méthode : 8 recherches web thématiques menées en parallèle, puis contre-vér
 |---|---|---|
 | Microsoft Phone Link | Non (app Link to Windows obligatoire) | 3,0/5 sur 460 840 avis. Max 100 fichiers, 1 transfert à la fois, fenêtre ouverte obligatoire, compte Microsoft requis. Presse-papiers partagé : Android uniquement, iOS exclu. |
 | Google Quick Share Windows | Non (Android seulement) | Actif (MAJ juin 2026). Ne couvre pas l'iPhone. Plainte n°1 : « No devices to share with ». L'interop AirDrop 2026 se joue téléphone-téléphone, pas sur Windows. |
-| Intel Unison | — | Mort le 30 juin 2025. |
+| Intel Unison | | Mort le 30 juin 2025. |
 | Samsung Quick Share PC | Non | Exige des drivers Intel spécifiques, vise les Galaxy. Fragmentation Samsung/Google confusante. |
 | LocalSend (OSS, 84 536 étoiles GitHub) | Non (app des deux côtés ; version web en bêta) | Très populaire mais problèmes de découverte récurrents (pare-feu, VPN, isolation AP), et banni du Microsoft Store depuis 2023. |
 | PairDrop / Snapdrop | Oui (navigateur) mais pas de feuille de partage | Snapdrop racheté par LimeWire et dénaturé (fichiers routés par leurs serveurs) ; PairDrop au ralenti (dernière release fév. 2025). Pas de réception PC en arrière-plan, pas d'intégration Windows. |
@@ -24,7 +24,7 @@ Méthode : 8 recherches web thématiques menées en parallèle, puis contre-vér
 | Send Anywhere (Estmob/Rakuten) | Partiel (web) | 8,99 $/mois ; gratuit avec clé valable 10 min et pubs. |
 | Feem | Non | Licence annuelle à renouvellement manuel, pubs plein écran. |
 | KDE Connect Windows | Non | Adoption quasi nulle, iOS bridé par Apple, CVE-2025-66270 en 2025. |
-| Nearby Sharing natif Windows | — | PC Windows entre eux uniquement. |
+| Nearby Sharing natif Windows | | PC Windows entre eux uniquement. |
 
 Nouveaux entrants zéro-install repérés : FilePlease, SpeedyShare (marketing agressif sur Reddit, dont de l'astroturfing identifié). La niche commence à attirer du monde : signal de validation ET d'urgence.
 
@@ -51,7 +51,7 @@ Nouveaux entrants zéro-install repérés : FilePlease, SpeedyShare (marketing a
 ## Le nom
 
 Vérification Store/App Store/Play/marques/domaines sur 5 candidats :
-- **Windrop : mort** (windrop.app, produit vivant de la même catégorie, + « WinDrop — AirDrop for Windows » open source).
+- **Windrop : mort** (windrop.app, produit vivant de la même catégorie, + « WinDrop : AirDrop for Windows » open source).
 - **Flick : mort** (app « Flick. » de partage de fichiers, même catégorie, Store+iOS+Android, marque US).
 - **Droply : mort** (app iOS homonyme même catégorie, 2 marques US).
 - **Dropair : juridiquement le pire choix** (transposition directe de la marque AirDrop d'Apple, US Reg 4302137, classe 9 « file sharing software »).
