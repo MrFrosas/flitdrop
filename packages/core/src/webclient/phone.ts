@@ -1,4 +1,5 @@
 import { b64uToBytes, seal, sealJSON, openJSON, open, jti, fmtSize } from './wdcrypto.js'
+import { initTelemetry, track, sizeBucket } from './telemetry.js'
 
 interface Pairing {
   id: string
@@ -9,6 +10,7 @@ interface HelloRes {
   maxFileMB: number
   chunkSize: number
   requireApproval: boolean
+  telemetryConsent?: boolean
   hosts?: string[]
 }
 interface OutboxItem {
@@ -179,6 +181,8 @@ async function connect() {
   const { platform, label } = platformLabel()
   try {
     hello = await post<HelloRes>('/api/phone/hello', 'hello', { deviceLabel: label, platform })
+    initTelemetry({ consent: hello.telemetryConsent === true, version: '' })
+    track('phone_connect', { platform })
     $('pcName').textContent = hello.desktopName
     $('statusDot').classList.remove('off')
     $('menuInfo').textContent = `Ce téléphone est appairé à « ${hello.desktopName} ». Les envois sont chiffrés de bout en bout.`
@@ -310,8 +314,10 @@ async function sendFile(file: File): Promise<void> {
     ui.bar.style.width = '100%'
     ui.li.classList.add('done')
     ui.state.textContent = `Arrivé sur ${hello?.desktopName ?? 'le PC'} ✓`
+    track('transfer_ok', { size: sizeBucket(file.size), resumes })
   } catch (e) {
     const err = e as ApiFail
+    track('transfer_fail', { status: err.status ?? 0, reason: (err.message || '').slice(0, 40) })
     ui.li.classList.add('err')
     ui.state.textContent =
       err.status === 403 && /refus/i.test(err.message)

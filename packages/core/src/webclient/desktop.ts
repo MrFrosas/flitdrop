@@ -1,4 +1,5 @@
 import { fmtSize } from './wdcrypto.js'
+import { initTelemetry, setTelemetryConsent, track } from './telemetry.js'
 
 interface DevicePub {
   id: string
@@ -131,6 +132,19 @@ function switchView(view: string) {
   $('viewTitle').textContent = VIEW_TITLES[view] ?? 'Flitdrop'
 }
 
+/** Silhouette d'appareil pour le radar, selon le type détecté à l'appairage. */
+function deviceSvg(platform?: string): string {
+  const s = 'fill="none" stroke="currentColor" stroke-width="1.5"'
+  if (platform === 'ipad')
+    return `<svg viewBox="0 0 24 24" width="26" height="26" ${s}><rect x="4" y="2.5" width="16" height="19" rx="2.2"/><circle cx="12" cy="19" r="0.7" fill="currentColor" stroke="none"/></svg>`
+  if (platform === 'android')
+    return `<svg viewBox="0 0 24 24" width="24" height="24" ${s}><rect x="6" y="2.5" width="12" height="19" rx="2.4"/><line x1="10" y1="18.6" x2="14" y2="18.6"/></svg>`
+  if (platform === 'iphone')
+    return `<svg viewBox="0 0 24 24" width="24" height="24" ${s}><rect x="6.5" y="2.5" width="11" height="19" rx="2.8"/><line x1="10.5" y1="5" x2="13.5" y2="5"/></svg>`
+  // par défaut : téléphone générique
+  return `<svg viewBox="0 0 24 24" width="24" height="24" ${s}><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"/><line x1="10.5" y1="18.8" x2="13.5" y2="18.8"/></svg>`
+}
+
 function renderRadar() {
   if (!state) return
   const layer = $('deviceLayer')
@@ -155,7 +169,7 @@ function renderRadar() {
     chip.style.animationDelay = `${i * 70}ms`
     const ava = document.createElement('div')
     ava.className = 'ava'
-    ava.textContent = (d.name.trim()[0] ?? '?').toUpperCase()
+    ava.innerHTML = deviceSvg(d.platform)
     const nm = document.createElement('small')
     nm.textContent = d.name
     const seen = document.createElement('span')
@@ -435,9 +449,18 @@ function renderAll() {
   renderSettings()
 }
 
+let telemetryStarted = false
 async function refresh() {
   state = await api<State>('/state')
   renderAll()
+  if (!telemetryStarted && state) {
+    telemetryStarted = true
+    initTelemetry({ consent: state.config.telemetryConsent, version: state.version })
+    const os = document.documentElement.getAttribute('data-platform') ?? 'win'
+    track('app_open', { os })
+  } else if (state) {
+    setTelemetryConsent(state.config.telemetryConsent)
+  }
 }
 
 // ---------- flux temps réel ----------
@@ -840,6 +863,17 @@ function maybeWelcome() {
   }
 }
 
+/** Applique le skin natif de l'OS hôte (transmis par l'app de bureau via ?os=),
+ *  ou détecté depuis le navigateur en développement. mac = macOS Liquid Glass,
+ *  win = Windows 11 Fluent. */
+function applyPlatformSkin() {
+  const param = new URLSearchParams(location.search).get('os')
+  let os = param
+  if (!os) os = /Mac/i.test(navigator.platform) ? 'mac' : 'win'
+  document.documentElement.setAttribute('data-platform', os === 'mac' ? 'mac' : 'win')
+}
+
+applyPlatformSkin()
 initUI()
 history.replaceState(null, '', location.pathname)
 void refresh().then(() => {

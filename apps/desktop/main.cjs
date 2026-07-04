@@ -75,21 +75,44 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     const { startServer } = require(path.join(__dirname, 'core', 'flitdrop.cjs'))
     core = await startServer({ quiet: true })
-    const url = `http://127.0.0.1:${core.port}/app/?k=${encodeURIComponent(core.adminToken)}`
+    const isMac = process.platform === 'darwin'
+    const isWin = process.platform === 'win32'
+    const osTag = isMac ? 'mac' : isWin ? 'win' : 'linux'
+    // l'interface web sait sur quel OS elle tourne pour servir le bon skin natif
+    const url = `http://127.0.0.1:${core.port}/app/?k=${encodeURIComponent(core.adminToken)}&os=${osTag}`
     const startHidden = process.argv.includes('--hidden')
 
-    win = new BrowserWindow({
+    /** @type {import('electron').BrowserWindowConstructorOptions} */
+    const winOpts = {
       width: 1160,
       height: 760,
       minWidth: 940,
       minHeight: 620,
-      backgroundColor: '#1b1b1b',
       autoHideMenuBar: true,
       title: 'Flitdrop',
       show: false,
       icon: path.join(__dirname, 'build', 'icon.png'),
-      webPreferences: { contextIsolation: true, nodeIntegration: false },
-    })
+      webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: true },
+    }
+    if (isMac) {
+      // rendu natif macOS : feux tricolores intégrés + matériau "vibrancy"
+      // (Liquid Glass) visible derrière l'interface translucide. La vibrancy
+      // exige transparent:true (sinon aucun effet).
+      winOpts.titleBarStyle = 'hiddenInset'
+      winOpts.trafficLightPosition = { x: 18, y: 18 }
+      winOpts.vibrancy = 'under-window'
+      winOpts.visualEffectState = 'active'
+      winOpts.transparent = true
+      winOpts.backgroundColor = '#00000000'
+    } else if (isWin) {
+      // rendu natif Windows 11 : matériau Mica derrière la fenêtre (22H2+).
+      // Mica exige transparent:false (défaut), on ne le passe donc pas.
+      winOpts.backgroundMaterial = 'mica'
+      winOpts.backgroundColor = '#00000000'
+    } else {
+      winOpts.backgroundColor = '#1b1b1b'
+    }
+    win = new BrowserWindow(winOpts)
     win.loadURL(url)
     // apparition sans flash blanc : on montre la fenêtre une fois prête
     win.once('ready-to-show', () => {

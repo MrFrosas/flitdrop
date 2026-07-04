@@ -273,6 +273,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
           requireApproval: cfg.requireApproval,
           product: PRODUCT_NAME,
           version: VERSION,
+          telemetryConsent: cfg.telemetryConsent,
           // adresses de secours : si l'IP du PC change, la page sait où le
           // retrouver sans re-scanner le QR code.
           hosts: [

@@ -1,0 +1,14 @@
+name = "flitdrop-telemetry"
+main = "worker.js"
+compatibility_date = "2026-06-01"
+
+# Analytics Engine : stockage des évènements, interrogeable en SQL.
+[[analytics_engine_datasets]]
+binding = "FLITDROP_TELEMETRY"
+dataset = "flitdrop_events"
+
+# Route sur le sous-domaine telemetry.flitdrop.app (à activer une fois le
+# domaine ajouté à Cloudflare, voir docs/telemetry.md).
+# [[routes]]
+# pattern = "telemetry.flitdrop.app/e"
+# custom_domain = true

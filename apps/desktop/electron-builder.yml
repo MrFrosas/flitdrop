@@ -35,7 +35,20 @@ mac:
   # distribution large, ajouter la signature + notarisation Apple.
   identity: null
 dmg:
-  title: Flitdrop
+  title: Flitdrop ${version}
+  background: build/background.png
+  iconSize: 92
+  window:
+    width: 540
+    height: 380
+  contents:
+    - x: 140
+      y: 205
+      type: file
+    - x: 400
+      y: 205
+      type: link
+      path: /Applications
 win:
   target:
     - nsis

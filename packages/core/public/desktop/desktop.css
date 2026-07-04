@@ -60,6 +60,66 @@ body {
 .noise { display: none; }
 .hidden { display: none !important; }
 
+/* ============================================================================
+   Skin macOS 26 "Liquid Glass" : appliqué quand l'app tourne sur Mac
+   (data-platform=mac). Police système d'Apple, accent système, matériaux
+   translucides (la vibrancy de la fenêtre transparaît), feux tricolores
+   intégrés, contrôles arrondis façon macOS.
+   ============================================================================ */
+html[data-platform='mac'] {
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
+  --font-text: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --accent: light-dark(#007aff, #0a84ff);
+  --accent-2: light-dark(#0a84ff, #409cff);
+  --accent-press: light-dark(#0060df, #6bb4ff);
+  --accent-text: light-dark(#007aff, #0a84ff);
+  --ok: light-dark(#28a745, #30d158);
+  --danger: light-dark(#ff3b30, #ff453a);
+  --r-card: 12px;
+  --r-ctl: 8px;
+  /* matériaux translucides : au-dessus de la vibrancy de la fenêtre */
+  --mica-a: light-dark(rgba(246, 246, 247, 0.6), rgba(28, 28, 30, 0.45));
+  --mica-b: light-dark(rgba(240, 240, 242, 0.5), rgba(22, 22, 24, 0.4));
+  --tint: transparent;
+  --text: light-dark(#1d1d1f, #f5f5f7);
+  --text-2: light-dark(#3c3c43, #ebebf5);
+  --muted: light-dark(rgba(60, 60, 67, 0.6), rgba(235, 235, 245, 0.6));
+  --layer: light-dark(rgba(255, 255, 255, 0.8), rgba(58, 58, 60, 0.7));
+  --layer-2: light-dark(#ffffff, rgba(72, 72, 74, 0.8));
+  --card: light-dark(rgba(255, 255, 255, 0.72), rgba(58, 58, 60, 0.55));
+  --acrylic: light-dark(rgba(250, 250, 252, 0.82), rgba(44, 44, 46, 0.78));
+  --stroke: light-dark(rgba(0, 0, 0, 0.08), rgba(255, 255, 255, 0.1));
+  --stroke-2: light-dark(rgba(0, 0, 0, 0.14), rgba(255, 255, 255, 0.16));
+  --control: light-dark(rgba(255, 255, 255, 0.66), rgba(118, 118, 128, 0.24));
+  --control-hover: light-dark(rgba(255, 255, 255, 0.9), rgba(118, 118, 128, 0.36));
+  --field: light-dark(rgba(255, 255, 255, 0.85), rgba(30, 30, 32, 0.55));
+  --shadow: light-dark(0 8px 24px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.4));
+  --shadow-flyout: light-dark(0 20px 50px rgba(0, 0, 0, 0.22), 0 20px 50px rgba(0, 0, 0, 0.6));
+}
+/* le corps devient transparent pour révéler la vibrancy native derrière */
+html[data-platform='mac'] body {
+  background: linear-gradient(180deg, var(--mica-a), var(--mica-b));
+  -webkit-font-smoothing: antialiased;
+}
+/* zone de titre draggable + place pour les feux tricolores en haut à gauche */
+html[data-platform='mac'] .side { padding-top: 40px; -webkit-app-region: drag; }
+html[data-platform='mac'] .nav-btn, html[data-platform='mac'] .mark { -webkit-app-region: no-drag; }
+html[data-platform='mac'] .head { -webkit-app-region: drag; padding-top: 6px; }
+html[data-platform='mac'] .head button, html[data-platform='mac'] .head input,
+html[data-platform='mac'] .head select { -webkit-app-region: no-drag; }
+/* pilule de sélection du rail : arrondi macOS plein plutôt que la barre WinUI */
+html[data-platform='mac'] .nav-btn.active { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+html[data-platform='mac'] .nav-btn.active::before { display: none; }
+/* boutons macOS : plus doux, ombre légère, coins arrondis */
+html[data-platform='mac'] .btn { border-radius: var(--r-ctl); font-weight: 500; }
+html[data-platform='mac'] .btn.primary { box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 40%, transparent); color: #fff; }
+html[data-platform='mac'] .head h1 { font-weight: 700; letter-spacing: -0.02em; }
+/* segmented control façon macOS pour le radar vide / cartes */
+html[data-platform='mac'] .card, html[data-platform='mac'] .feed,
+html[data-platform='mac'] .modal-card, html[data-platform='mac'] .toastitem {
+  backdrop-filter: saturate(180%) blur(30px); -webkit-backdrop-filter: saturate(180%) blur(30px);
+}
+
 /* ---------- rail de navigation WinUI ---------- */
 .side {
   display: flex; flex-direction: column; align-items: center; gap: 4px;
