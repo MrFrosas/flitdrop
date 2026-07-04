@@ -27,10 +27,9 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
   .brand { display:inline-flex; align-items:center; gap:9px; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
   .dot { width: 13px; height: 13px; border-radius: 50%; background: #0a84ff; box-shadow: 0 0 16px #0a84ff; }
   .tag { margin-top: 4px; font-size: 13px; color: #9aa7bd; }
-  .arrow { position: absolute; top: 205px; left: 232px; width: 76px; text-align: center; color: #59b7ff; font-size: 30px; opacity: 0.9; }
-  .drop { position: absolute; top: 172px; left: 96px; width: 96px; text-align: center; font-size: 11.5px; color: #9aa7bd; }
-  .apps { position: absolute; top: 172px; left: 352px; width: 96px; text-align: center; font-size: 11.5px; color: #9aa7bd; }
-  footer { position: absolute; bottom: 22px; left: 30px; right: 30px; text-align: center; font-size: 11px; line-height: 1.55; color: #8090a6; }
+  .arrow { position: absolute; top: 158px; left: 245px; width: 50px; text-align: center; color: #6fbcff; font-size: 34px; font-weight: 300; opacity: 0.85; }
+  .hint { position: absolute; top: 118px; left: 0; right: 0; text-align: center; font-size: 12px; color: #9aa7bd; }
+  footer { position: absolute; bottom: 20px; left: 30px; right: 30px; text-align: center; font-size: 11px; line-height: 1.55; color: #8090a6; }
   footer b { color: #cdd7e6; }
   code { font-family: ui-monospace, 'SF Mono', monospace; color: #8de0ff; background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 4px; }
 </style></head><body>
@@ -39,9 +38,8 @@ const html = `<!doctype html><html><head><meta charset="utf-8"><style>
     <div class="brand"><span class="dot"></span>Flitdrop</div>
     <div class="tag">The AirDrop for every device</div>
   </header>
-  <div class="drop">Drag here</div>
+  <div class="hint">Drag Flitdrop into your Applications folder</div>
   <div class="arrow">&#8594;</div>
-  <div class="apps">to Applications</div>
   <footer>First launch: <b>Control-click Flitdrop &rarr; Open</b>. If macOS says it is &ldquo;damaged&rdquo;,<br>open Terminal and run <code>xattr -cr /Applications/Flitdrop.app</code></footer>
 </body></html>`
 

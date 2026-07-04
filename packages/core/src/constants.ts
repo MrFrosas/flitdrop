@@ -1,5 +1,5 @@
 export const PRODUCT_NAME = 'Flitdrop'
-export const VERSION = '0.1.3'
+export const VERSION = '0.1.4'
 export const PROTOCOL_TAG = 'wd1'
 export const DEFAULT_PORT = 47777
 export const CHUNK_SIZE = 8 * 1024 * 1024

@@ -13,6 +13,7 @@ apps/desktop/core/
 apps/desktop/public/
 apps/desktop/build/*.png
 apps/desktop/build/*.ico
+apps/desktop/build/*.icns
 # mais on versionne les scripts de build et le fond du .dmg (le CI en a besoin)
 !apps/desktop/build/installer.nsh
 !apps/desktop/build/afterPack.cjs

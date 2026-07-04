@@ -16,12 +16,10 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            platform: win
-            target: nsis
+            buildscript: 'dist:win:ci'
             artifact: 'apps/desktop/release/*.exe'
           - os: macos-latest
-            platform: mac
-            target: dmg
+            buildscript: 'dist:mac'
             artifact: 'apps/desktop/release/*.dmg'
     runs-on: ${{ matrix.os }}
     steps:
@@ -41,12 +39,8 @@ jobs:
       - name: Tests
         run: npm test -w @flitdrop/core
 
-      - name: Preparer l'app
-        run: npm run prepare:app -w @flitdrop/desktop
-
       - name: Empaqueter l'installeur
-        working-directory: apps/desktop
-        run: npx electron-builder --${{ matrix.platform }} ${{ matrix.target }} --publish never
+        run: npm run ${{ matrix.buildscript }} -w @flitdrop/desktop
 
       - uses: actions/upload-artifact@v4
         with:
