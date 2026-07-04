@@ -83,6 +83,14 @@ export class Outbox {
     return true
   }
 
+  /** Vide toute la file et ses fichiers (« Réinitialiser ce PC »). */
+  clearAll(): void {
+    for (const item of this.items) {
+      if (item.filePath && item.filePath.startsWith(this.dir)) fs.unlink(item.filePath, () => {})
+    }
+    this.items = []
+  }
+
   listForPhone() {
     return this.items.map((i) => ({
       id: i.id,

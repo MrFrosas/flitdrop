@@ -12,6 +12,9 @@ export interface Device {
   status: 'pending' | 'active'
   createdAt: string
   lastSeenAt?: string
+  // identité du PC qui a créé cet appairage. Un appareil dont l'instanceId ne
+  // correspond pas à ce PC est refusé (appairage lié à une autre machine).
+  instanceId?: string
 }
 
 export class DeviceStore {
@@ -32,7 +35,7 @@ export class DeviceStore {
     fs.writeFileSync(this.file, JSON.stringify([...this.devices.values()], null, 2))
   }
 
-  create(): Device {
+  create(instanceId?: string): Device {
     const d: Device = {
       id: randomToken(9),
       name: 'Nouvel appareil',
@@ -40,6 +43,7 @@ export class DeviceStore {
       shortcutToken: randomToken(18),
       status: 'pending',
       createdAt: new Date().toISOString(),
+      instanceId,
     }
     this.devices.set(d.id, d)
     this.save()
@@ -107,6 +111,30 @@ export class DeviceStore {
       }
     }
     if (changed) this.save()
+  }
+
+  /** Oublie les appareils inactifs depuis très longtemps (hygiène : évite qu'un
+   *  PC accumule d'anciens appairages, par ex. sur une machine partagée). */
+  pruneIdle(maxIdleMs: number): number {
+    let removed = 0
+    const now = Date.now()
+    for (const d of [...this.devices.values()]) {
+      const last = d.lastSeenAt ? Date.parse(d.lastSeenAt) : Date.parse(d.createdAt)
+      if (d.status === 'active' && now - last > maxIdleMs) {
+        this.devices.delete(d.id)
+        removed++
+      }
+    }
+    if (removed > 0) this.save()
+    return removed
+  }
+
+  /** Oublie TOUS les appareils (« Réinitialiser ce PC »). */
+  clear(): number {
+    const n = this.devices.size
+    this.devices.clear()
+    this.save()
+    return n
   }
 
   listPublic() {

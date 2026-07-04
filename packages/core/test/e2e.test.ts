@@ -26,9 +26,10 @@ interface Phone {
 
 function makePhone(pairUrl: string): Phone {
   const frag = pairUrl.split('#')[1] as string
-  const dot = frag.indexOf('.')
-  const id = frag.slice(0, dot)
-  const key = b64u.dec(frag.slice(dot + 1))
+  // format du fragment : id.cléB64.instanceId (l'instanceId lie l'appairage au PC)
+  const parts = frag.split('.')
+  const id = parts[0] as string
+  const key = b64u.dec(parts[1] as string)
   const aad = (purpose: string, extra = '') => `wd1|${id}|${purpose}${extra ? '|' + extra : ''}`
   const envelope = (purpose: string, obj: Record<string, unknown>) =>
     JSON.stringify({ p: sealJSON(key, { ...obj, ts: Date.now(), jti: randomToken(9) }, aad(purpose)) })
@@ -353,5 +354,44 @@ describe('PC -> téléphone (outbox)', () => {
     const joined = Buffer.concat(parts.map((p) => Buffer.from(p)))
     expect(joined.length).toBe(payload.length)
     expect(Buffer.compare(joined, payload)).toBe(0)
+  })
+})
+
+describe('confidentialité : liaison au PC + historique téléphone', () => {
+  it('le téléphone voit l’historique du presse-papiers du PC', async () => {
+    const phone = await pairPhone()
+    await phone.post('/api/phone/text', 'text', { text: 'note synchro test', mode: 'clip' })
+    const r = await phone.post('/api/phone/cliphistory', 'cliphistory', {})
+    expect(r.status).toBe(200)
+    const { items, enabled } = openJSON<{ items: { text: string }[]; enabled: boolean }>(
+      phone.key,
+      ((await r.json()) as { p: string }).p,
+      phone.aad('cliphistory:res')
+    )
+    expect(enabled).toBe(true)
+    expect(items.some((i) => i.text === 'note synchro test')).toBe(true)
+  })
+
+  it('un appairage lié à un autre PC (instanceId différent) est refusé', async () => {
+    const phone = await pairPhone()
+    const original = srv.cfg.instanceId
+    // simule un AUTRE PC répondant à la même adresse : l'appareil ne lui appartient pas
+    srv.cfg.instanceId = 'instance-d-un-autre-pc'
+    const r = await phone.post('/api/phone/hello', 'hello', { deviceLabel: 'x', platform: 'iphone' })
+    expect(r.status).toBe(409)
+    srv.cfg.instanceId = original
+    // une fois la bonne identité rétablie, le même appareil repasse
+    const ok = await phone.post('/api/phone/hello', 'hello', { deviceLabel: 'x', platform: 'iphone' })
+    expect(ok.status).toBe(200)
+  })
+
+  it('réinitialiser ce PC oublie tous les appareils appairés', async () => {
+    const phone = await pairPhone()
+    const before = await phone.post('/api/phone/outbox', 'outbox', {})
+    expect(before.status).toBe(200)
+    const reset = await admin('/reset', { method: 'POST' })
+    expect(reset.status).toBe(200)
+    const after = await phone.post('/api/phone/hello', 'hello', { deviceLabel: 'x', platform: 'iphone' })
+    expect(after.status).toBe(403)
   })
 })

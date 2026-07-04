@@ -124,13 +124,23 @@ html[data-platform='mac'] .nav-btn {
 }
 html[data-platform='mac'] .nav-btn svg { width: 17px; height: 17px; flex: none; opacity: 0.85; }
 html[data-platform='mac'] .nav-btn:hover { background: color-mix(in srgb, var(--text) 6%, transparent); }
-html[data-platform='mac'] .nav-btn.active { background: color-mix(in srgb, var(--accent) 90%, transparent); color: #fff; }
-html[data-platform='mac'] .nav-btn.active svg { opacity: 1; }
+/* sélection source-list macOS : teinte translucide, texte normal, icône accent
+   (le pavé bleu plein faisait « Windows » ; ici c'est le highlight du Finder) */
+html[data-platform='mac'] .nav-btn.active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text); font-weight: 600;
+}
+html[data-platform='mac'] .nav-btn.active svg { opacity: 1; color: var(--accent); }
 html[data-platform='mac'] .nav-btn.active::before { display: none; }
 html[data-platform='mac'] .side-foot { align-self: center; }
-/* boutons macOS : plus doux, ombre légère, coins arrondis */
+/* boutons macOS : coins arrondis, rendu bombé discret du bouton « prominent » */
 html[data-platform='mac'] .btn { border-radius: var(--r-ctl); font-weight: 500; }
-html[data-platform='mac'] .btn.primary { box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 40%, transparent); color: #fff; }
+html[data-platform='mac'] .btn.primary {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, #ffffff), var(--accent));
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  color: #fff;
+}
+html[data-platform='mac'] .btn.primary:hover { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, #ffffff), color-mix(in srgb, var(--accent) 96%, #000000)); }
 /* barre d'outils macOS : grand titre, en haut, draggable, dégagée des feux */
 html[data-platform='mac'] .main { padding-top: 16px; }
 html[data-platform='mac'] .head h1 { font-weight: 700; letter-spacing: -0.02em; font-size: 26px; }

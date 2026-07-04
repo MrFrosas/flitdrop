@@ -53,6 +53,7 @@ interface State {
     clipHistoryMaxItems: number
     clipHistoryMaxDays: number
     theme: 'system' | 'light' | 'dark'
+    skin: 'auto' | 'apple' | 'windows'
     telemetryConsent: boolean
     port: number
   }
@@ -68,6 +69,7 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getEl
 
 let state: State | null = null
 let currentPairingId: string | null = null
+let currentPairUrl = ''
 let currentDeviceId: string | null = null
 const progressCards = new Map<string, { li: HTMLLIElement; bar: HTMLSpanElement; sub: HTMLElement }>()
 
@@ -262,6 +264,7 @@ function applyTheme(theme: 'system' | 'light' | 'dark') {
 function renderSettings() {
   if (!state) return
   ;($('setTheme') as unknown as HTMLSelectElement).value = state.config.theme
+  ;($('setSkin') as unknown as HTMLSelectElement).value = state.config.skin
   ;($('setName') as unknown as HTMLInputElement).value = state.config.deviceName
   ;($('setDir') as unknown as HTMLInputElement).value = state.config.downloadDir
   ;($('setMax') as unknown as HTMLSelectElement).value = String(state.config.maxFileMB)
@@ -441,6 +444,7 @@ function renderShortcutSection() {
 function renderAll() {
   if (!state) return
   applyTheme(state.config.theme)
+  applyPlatformSkin(state.config.skin)
   $('pcNameHead').textContent = state.config.deviceName
   $('pcNodeName').textContent = state.config.deviceName
   $('netInfo').textContent = `${state.ips[0] ?? '127.0.0.1'}:${state.config.port}`
@@ -647,6 +651,7 @@ function openDeviceModal(id: string) {
 async function openPairModal() {
   const res = await api<{ deviceId: string; url: string }>('/pair/new', { method: 'POST' })
   currentPairingId = res.deviceId
+  currentPairUrl = res.url
   ;($('qrImg') as unknown as HTMLImageElement).src = `/api/admin/pair/${res.deviceId}/qr.svg`
   $('pairUrlText').textContent = res.url.split('#')[0] + '  (ou scanne le QR code)'
   const st = $('pairState')
@@ -668,6 +673,15 @@ function initUI() {
   $('btnPairCancel').onclick = () => {
     currentPairingId = null
     $('pairModal').classList.add('hidden')
+  }
+  $('btnCopyPairLink').onclick = async () => {
+    if (!currentPairUrl) return
+    try {
+      await navigator.clipboard.writeText(currentPairUrl)
+      toast('Lien d’appairage copié ✓', 'Ouvre-le sur le téléphone.')
+    } catch {
+      toast('Copie impossible')
+    }
   }
   $('btnPairDone').onclick = async () => {
     const name = ($('pairRenameInput') as unknown as HTMLInputElement).value.trim()
@@ -762,6 +776,7 @@ function initUI() {
     try {
       await postJSON('/settings', {
         theme: ($('setTheme') as unknown as HTMLSelectElement).value,
+        skin: ($('setSkin') as unknown as HTMLSelectElement).value,
         deviceName: ($('setName') as unknown as HTMLInputElement).value,
         downloadDir: ($('setDir') as unknown as HTMLInputElement).value,
         maxFileMB: Number(($('setMax') as unknown as HTMLSelectElement).value),
@@ -784,6 +799,19 @@ function initUI() {
 
   ;($('setTheme') as unknown as HTMLSelectElement).onchange = (e) => {
     applyTheme((e.target as HTMLSelectElement).value as 'system' | 'light' | 'dark')
+  }
+  ;($('setSkin') as unknown as HTMLSelectElement).onchange = (e) => {
+    applyPlatformSkin((e.target as HTMLSelectElement).value as 'auto' | 'apple' | 'windows')
+  }
+  $('btnResetPc').onclick = async () => {
+    if (!confirm('Réinitialiser ce PC ?\n\nTous les téléphones appairés seront oubliés, l’historique du presse-papiers et les fichiers en attente seront effacés. Les téléphones devront re-scanner un QR code.')) return
+    try {
+      await postJSON('/reset', {})
+      toast('PC réinitialisé ✓', 'Appairages et historique effacés.')
+      void refresh()
+    } catch (e) {
+      toast('Échec de la réinitialisation', (e as Error).message)
+    }
   }
 
   const REPO = 'https://github.com/MrFrosas/flitdrop'
@@ -866,16 +894,22 @@ function maybeWelcome() {
   }
 }
 
-/** Applique le skin natif de l'OS hôte (transmis par l'app de bureau via ?os=),
- *  ou détecté depuis le navigateur en développement. mac = macOS Liquid Glass,
- *  win = Windows 11 Fluent. */
-function applyPlatformSkin() {
+// OS hôte réel (transmis par l'app de bureau via ?os=, ou détecté dans le
+// navigateur en dev). Sert de valeur par défaut pour le style « Automatique ».
+let hostOs: 'mac' | 'win' = 'win'
+function detectHostOs() {
   const param = new URLSearchParams(location.search).get('os')
-  let os = param
-  if (!os) os = /Mac/i.test(navigator.platform) ? 'mac' : 'win'
-  document.documentElement.setAttribute('data-platform', os === 'mac' ? 'mac' : 'win')
+  hostOs = (param ? param === 'mac' : /Mac/i.test(navigator.platform)) ? 'mac' : 'win'
 }
 
+/** Applique le style : 'auto' suit l'OS réel (mac = macOS, win = Windows 11),
+ *  ou on force Apple/Windows quel que soit le système. */
+function applyPlatformSkin(skin: 'auto' | 'apple' | 'windows' = 'auto') {
+  const resolved = skin === 'apple' ? 'mac' : skin === 'windows' ? 'win' : hostOs
+  document.documentElement.setAttribute('data-platform', resolved)
+}
+
+detectHostOs()
 applyPlatformSkin()
 initUI()
 history.replaceState(null, '', location.pathname)

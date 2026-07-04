@@ -51,6 +51,11 @@ export class History {
     return this.entries.slice(0, n)
   }
 
+  clear(): void {
+    this.entries = []
+    this.persist()
+  }
+
   private persist(): void {
     if (this.timer) return
     this.timer = setTimeout(() => {

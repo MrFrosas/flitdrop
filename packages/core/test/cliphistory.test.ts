@@ -13,11 +13,13 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     maxFileMB: 100,
     requireApproval: false,
     adminToken: 'x'.repeat(24),
+    instanceId: 'x'.repeat(12),
     clipboardAutoPush: false,
     clipHistoryEnabled: true,
     clipHistoryMaxItems: maxItems,
     clipHistoryMaxDays: maxDays,
     theme: 'system',
+    skin: 'auto',
     telemetryConsent: false,
   }
 }

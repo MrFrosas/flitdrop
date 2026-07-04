@@ -259,3 +259,50 @@ a.btn { text-decoration: none; display: block; text-align: center; }
 .modal-card::before { content: ''; width: 38px; height: 5px; border-radius: 3px; background: var(--hair-line); align-self: center; margin-bottom: 4px; }
 .modal-card h2 { font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
 .modal-card img { width: 100%; border-radius: 16px; max-height: 55vh; object-fit: contain; background: rgba(0, 0, 0, 0.04); }
+
+/* ---------- thème forcé (menu : Clair / Sombre) ---------- */
+html[data-theme='light'] { color-scheme: light; }
+html[data-theme='dark'] { color-scheme: dark; }
+
+/* ---------- 4 onglets : légèrement resserrés pour tenir « Historique » ---------- */
+.tab { font-size: 13px; padding: 8px 4px; letter-spacing: -0.02em; }
+
+/* ---------- historique du presse-papiers : miniatures d'images ---------- */
+.clip-thumb-img {
+  width: 46px; height: 46px; flex: none; border-radius: 10px; object-fit: cover;
+  border: 0.5px solid var(--hair); cursor: pointer;
+  background: repeating-conic-gradient(var(--seg) 0% 25%, transparent 0% 50%) 50% / 14px 14px;
+}
+
+/* ---------- bannière « ajouter à l'écran d'accueil » ---------- */
+.install-banner {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  padding: 12px 12px 12px 14px; border-radius: 16px;
+  background: var(--glass); border: 0.5px solid var(--hair);
+  backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: var(--shadow);
+  animation: fade 0.3s ease both;
+}
+html[data-os='android'] .install-banner { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.ib-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+.ib-text b { font-weight: 650; font-size: 14.5px; letter-spacing: -0.01em; }
+.ib-text span { color: var(--muted); font-size: 12.5px; }
+.ib-add { flex: none; border: 0; border-radius: 999px; background: var(--blue); color: var(--on-accent); font: 650 13.5px var(--font); padding: 8px 15px; cursor: pointer; }
+.ib-close { flex: none; width: 30px; height: 30px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); font-size: 15px; cursor: pointer; }
+
+/* ---------- menu : champs style / thème ---------- */
+.menu-row { display: flex; gap: 10px; }
+.menu-field { flex: 1; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.menu-field select {
+  width: 100%; appearance: none; -webkit-appearance: none;
+  background: var(--field); border: 0.5px solid var(--hair); border-radius: var(--radius-ctl);
+  color: var(--text); font: 500 15px var(--font); padding: 11px 12px; outline: none;
+}
+
+/* ---------- écran scan : collage manuel du lien d'appairage ---------- */
+.scan-paste { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 340px; margin: 4px auto 0; }
+.scan-paste input {
+  width: 100%; background: var(--field); border: 0.5px solid var(--hair); border-radius: var(--radius-ctl);
+  color: var(--text); font: 400 15px var(--font); padding: 13px 14px; outline: none;
+}
+.scan-paste input:focus { border-color: color-mix(in srgb, var(--blue) 55%, transparent); }

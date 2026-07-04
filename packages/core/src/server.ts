@@ -17,6 +17,7 @@ import {
   MAX_CHUNK_BODY,
   MAX_TEXT_BYTES,
   PENDING_PAIRING_TTL_MS,
+  DEVICE_MAX_IDLE_MS,
 } from './constants.js'
 import { loadConfig, saveConfig, flitdropHome, clampInt, type Config } from './config.js'
 import { DeviceStore, type Device } from './pairing.js'
@@ -115,6 +116,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   if (opts.port !== undefined) cfg.port = opts.port
 
   const devices = new DeviceStore(home)
+  // hygiène au démarrage : on oublie les appairages inactifs de longue date
+  devices.pruneIdle(DEVICE_MAX_IDLE_MS)
   const history = new History(home)
   const outbox = new Outbox(home)
   const hub = new Hub()
@@ -261,7 +264,12 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const phoneRate = rateLimit(240, 60_000)
   app.use('/api/phone', phoneRate, (req, res, next) => {
     const id = String(req.headers['x-wd-device'] ?? '')
-    if (!id || !devices.get(id)) return res.status(403).json({ error: 'appareil inconnu ou révoqué' })
+    const dev = id ? devices.get(id) : undefined
+    if (!dev) return res.status(403).json({ error: 'appareil inconnu ou révoqué' })
+    // liaison au PC : un appairage créé sur une autre machine (instanceId
+    // différent) est refusé, même s'il se présente sur le même wifi.
+    if (dev.instanceId && dev.instanceId !== cfg.instanceId)
+      return res.status(409).json({ error: 'appareil appairé à un autre PC', code: 'wrong_pc' })
     next()
   })
 
@@ -284,6 +292,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
           requireApproval: cfg.requireApproval,
           product: PRODUCT_NAME,
           version: VERSION,
+          // identité de CE PC : le téléphone l'épingle et refuse de dialoguer
+          // avec un autre PC qui répondrait à la même adresse (wifi partagé).
+          instanceId: cfg.instanceId,
           telemetryConsent: cfg.telemetryConsent,
           // adresses de secours : si l'IP du PC change, la page sait où le
           // retrouver sans re-scanner le QR code.
@@ -412,6 +423,43 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     })
   })
 
+  // Historique du presse-papiers du PC, servi (chiffré) au téléphone appairé :
+  // c'est ce qui fait la vraie synchro. La liaison instanceId garantit que seuls
+  // TES appareils voient TON presse-papiers. Les miniatures suffisent à l'aperçu ;
+  // le chemin disque n'est jamais exposé (clipHistory.list le retire déjà).
+  app.post('/api/phone/cliphistory', jsonSmall, phoneAuth('cliphistory'), (req, res) => {
+    const { dev, key } = wd(req)
+    devices.touch(dev.id)
+    res.json({
+      p: sealJSON(
+        key,
+        { enabled: cfg.clipHistoryEnabled, items: cfg.clipHistoryEnabled ? clipHistory.list(200) : [] },
+        aad(dev.id, 'cliphistory:res')
+      ),
+    })
+  })
+
+  // Envoie une entrée d'historique vers le téléphone (texte -> presse-papiers du
+  // téléphone côté client ; image -> file d'attente pour la récupérer en fichier).
+  app.post('/api/phone/cliphistory/:id/tophone', jsonSmall, phoneAuth('clip-tophone'), (req, res) => {
+    const { dev, key, payload } = wd(req)
+    const entry = clipHistory.get(String(req.params.id))
+    if (!entry || payload.entryId !== entry.id) return res.status(404).json({ error: 'entrée introuvable' })
+    if (entry.kind === 'image' && entry.image) {
+      const reserved = reserveUniquePath(outbox.dir, `image-${entry.id}.png`)
+      fs.closeSync(reserved.fd)
+      try {
+        fs.copyFileSync(entry.image.path, reserved.path)
+      } catch {
+        return res.status(410).json({ error: 'image plus disponible' })
+      }
+      const st = fs.statSync(reserved.path)
+      outbox.addFile(path.basename(reserved.path), reserved.path, st.size, 'image/png')
+      hub.broadcast('outbox-changed', {})
+    }
+    res.json({ p: sealJSON(key, { ok: true, kind: entry.kind }, aad(dev.id, 'clip-tophone:res')) })
+  })
+
   app.post('/api/phone/outbox/:id/download', jsonSmall, phoneAuth('download'), async (req, res) => {
     const { dev, key, payload } = wd(req)
     const item = outbox.get(String(req.params.id))
@@ -483,7 +531,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const shortcutDevice = (req: Request): Device | undefined => {
     const token = String(req.query.t ?? '')
     if (token.length < 10) return undefined
-    return devices.byShortcutToken(token)
+    const dev = devices.byShortcutToken(token)
+    // même liaison que l'API téléphone : un token lié à un autre PC est ignoré.
+    if (dev && dev.instanceId && dev.instanceId !== cfg.instanceId) return undefined
+    return dev
   }
 
   app.post('/api/shortcut/upload', rlShortcut, async (req, res) => {
@@ -554,7 +605,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   let actualPort = cfg.port
   const bestIp = () => localIPv4s()[0]
-  const pairUrl = (d: Device) => `http://${bestIp() ?? '127.0.0.1'}:${actualPort}/s/#${d.id}.${d.keyB64}`
+  // la clé et l'instanceId voyagent dans le FRAGMENT (#), jamais envoyé au réseau
+  const pairUrl = (d: Device) => `http://${bestIp() ?? '127.0.0.1'}:${actualPort}/s/#${d.id}.${d.keyB64}.${cfg.instanceId}`
 
   admin.get('/state', (_req, res) => {
     res.json({
@@ -570,6 +622,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         clipHistoryMaxItems: cfg.clipHistoryMaxItems,
         clipHistoryMaxDays: cfg.clipHistoryMaxDays,
         theme: cfg.theme,
+        skin: cfg.skin,
         telemetryConsent: cfg.telemetryConsent,
         port: actualPort,
       },
@@ -641,9 +694,26 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     res.json({ ok: true })
   })
 
+  // « Réinitialiser ce PC » : oublie tous les appareils appairés, vide
+  // l'historique du presse-papiers, la file d'envoi et l'historique des
+  // transferts, puis fait tourner l'instanceId (invalide définitivement tout
+  // appairage restant). Pratique quand on prête / revend la machine.
+  admin.post('/reset', (_req, res) => {
+    const removed = devices.clear()
+    clipHistory.clear()
+    outbox.clearAll()
+    history.clear()
+    cfg.instanceId = randomToken(12)
+    saveConfig(home, cfg)
+    hub.broadcast('device-revoked', { id: 'all' })
+    hub.broadcast('cliphistory-changed', {})
+    hub.broadcast('outbox-changed', {})
+    res.json({ ok: true, removed })
+  })
+
   admin.post('/pair/new', (_req, res) => {
     devices.prunePending(PENDING_PAIRING_TTL_MS)
-    const d = devices.create()
+    const d = devices.create(cfg.instanceId)
     res.json({ deviceId: d.id, url: pairUrl(d) })
   })
 
@@ -767,6 +837,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       clipHistory.purge(cfg)
     }
     if (body.theme === 'system' || body.theme === 'light' || body.theme === 'dark') cfg.theme = body.theme
+    if (body.skin === 'auto' || body.skin === 'apple' || body.skin === 'windows') cfg.skin = body.skin
     if (typeof body.telemetryConsent === 'boolean') cfg.telemetryConsent = body.telemetryConsent
     saveConfig(home, cfg)
     hub.broadcast('settings-changed', {})

@@ -127,13 +127,22 @@
     <section class="view hidden" id="view-settings">
       <div class="card settings-card">
         <h3>Ce PC</h3>
-        <label>Apparence
-          <select id="setTheme">
-            <option value="system">Suivre Windows</option>
-            <option value="light">Clair</option>
-            <option value="dark">Sombre</option>
-          </select>
-        </label>
+        <div class="row">
+          <label class="grow">Style
+            <select id="setSkin">
+              <option value="auto">Automatique (système)</option>
+              <option value="apple">Apple</option>
+              <option value="windows">Windows</option>
+            </select>
+          </label>
+          <label class="grow">Thème
+            <select id="setTheme">
+              <option value="system">Automatique (système)</option>
+              <option value="light">Clair</option>
+              <option value="dark">Sombre</option>
+            </select>
+          </label>
+        </div>
         <label>Nom visible par les téléphones
           <input id="setName" maxlength="40">
         </label>
@@ -215,6 +224,12 @@
         </label>
         <button class="btn primary" id="btnSavePrivacy">Enregistrer</button>
       </div>
+
+      <div class="card settings-card">
+        <h3>Réinitialiser ce PC</h3>
+        <p class="cardhint">Chaque téléphone que tu appaires est lié à CE PC uniquement : personne d’autre sur le wifi ne voit tes données. Si tu prêtes ou revends la machine, réinitialise pour tout effacer : appareils appairés, historique du presse-papiers et fichiers en attente. Les téléphones devront re-scanner un QR code pour se reconnecter.</p>
+        <button class="btn danger" id="btnResetPc">Réinitialiser ce PC</button>
+      </div>
     </section>
   </main>
 
@@ -239,6 +254,11 @@
         <input id="pairRenameInput" maxlength="40" placeholder="Nom de l’appareil">
         <button class="btn primary" id="btnPairDone">Terminer</button>
       </div>
+      <details class="pair-copy">
+        <summary>Le téléphone n’arrive pas à scanner ?</summary>
+        <p class="cardhint">Copie ce lien et ouvre-le sur le téléphone. Il contient la clé d’appairage : garde-le privé.</p>
+        <button class="btn" id="btnCopyPairLink">Copier le lien d’appairage</button>
+      </details>
       <button class="btn ghost" id="btnPairCancel">Fermer</button>
     </div>
   </div>

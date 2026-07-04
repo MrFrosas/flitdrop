@@ -134,7 +134,9 @@ if (!gotLock) {
       autoHideMenuBar: true,
       title: 'Flitdrop',
       show: false,
-      icon: path.join(__dirname, 'build', 'icon.png'),
+      // Windows exige un .ico pour l'icône de fenêtre/barre des tâches ; un .png
+      // y laisse l'icône par défaut. macOS/Linux prennent le .png.
+      icon: path.join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
       webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: true },
     }
     if (isMac) {

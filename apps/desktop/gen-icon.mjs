@@ -52,65 +52,87 @@ function mix(a, b, t) {
   return Math.round(a + (b - a) * t)
 }
 
+function smooth(edge0, edge1, x) {
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)))
+  return t * t * (3 - 2 * t)
+}
+
+// distance d'un point (px,py) au segment [a,b] : trace la flèche en capsules à
+// bords nets, avec un anti-crénelage propre à toutes les tailles (16 -> 512).
+function sdSeg(px, py, ax, ay, bx, by) {
+  const vx = bx - ax
+  const vy = by - ay
+  const wx = px - ax
+  const wy = py - ay
+  const t = Math.max(0, Math.min(1, (wx * vx + wy * vy) / (vx * vx + vy * vy)))
+  const dx = wx - t * vx
+  const dy = wy - t * vy
+  return Math.sqrt(dx * dx + dy * dy)
+}
+
+// Icône Flitdrop : carré arrondi, dégradé diagonal cyan -> bleu franc (aspect
+// « App Store », vif et net même à 16 px), avec une flèche d'envoi blanche.
+// Volontairement contrastée : elle doit se reconnaître d'un coup d'œil et
+// inspirer confiance, là où l'ancien radar bleu nuit passait pour un carré terne.
 function drawIcon(size) {
   const rgba = Buffer.alloc(size * size * 4)
   const c = size / 2
-  const corner = size * 0.22
-  const accent = [89, 183, 255]
-  const glow = [141, 224, 255]
+  const corner = size * 0.225
+  const top = [66, 200, 255] // #42C8FF
+  const bot = [10, 92, 255] // #0A5CFF
+  const stroke = size * 0.075
+  const tipY = c - size * 0.205
+  const tailY = c + size * 0.225
+  const armDX = size * 0.165
+  const armDY = size * 0.17
+  const aa = size * 0.012 + 0.6
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const i = (y * size + x) * 4
-      // rectangle arrondi
+      // masque rectangle arrondi (bord anti-crénelé)
       const dx = Math.max(Math.abs(x - c) - (c - corner), 0)
       const dy = Math.max(Math.abs(y - c) - (c - corner), 0)
       const dCorner = Math.sqrt(dx * dx + dy * dy)
-      const alpha = dCorner > corner ? 0 : dCorner > corner - 2 ? Math.round(255 * (corner - dCorner) / 2) : 255
-      // fond dégradé radial bleu nuit
-      const d = Math.sqrt((x - c) ** 2 + (y - c * 0.85) ** 2) / size
-      let r = mix(20, 9, Math.min(1, d * 1.6))
-      let g = mix(36, 13, Math.min(1, d * 1.6))
-      let b = mix(63, 21, Math.min(1, d * 1.6))
-      // anneaux
-      const dist = Math.sqrt((x - c) ** 2 + (y - c) ** 2)
-      for (const [rr, op] of [
-        [size * 0.34, 0.35],
-        [size * 0.22, 0.55],
-      ]) {
-        const w = size * 0.008
-        const t = Math.abs(dist - rr)
-        if (t < w * 2) {
-          const k = op * Math.max(0, 1 - t / (w * 2))
-          r = mix(r, accent[0], k)
-          g = mix(g, accent[1], k)
-          b = mix(b, accent[2], k)
-        }
+      const maskA = 1 - smooth(corner - 1, corner + 0.5, dCorner)
+      if (maskA <= 0) {
+        rgba[i + 3] = 0
+        continue
       }
-      // halo + point central
-      const dot = size * 0.075
-      if (dist < dot * 2.6) {
-        const k = Math.max(0, 1 - dist / (dot * 2.6)) * 0.5
-        r = mix(r, accent[0], k)
-        g = mix(g, accent[1], k)
-        b = mix(b, accent[2], k)
-      }
-      if (dist < dot) {
-        const k = Math.max(0.75, 1 - dist / dot)
-        r = mix(r, glow[0], k)
-        g = mix(g, glow[1], k)
-        b = mix(b, glow[2], k)
-      }
-      // satellite en haut à droite
-      const sd = Math.sqrt((x - size * 0.72) ** 2 + (y - size * 0.28) ** 2)
-      if (sd < size * 0.045) {
-        r = glow[0]
-        g = glow[1]
-        b = glow[2]
-      }
+      // fond : dégradé diagonal + léger éclat en haut (gloss)
+      const g = Math.min(1, Math.max(0, (x + y) / (2 * size)))
+      let r = mix(top[0], bot[0], g)
+      let gg = mix(top[1], bot[1], g)
+      let b = mix(top[2], bot[2], g)
+      const gloss = smooth(0.5, 0, y / size) * 0.1
+      r = Math.min(255, r + 255 * gloss)
+      gg = Math.min(255, gg + 255 * gloss)
+      b = Math.min(255, b + 255 * gloss)
+      // flèche = union de 3 capsules (hampe + deux branches du chevron)
+      const dArrow = Math.min(
+        sdSeg(x, y, c, tailY, c, tipY),
+        sdSeg(x, y, c - armDX, tipY + armDY, c, tipY),
+        sdSeg(x, y, c + armDX, tipY + armDY, c, tipY)
+      )
+      // ombre portée discrète sous la flèche (décalée vers le bas) : juste ce
+      // qu'il faut de profondeur, sans halo diffus.
+      const soff = size * 0.022
+      const dShadow = Math.min(
+        sdSeg(x, y - soff, c, tailY, c, tipY),
+        sdSeg(x, y - soff, c - armDX, tipY + armDY, c, tipY),
+        sdSeg(x, y - soff, c + armDX, tipY + armDY, c, tipY)
+      )
+      const shadowCov = (1 - smooth(stroke, stroke + aa * 1.6, dShadow)) * 0.1
+      r = mix(r, 6, shadowCov)
+      gg = mix(gg, 24, shadowCov)
+      b = mix(b, 60, shadowCov)
+      const arrowCov = 1 - smooth(stroke - aa, stroke + aa, dArrow)
+      r = mix(r, 255, arrowCov)
+      gg = mix(gg, 255, arrowCov)
+      b = mix(b, 255, arrowCov)
       rgba[i] = r
-      rgba[i + 1] = g
+      rgba[i + 1] = gg
       rgba[i + 2] = b
-      rgba[i + 3] = alpha
+      rgba[i + 3] = Math.round(255 * maskA)
     }
   }
   return encodePNG(size, rgba)

@@ -29,6 +29,9 @@ jobs:
       - name: Build du coeur
         run: npm run build -w @flitdrop/core
 
+      - name: Typecheck
+        run: npm run typecheck -w @flitdrop/core
+
       - name: Tests
         run: npm test -w @flitdrop/core
 

@@ -4,12 +4,15 @@ import { initTelemetry, track, sizeBucket } from './telemetry.js'
 interface Pairing {
   id: string
   keyB64: string
+  // identité du PC appairé (épinglée) : on refuse de dialoguer avec un autre PC.
+  instanceId?: string
 }
 interface HelloRes {
   desktopName: string
   maxFileMB: number
   chunkSize: number
   requireApproval: boolean
+  instanceId?: string
   telemetryConsent?: boolean
   hosts?: string[]
 }
@@ -25,6 +28,9 @@ interface OutboxItem {
 
 const PAIR_KEY = 'wd_pair'
 const HOSTS_KEY = 'wd_hosts'
+const SKIN_KEY = 'wd_skin'
+const THEME_KEY = 'wd_theme'
+const INSTALL_KEY = 'wd_install_seen'
 const SEND_CHUNK = 4 * 1024 * 1024
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
@@ -110,26 +116,77 @@ function platformLabel(): { platform: string; label: string } {
   return { platform: 'web', label: 'Téléphone' }
 }
 
-/** Adapte l'apparence au système du téléphone : Apple (iOS/iPadOS) ou Android.
- *  Chaque OS reçoit sa police système, ses couleurs et ses formes natives. */
+/** Adapte l'apparence au système du téléphone (Apple ou Android), sauf si
+ *  l'utilisateur a forcé un style dans le menu. Chaque OS reçoit sa police
+ *  système, ses couleurs et ses formes natives. */
 function applyOsSkin() {
+  const stored = localStorage.getItem(SKIN_KEY)
   const { platform } = platformLabel()
-  const os = platform === 'android' ? 'android' : platform === 'web' ? 'web' : 'apple'
+  const auto = platform === 'android' ? 'android' : 'apple'
+  const os = stored === 'apple' || stored === 'android' ? stored : auto
   document.documentElement.setAttribute('data-os', os)
+}
+
+/** Thème clair/sombre : 'system' suit le téléphone, sinon on force. */
+function applyPhoneTheme() {
+  const t = localStorage.getItem(THEME_KEY)
+  if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t)
+  else document.documentElement.removeAttribute('data-theme')
+}
+
+function isStandalone(): boolean {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true
+  )
+}
+
+/** Une fois appairé, on réécrit le manifeste PWA pour que l'icône « écran
+ *  d'accueil » se relance déjà appairée : le token part dans le fragment (#),
+ *  jamais envoyé au réseau. Sans ça, la PWA rouvrait sur l'écran de scan. */
+function updateManifestForPairing() {
+  if (!pair) return
+  const frag = `${pair.id}.${pair.keyB64}${pair.instanceId ? '.' + pair.instanceId : ''}`
+  const manifest = {
+    name: 'Flitdrop',
+    short_name: 'Flitdrop',
+    id: '/s/',
+    start_url: `${location.origin}/s/#${frag}`,
+    scope: `${location.origin}/s/`,
+    display: 'standalone',
+    background_color: '#000000',
+    theme_color: '#000000',
+    icons: [
+      { src: `${location.origin}/assets/icon-192.png`, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+      { src: `${location.origin}/assets/icon-512.png`, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+    ],
+  }
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' })
+  const link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null
+  if (link) link.href = URL.createObjectURL(blob)
 }
 
 // ---------- appairage ----------
 
+/** Décode un token d'appairage « id.cléB64[.instanceId] » (clé et instanceId
+ *  restent dans le fragment/local, jamais envoyés en clair au réseau). */
+function parseToken(raw: string): Pairing | null {
+  const parts = (raw || '').trim().replace(/^#/, '').split('.')
+  const [id, keyB64, instanceId] = parts
+  if (id && keyB64 && id.length >= 8 && keyB64.length >= 40) {
+    return instanceId ? { id, keyB64, instanceId } : { id, keyB64 }
+  }
+  return null
+}
+
 function loadPairing(): Pairing | null {
-  const h = location.hash.slice(1)
-  if (h && h.includes('.')) {
-    const dot = h.indexOf('.')
-    const p: Pairing = { id: h.slice(0, dot), keyB64: h.slice(dot + 1) }
-    if (p.id.length >= 8 && p.keyB64.length >= 40) {
-      localStorage.setItem(PAIR_KEY, JSON.stringify(p))
-      history.replaceState(null, '', location.pathname)
-      return p
-    }
+  // le token peut arriver dans le fragment (#, après un scan QR) ou en query
+  // (?k=, quand le raccourci PWA relance l'app depuis l'écran d'accueil).
+  const incoming = parseToken(location.hash.slice(1)) || parseToken(new URLSearchParams(location.search).get('k') || '')
+  if (incoming) {
+    localStorage.setItem(PAIR_KEY, JSON.stringify(incoming))
+    history.replaceState(null, '', location.pathname)
+    return incoming
   }
   try {
     const stored = JSON.parse(localStorage.getItem(PAIR_KEY) || 'null') as Pairing | null
@@ -172,7 +229,7 @@ function renderAltHosts() {
     const a = document.createElement('a')
     a.className = 'btn wide'
     a.textContent = `Se reconnecter via ${h.split(':')[0]}`
-    a.href = `http://${h}/s/#${pair.id}.${pair.keyB64}`
+    a.href = `http://${h}/s/#${pair.id}.${pair.keyB64}${pair.instanceId ? '.' + pair.instanceId : ''}`
     box.appendChild(a)
   }
 }
@@ -181,6 +238,22 @@ async function connect() {
   const { platform, label } = platformLabel()
   try {
     hello = await post<HelloRes>('/api/phone/hello', 'hello', { deviceLabel: label, platform })
+    // épinglage du PC : si on connaît déjà l'identité appairée, elle doit
+    // correspondre ; sinon un AUTRE PC répond à cette adresse (wifi partagé,
+    // IP recyclée) et on refuse plutôt que de mélanger les données.
+    if (hello.instanceId) {
+      if (pair!.instanceId && pair!.instanceId !== hello.instanceId) {
+        $('errTitle').textContent = 'Ce n’est pas le bon PC'
+        $('errMsg').textContent = 'Un autre PC répond à cette adresse. Re-scanne le QR code du PC appairé.'
+        $('altHosts').classList.add('hidden')
+        show('error')
+        return
+      }
+      if (!pair!.instanceId) {
+        pair!.instanceId = hello.instanceId
+        localStorage.setItem(PAIR_KEY, JSON.stringify(pair))
+      }
+    }
     initTelemetry({ consent: hello.telemetryConsent === true, version: '' })
     track('phone_connect', { platform })
     $('pcName').textContent = hello.desktopName
@@ -190,11 +263,17 @@ async function connect() {
       const merged = [location.host, ...hello.hosts].filter((v, i, arr) => arr.indexOf(v) === i)
       localStorage.setItem(HOSTS_KEY, JSON.stringify(merged.slice(0, 6)))
     }
+    updateManifestForPairing()
     show('main')
     startPolling()
+    maybeInstallBanner()
   } catch (e) {
     const err = e as ApiFail
-    if (err.status === 403) {
+    if (err.status === 409) {
+      $('errTitle').textContent = 'Appairé à un autre PC'
+      $('errMsg').textContent = 'Ce téléphone est appairé à un autre PC Flitdrop. Re-scanne le QR code du bon PC.'
+      $('altHosts').classList.add('hidden')
+    } else if (err.status === 403) {
       $('errTitle').textContent = 'Appairage refusé'
       $('errMsg').textContent = 'Ce téléphone a été retiré sur le PC. Re-scanne un QR code pour le reconnecter.'
       $('altHosts').classList.add('hidden')
@@ -473,6 +552,103 @@ function startPolling() {
   pollTimer = window.setInterval(() => void pollOutbox(), 6000)
 }
 
+// ---------- historique du presse-papiers (synchro depuis le PC) ----------
+
+interface ClipEntry {
+  id: string
+  ts: string
+  text: string
+  kind: 'text' | 'image'
+  source: string
+  image?: { thumb: string; w: number; h: number }
+}
+
+let clipTimer: number | null = null
+
+function timeAgo(iso: string): string {
+  const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000)
+  if (s < 60) return 'à l’instant'
+  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`
+  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`
+  return `il y a ${Math.floor(s / 86400)} j`
+}
+
+function renderClipHistory(items: ClipEntry[], enabled: boolean) {
+  const list = $('clipList')
+  $('clipDisabled').classList.toggle('hidden', enabled)
+  $('clipEmpty').classList.toggle('hidden', !enabled || items.length > 0)
+  list.innerHTML = ''
+  if (!enabled) return
+  for (const e of items) {
+    const li = document.createElement('li')
+    li.className = 'qitem'
+    if (e.kind === 'image' && e.image) {
+      li.innerHTML = `
+        <div class="qhead">
+          <img class="clip-thumb-img" alt="">
+          <div class="qname"></div>
+          <button class="qbtn">Recevoir</button>
+        </div>`
+      const thumb = li.querySelector('.clip-thumb-img') as HTMLImageElement
+      thumb.src = e.image.thumb
+      ;(li.querySelector('.qname') as HTMLElement).textContent = `${e.text} · ${timeAgo(e.ts)}`
+      thumb.onclick = () => {
+        const img = $('imgPreview') as HTMLImageElement
+        img.src = e.image!.thumb
+        $('imgModal').classList.remove('hidden')
+      }
+      ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = async () => {
+        try {
+          await post(`/api/phone/cliphistory/${e.id}/tophone`, 'clip-tophone', { entryId: e.id })
+          toast('Disponible dans « Recevoir » ✓')
+        } catch {
+          toast('Impossible de récupérer l’image')
+        }
+      }
+    } else {
+      li.innerHTML = `
+        <div class="qhead"><div class="qicon">≡</div><div class="qname"></div>
+        <button class="qbtn">Copier</button></div>
+        <div class="rtext"></div>`
+      ;(li.querySelector('.qname') as HTMLElement).textContent = `${e.source === 'pc' ? 'Copié sur le PC' : 'Reçu de ' + e.source} · ${timeAgo(e.ts)}`
+      ;(li.querySelector('.rtext') as HTMLElement).textContent = e.text
+      ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = () => {
+        const ok = copyText(e.text)
+        toast(ok ? 'Copié dans ton presse-papiers ✓' : 'Sélectionne le texte pour le copier')
+      }
+    }
+    list.appendChild(li)
+  }
+}
+
+async function pollClipHistory() {
+  if (!hello || document.hidden) return
+  try {
+    const res = await post<{ items: ClipEntry[]; enabled: boolean }>('/api/phone/cliphistory', 'cliphistory', {})
+    renderClipHistory(res.items, res.enabled)
+  } catch {
+    // silencieux : l'onglet « Recevoir » signale déjà l'état de connexion
+  }
+}
+
+function startClipPolling() {
+  void pollClipHistory()
+  if (clipTimer) clearInterval(clipTimer)
+  clipTimer = window.setInterval(() => void pollClipHistory(), 5000)
+}
+
+function stopClipPolling() {
+  if (clipTimer) {
+    clearInterval(clipTimer)
+    clipTimer = null
+  }
+}
+
+function maybeInstallBanner() {
+  if (isStandalone() || localStorage.getItem(INSTALL_KEY) === '1') return
+  $('installBanner')?.classList.remove('hidden')
+}
+
 // ---------- interactions ----------
 
 function initUI() {
@@ -480,8 +656,11 @@ function initUI() {
     tab.onclick = () => {
       document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'))
       tab.classList.add('active')
-      for (const p of ['send', 'text', 'recv']) $(`panel-${p}`).classList.toggle('hidden', p !== tab.dataset.tab)
-      if (tab.dataset.tab === 'recv') void pollOutbox()
+      const which = tab.dataset.tab
+      for (const p of ['send', 'text', 'recv', 'clip']) $(`panel-${p}`).classList.toggle('hidden', p !== which)
+      if (which === 'recv') void pollOutbox()
+      if (which === 'clip') startClipPolling()
+      else stopClipPolling()
     }
   }
 
@@ -527,8 +706,9 @@ function initUI() {
   $('btnForget2').onclick = forget
   $('btnMenu').onclick = () => $('menuSheet').classList.remove('hidden')
   $('menuClose').onclick = () => $('menuSheet').classList.add('hidden')
-  $('btnInstall').onclick = () => {
+  const openInstallSheet = () => {
     $('menuSheet').classList.add('hidden')
+    $('installBanner')?.classList.add('hidden')
     const { platform } = platformLabel()
     $('installSteps').textContent =
       platform === 'iphone' || platform === 'ipad'
@@ -536,7 +716,47 @@ function initUI() {
         : 'Dans Chrome : menu ⋮ en haut à droite, puis « Ajouter à l’écran d’accueil ». L’icône Flitdrop apparaît comme une app, connectée à ton PC, sans re-scanner le QR code.'
     $('installSheet').classList.remove('hidden')
   }
+  $('btnInstall').onclick = openInstallSheet
   $('installClose').onclick = () => $('installSheet').classList.add('hidden')
+
+  // bannière « ajouter à l'écran d'accueil » (affichée une fois après appairage)
+  $('bannerInstall').onclick = openInstallSheet
+  $('bannerClose').onclick = () => {
+    localStorage.setItem(INSTALL_KEY, '1')
+    $('installBanner').classList.add('hidden')
+  }
+
+  // apparence : style (Auto/Apple/Android) + thème (Système/Clair/Sombre)
+  const skinSel = $('setPhoneSkin') as unknown as HTMLSelectElement
+  skinSel.value = localStorage.getItem(SKIN_KEY) || 'auto'
+  skinSel.onchange = () => {
+    if (skinSel.value === 'auto') localStorage.removeItem(SKIN_KEY)
+    else localStorage.setItem(SKIN_KEY, skinSel.value)
+    applyOsSkin()
+  }
+  const themeSel = $('setPhoneTheme') as unknown as HTMLSelectElement
+  themeSel.value = localStorage.getItem(THEME_KEY) || 'system'
+  themeSel.onchange = () => {
+    if (themeSel.value === 'system') localStorage.removeItem(THEME_KEY)
+    else localStorage.setItem(THEME_KEY, themeSel.value)
+    applyPhoneTheme()
+  }
+
+  // collage manuel d'un lien d'appairage : secours si on est bloqué dans la PWA
+  // (écran d'accueil) sans pouvoir scanner de QR code.
+  $('btnPastePair').onclick = () => {
+    const raw = ($('pastePairInput') as unknown as HTMLInputElement).value
+    const p = parseToken(raw)
+    if (!p) {
+      toast('Lien d’appairage invalide')
+      return
+    }
+    pair = p
+    localStorage.setItem(PAIR_KEY, JSON.stringify(p))
+    key = b64uToBytes(p.keyB64)
+    show('scan')
+    void connect()
+  }
   $('btnCloseImg').onclick = () => {
     const img = $('imgPreview') as HTMLImageElement
     if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src)
@@ -552,9 +772,13 @@ function initUI() {
 // ---------- démarrage ----------
 
 applyOsSkin()
+applyPhoneTheme()
 initUI()
 pair = loadPairing()
 if (!pair) {
+  // relancée depuis l'écran d'accueil sans appairage mémorisé : on propose le
+  // collage du lien plutôt que de laisser l'utilisateur bloqué sur le scan.
+  if (isStandalone()) $('scanPaste')?.classList.remove('hidden')
   show('scan')
 } else {
   key = b64uToBytes(pair.keyB64)

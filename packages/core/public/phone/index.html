@@ -27,6 +27,11 @@
     </div>
     <h1>Connecte ce téléphone à ton PC</h1>
     <p class="lead">Ouvre Flitdrop sur le PC, clique sur « Appairer un téléphone » et scanne le QR code avec l’appareil photo.</p>
+    <div id="scanPaste" class="scan-paste hidden">
+      <p class="hint">Depuis l’écran d’accueil, tu ne peux pas scanner. Sur le PC, ouvre « Appairer un téléphone » &gt; « Copier le lien d’appairage », puis colle-le ici :</p>
+      <input id="pastePairInput" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Colle le lien d’appairage">
+      <button class="btn primary wide" id="btnPastePair">Se connecter</button>
+    </div>
   </main>
 
   <!-- Erreur / PC injoignable -->
@@ -52,10 +57,17 @@
       <div class="conn"><span class="dot" id="statusDot"></span><span class="pc-name" id="pcName">…</span></div>
     </header>
 
+    <div id="installBanner" class="install-banner hidden">
+      <div class="ib-text"><b>Ajoute Flitdrop à l’écran d’accueil</b><span>Un appui et ça s’ouvre comme une vraie app, déjà connectée.</span></div>
+      <button class="ib-add" id="bannerInstall">Ajouter</button>
+      <button class="ib-close" id="bannerClose" aria-label="Fermer">✕</button>
+    </div>
+
     <nav class="tabs" role="tablist">
       <button class="tab active" data-tab="send" role="tab">Envoyer</button>
       <button class="tab" data-tab="text" role="tab">Texte</button>
-      <button class="tab" data-tab="recv" role="tab">Recevoir <span class="badge hidden" id="recvBadge">0</span></button>
+      <button class="tab" data-tab="recv" role="tab">Reçus <span class="badge hidden" id="recvBadge">0</span></button>
+      <button class="tab" data-tab="clip" role="tab">Historique</button>
     </nav>
 
     <section class="panel" id="panel-send">
@@ -83,6 +95,18 @@
         <p class="hint">Sur le PC, glisse un fichier dans Flitdrop, onglet « Envoyer », et il apparaîtra ici.</p>
       </div>
     </section>
+
+    <section class="panel hidden" id="panel-clip">
+      <ul id="clipList" class="queue"></ul>
+      <div id="clipEmpty" class="empty hidden">
+        <p>Presse-papiers vide</p>
+        <p class="hint">Copie un texte, un lien ou une image sur le PC : ça apparaît ici, prêt à recoller sur ce téléphone.</p>
+      </div>
+      <div id="clipDisabled" class="empty hidden">
+        <p>Historique désactivé</p>
+        <p class="hint">Active « Historique du presse-papiers » dans les réglages de Flitdrop sur le PC.</p>
+      </div>
+    </section>
   </main>
 
   <input type="file" id="filepick" multiple hidden>
@@ -101,7 +125,23 @@
     <div class="modal-card">
       <h2>Ce téléphone</h2>
       <p class="hint" id="menuInfo"></p>
-      <button class="btn wide" id="btnInstall">Installer sur l’écran d’accueil</button>
+      <div class="menu-row">
+        <label class="menu-field">Style
+          <select id="setPhoneSkin">
+            <option value="auto">Automatique</option>
+            <option value="apple">Apple</option>
+            <option value="android">Android</option>
+          </select>
+        </label>
+        <label class="menu-field">Thème
+          <select id="setPhoneTheme">
+            <option value="system">Automatique</option>
+            <option value="light">Clair</option>
+            <option value="dark">Sombre</option>
+          </select>
+        </label>
+      </div>
+      <button class="btn wide" id="btnInstall">Ajouter à l’écran d’accueil</button>
       <button class="btn danger wide" id="btnForget2">Oublier ce PC</button>
       <button class="btn ghost wide" id="menuClose">Fermer</button>
     </div>

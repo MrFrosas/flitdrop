@@ -1,6 +1,12 @@
 import * as esbuild from 'esbuild'
+import { readFileSync } from 'node:fs'
 
 const mode = process.argv[2] ?? 'all'
+
+// version unique source de vérité = package.json (injectée à la compilation),
+// pour que le footer et les échanges reflètent toujours la vraie version publiée.
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+const versionDefine = { __FLITDROP_VERSION__: JSON.stringify(pkg.version) }
 
 const webTargets = [
   { entry: 'src/webclient/phone.ts', out: 'public/phone/app.js' },
@@ -16,6 +22,7 @@ async function buildWeb() {
       format: 'iife',
       minify: true,
       target: ['es2020', 'safari15'],
+      define: versionDefine,
       logLevel: 'warning',
     })
   }
@@ -29,7 +36,7 @@ async function buildNode() {
     target: 'node20',
     external: ['bufferutil', 'utf-8-validate'],
     banner: { js: "const __import_meta_url = require('url').pathToFileURL(__filename).href;" },
-    define: { 'import.meta.url': '__import_meta_url' },
+    define: { 'import.meta.url': '__import_meta_url', ...versionDefine },
     logLevel: 'warning',
   }
   await esbuild.build({ ...common, entryPoints: ['src/server.ts'], outfile: 'dist/flitdrop.cjs' })
