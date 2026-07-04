@@ -122,6 +122,13 @@
     <section class="view hidden" id="view-settings">
       <div class="card settings-card">
         <h3>Ce PC</h3>
+        <label>Apparence
+          <select id="setTheme">
+            <option value="system">Suivre Windows</option>
+            <option value="light">Clair</option>
+            <option value="dark">Sombre</option>
+          </select>
+        </label>
         <label>Nom visible par les téléphones
           <input id="setName" maxlength="40">
         </label>
@@ -188,6 +195,20 @@
             <li>Depuis Photos ou n’importe quelle app : Partager → Envoyer au PC. Terminé.</li>
           </ol>
         </details>
+      </div>
+
+      <div class="card settings-card">
+        <h3>Aide et confidentialité</h3>
+        <p class="cardhint">Une idée, un bug ? Dis-le en deux clics, ça ouvre un ticket prérempli sur GitHub.</p>
+        <div class="row">
+          <button class="btn" id="btnReportBug">Signaler un problème</button>
+          <button class="btn" id="btnSuggest">Proposer une idée</button>
+        </div>
+        <label class="check">
+          <input type="checkbox" id="setTelemetry">
+          <span>Aider à améliorer Flitdrop en partageant des données d’usage et d’erreurs anonymes. Aucun contenu de vos fichiers ni de votre presse-papiers n’est jamais envoyé. Décoché par défaut, vous décidez.</span>
+        </label>
+        <button class="btn primary" id="btnSavePrivacy">Enregistrer</button>
       </div>
     </section>
   </main>

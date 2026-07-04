@@ -116,7 +116,35 @@ function drawIcon(size) {
   return encodePNG(size, rgba)
 }
 
+// Assemble un .ico (Windows) en embarquant des PNG (supporté depuis Vista).
+// Un vrai .ico multi-résolutions donne une icône nette à l'exe et à l'installeur.
+function buildIco(sizes) {
+  const pngs = sizes.map((s) => drawIcon(s))
+  const count = pngs.length
+  const header = Buffer.alloc(6)
+  header.writeUInt16LE(0, 0) // réservé
+  header.writeUInt16LE(1, 2) // type = icône
+  header.writeUInt16LE(count, 4)
+  const dir = Buffer.alloc(16 * count)
+  let offset = 6 + 16 * count
+  pngs.forEach((png, i) => {
+    const s = sizes[i]
+    const e = i * 16
+    dir[e] = s >= 256 ? 0 : s // largeur (0 = 256)
+    dir[e + 1] = s >= 256 ? 0 : s // hauteur
+    dir[e + 2] = 0 // palette
+    dir[e + 3] = 0 // réservé
+    dir.writeUInt16LE(1, e + 4) // plans
+    dir.writeUInt16LE(32, e + 6) // bits par pixel
+    dir.writeUInt32LE(png.length, e + 8)
+    dir.writeUInt32LE(offset, e + 12)
+    offset += png.length
+  })
+  return Buffer.concat([header, dir, ...pngs])
+}
+
 fs.mkdirSync(path.join(here, 'build'), { recursive: true })
 fs.writeFileSync(path.join(here, 'build', 'icon.png'), drawIcon(512))
 fs.writeFileSync(path.join(here, 'build', 'tray.png'), drawIcon(32))
-console.log('icônes générées dans apps/desktop/build/')
+fs.writeFileSync(path.join(here, 'build', 'icon.ico'), buildIco([16, 24, 32, 48, 64, 128, 256]))
+console.log('icônes générées dans apps/desktop/build/ (png, tray, ico)')

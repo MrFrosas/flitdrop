@@ -8,6 +8,8 @@ electronVersion: 33.2.1
 # elague les devDependencies hoistees et se supprime elle-meme (app-builder-bin).
 npmRebuild: false
 buildDependenciesFromSource: false
+# signe l'app macOS en ad-hoc pour qu'elle ne soit pas vue comme « endommagée »
+afterPack: build/afterPack.cjs
 directories:
   output: release
   buildResources: build
@@ -16,6 +18,7 @@ files:
   - core/**
   - public/**
   - build/icon.png
+  - build/icon.ico
   - build/tray.png
 # associe l'app à "Envoyer vers" et à "Ouvrir avec" pour tous les fichiers
 fileAssociations:
@@ -37,7 +40,7 @@ win:
   target:
     - nsis
     - appx
-  icon: build/icon.png
+  icon: build/icon.ico
 appx:
   # identityName et publisher sont remplacés par les valeurs du Partner Center
   # (Microsoft Store > Gestion des produits > Identité du package)
@@ -53,5 +56,8 @@ nsis:
   perMachine: false
   deleteAppDataOnUninstall: false
   license: ''
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
   # ajoute "clic-droit > Envoyer vers > Flitdrop" dans l'Explorateur Windows
   include: build/installer.nsh

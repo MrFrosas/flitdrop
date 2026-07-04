@@ -49,6 +49,8 @@ interface State {
     clipHistoryEnabled: boolean
     clipHistoryMaxItems: number
     clipHistoryMaxDays: number
+    theme: 'system' | 'light' | 'dark'
+    telemetryConsent: boolean
     port: number
   }
   hostname: string
@@ -236,8 +238,14 @@ function renderOutbox() {
   }
 }
 
+function applyTheme(theme: 'system' | 'light' | 'dark') {
+  if (theme === 'system') document.documentElement.removeAttribute('data-theme')
+  else document.documentElement.setAttribute('data-theme', theme)
+}
+
 function renderSettings() {
   if (!state) return
+  ;($('setTheme') as unknown as HTMLSelectElement).value = state.config.theme
   ;($('setName') as unknown as HTMLInputElement).value = state.config.deviceName
   ;($('setDir') as unknown as HTMLInputElement).value = state.config.downloadDir
   ;($('setMax') as unknown as HTMLSelectElement).value = String(state.config.maxFileMB)
@@ -246,7 +254,37 @@ function renderSettings() {
   ;($('setClipHistory') as unknown as HTMLInputElement).checked = state.config.clipHistoryEnabled
   ;($('setClipMax') as unknown as HTMLSelectElement).value = String(state.config.clipHistoryMaxItems)
   ;($('setClipDays') as unknown as HTMLSelectElement).value = String(state.config.clipHistoryMaxDays)
+  ;($('setTelemetry') as unknown as HTMLInputElement).checked = state.config.telemetryConsent
   renderShortcutSection()
+}
+
+/** Classe un texte du presse-papiers pour un affichage riche façon Paste :
+ *  lien, image, vidéo YouTube, e-mail, couleur, code, ou texte simple. */
+interface ClipKind {
+  kind: 'youtube' | 'image' | 'link' | 'email' | 'color' | 'code' | 'text'
+  label: string
+  icon: string
+  domain?: string
+  thumb?: string
+}
+function classifyClip(text: string): ClipKind {
+  const t = text.trim()
+  const yt = t.match(/^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^ ]*v=|youtu\.be\/)([\w-]{11})/i)
+  if (yt) return { kind: 'youtube', label: 'Vidéo YouTube', icon: '▶', domain: 'youtube.com', thumb: `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg` }
+  if (/^https?:\/\/\S+$/i.test(t) && !/\s/.test(t)) {
+    let domain = t
+    try {
+      domain = new URL(t).hostname.replace(/^www\./, '')
+    } catch {
+      // garde le texte brut comme domaine
+    }
+    if (/\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?\S*)?$/i.test(t)) return { kind: 'image', label: 'Image', icon: '▦', domain, thumb: t }
+    return { kind: 'link', label: 'Lien', icon: '🔗', domain }
+  }
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return { kind: 'email', label: 'E-mail', icon: '✉' }
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(t) || /^rgba?\([\d.,\s%/]+\)$/i.test(t)) return { kind: 'color', label: 'Couleur', icon: '●' }
+  if (/[{};=()<>]/.test(t) && /\n/.test(t)) return { kind: 'code', label: 'Code', icon: '⟨⟩' }
+  return { kind: 'text', label: 'Texte', icon: '≡' }
 }
 
 let clipFilter = ''
@@ -260,17 +298,58 @@ function renderClipHistory() {
   $('clipDisabled').classList.toggle('hidden', enabled)
   $('clipEmpty').classList.toggle('hidden', !enabled || items.length > 0 || q.length > 0)
   for (const e of items.slice(0, 200)) {
+    const c = classifyClip(e.text)
     const li = document.createElement('li')
-    li.className = 'clip-item'
+    li.className = 'clip-item kind-' + c.kind
+
+    // vignette (miniature YouTube/image) ou pastille de couleur ou icône typée
+    if (c.thumb) {
+      const th = document.createElement('div')
+      th.className = 'clip-thumb'
+      const img = document.createElement('img')
+      img.loading = 'lazy'
+      img.src = c.thumb
+      img.alt = c.label
+      img.onerror = () => {
+        th.classList.add('clip-thumb-fallback')
+        th.textContent = c.icon
+        img.remove()
+      }
+      th.appendChild(img)
+      if (c.kind === 'youtube') {
+        const play = document.createElement('span')
+        play.className = 'clip-play'
+        play.textContent = '▶'
+        th.appendChild(play)
+      }
+      li.appendChild(th)
+    } else {
+      const badge = document.createElement('div')
+      badge.className = 'clip-badge'
+      if (c.kind === 'color') badge.style.background = e.text.trim()
+      else badge.textContent = c.icon
+      li.appendChild(badge)
+    }
+
     const main = document.createElement('div')
     main.className = 'hmain'
     const txt = document.createElement('div')
     txt.className = 'clip-text'
-    txt.textContent = e.text.length > 400 ? e.text.slice(0, 400) + '…' : e.text
+    txt.textContent = e.text.length > 300 ? e.text.slice(0, 300) + '…' : e.text
     const sub = document.createElement('div')
     sub.className = 'hsub'
-    sub.textContent = [e.source === 'pc' ? 'copié sur ce PC' : `reçu de ${e.source}`, rel(e.ts)].join(' · ')
+    const origin = e.source === 'pc' ? 'copié sur ce PC' : `reçu de ${e.source}`
+    sub.textContent = [c.label + (c.domain ? ` · ${c.domain}` : ''), origin, rel(e.ts)].join(' · ')
     main.append(txt, sub)
+    li.appendChild(main)
+
+    if (c.kind === 'link' || c.kind === 'youtube' || c.kind === 'image') {
+      const open = document.createElement('button')
+      open.className = 'hbtn'
+      open.textContent = 'Ouvrir'
+      open.onclick = () => void postJSON('/open-url', { url: e.text.trim() }).catch(() => toast('Impossible d’ouvrir'))
+      li.appendChild(open)
+    }
     const btnCopy = document.createElement('button')
     btnCopy.className = 'hbtn'
     btnCopy.textContent = 'Copier'
@@ -285,7 +364,7 @@ function renderClipHistory() {
     del.textContent = '✕'
     del.title = 'Supprimer'
     del.onclick = () => void postJSON(`/cliphistory/${e.id}/remove`, {}).then(refresh)
-    li.append(main, btnCopy, btnPhone, del)
+    li.append(btnCopy, btnPhone, del)
     list.appendChild(li)
   }
 }
@@ -344,6 +423,7 @@ function renderShortcutSection() {
 
 function renderAll() {
   if (!state) return
+  applyTheme(state.config.theme)
   $('pcNameHead').textContent = state.config.deviceName
   $('pcNodeName').textContent = state.config.deviceName
   $('netInfo').textContent = `${state.ips[0] ?? '127.0.0.1'}:${state.config.port}`
@@ -655,6 +735,7 @@ function initUI() {
   $('btnSaveSettings').onclick = async () => {
     try {
       await postJSON('/settings', {
+        theme: ($('setTheme') as unknown as HTMLSelectElement).value,
         deviceName: ($('setName') as unknown as HTMLInputElement).value,
         downloadDir: ($('setDir') as unknown as HTMLInputElement).value,
         maxFileMB: Number(($('setMax') as unknown as HTMLSelectElement).value),
@@ -673,6 +754,27 @@ function initUI() {
   ;($('shortcutDevice') as unknown as HTMLSelectElement).onchange = () => {
     currentDeviceId = ($('shortcutDevice') as unknown as HTMLSelectElement).value
     renderShortcutSection()
+  }
+
+  ;($('setTheme') as unknown as HTMLSelectElement).onchange = (e) => {
+    applyTheme((e.target as HTMLSelectElement).value as 'system' | 'light' | 'dark')
+  }
+
+  const REPO = 'https://github.com/MrFrosas/flitdrop'
+  const openIssue = (kind: 'bug' | 'idea') => {
+    const title = kind === 'bug' ? 'Problème : ' : 'Idée : '
+    const os = navigator.platform || ''
+    const body = `\n\n---\nVersion : v${state?.version ?? ''} · ${os}`
+    void postJSON('/open-url', {
+      url: `${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`,
+    }).catch(() => toast('Impossible d’ouvrir GitHub'))
+  }
+  $('btnReportBug').onclick = () => openIssue('bug')
+  $('btnSuggest').onclick = () => openIssue('idea')
+  $('btnSavePrivacy').onclick = async () => {
+    await postJSON('/settings', { telemetryConsent: ($('setTelemetry') as unknown as HTMLInputElement).checked })
+    toast('Préférence enregistrée ✓')
+    void refresh()
   }
 
   const clipSearch = $('clipSearch') as unknown as HTMLInputElement

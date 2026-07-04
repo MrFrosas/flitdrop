@@ -19,6 +19,10 @@ export interface Config {
   clipHistoryEnabled: boolean
   clipHistoryMaxItems: number
   clipHistoryMaxDays: number
+  // apparence de l'interface PC : suit l'OS, ou forcée claire/sombre.
+  theme: 'system' | 'light' | 'dark'
+  // consentement à l'envoi anonyme d'usage et d'erreurs (opt-in, décoché par défaut).
+  telemetryConsent: boolean
 }
 
 export function flitdropHome(override?: string): string {
@@ -52,6 +56,8 @@ export function loadConfig(home: string): Config {
     clipHistoryEnabled: stored.clipHistoryEnabled !== false,
     clipHistoryMaxItems: clampInt(stored.clipHistoryMaxItems, 10, 1000, 200),
     clipHistoryMaxDays: clampInt(stored.clipHistoryMaxDays, 1, 90, 7),
+    theme: stored.theme === 'light' || stored.theme === 'dark' ? stored.theme : 'system',
+    telemetryConsent: stored.telemetryConsent === true,
   }
   saveConfig(home, cfg)
   return cfg

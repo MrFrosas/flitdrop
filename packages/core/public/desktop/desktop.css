@@ -2,68 +2,44 @@
    Acrylic pour les surfaces flottantes, Segoe UI Variable, coins WinUI (8px),
    accent système. Mode clair et sombre automatiques. */
 
+/* color-scheme pilote light-dark(). « système » = suit l'OS ; le réglage de
+   l'app force clair ou sombre en posant data-theme sur <html>. */
+:root { color-scheme: light dark; }
+html[data-theme='light'] { color-scheme: light; }
+html[data-theme='dark'] { color-scheme: dark; }
+
 :root {
-  /* accent Windows 11 (bleu système) */
-  --accent: #005fb8;
-  --accent-2: #0078d4;
-  --accent-press: #004c94;
-  --accent-text: #005fb8;
-  --ok: #0f7b0f;
-  --danger: #c42b1c;
+  /* accent Windows 11 (bleu système) : clair, sombre */
+  --accent: light-dark(#005fb8, #60cdff);
+  --accent-2: light-dark(#0078d4, #4cc2ff);
+  --accent-press: light-dark(#004c94, #99e0ff);
+  --accent-text: light-dark(#005fb8, #60cdff);
+  --ok: light-dark(#0f7b0f, #6ccb5f);
+  --danger: light-dark(#c42b1c, #ff99a4);
 
   --font: 'Segoe UI Variable Display', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
   --font-text: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   --r-card: 8px;
   --r-ctl: 5px;
 
-  /* clair : Mica clair Windows 11 (gris neutre chaud) */
-  --mica-a: #f3f3f3;
-  --mica-b: #eaeaea;
-  --tint: rgba(0, 95, 184, 0.03);
-  --text: #1a1a1a;
-  --text-2: #5c5c5c;
-  --muted: #767676;
-  --layer: #fbfbfb;
-  --layer-2: #ffffff;
-  --card: rgba(255, 255, 255, 0.7);
-  --acrylic: rgba(252, 252, 252, 0.85);
-  --stroke: rgba(0, 0, 0, 0.07);
-  --stroke-2: rgba(0, 0, 0, 0.11);
-  --control: rgba(255, 255, 255, 0.7);
-  --control-hover: rgba(249, 249, 249, 0.9);
-  --field: #ffffff;
-  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-flyout: 0 16px 40px rgba(0, 0, 0, 0.18);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --accent: #60cdff;
-    --accent-2: #4cc2ff;
-    --accent-press: #99e0ff;
-    --accent-text: #60cdff;
-    --ok: #6ccb5f;
-    --danger: #ff99a4;
-
-    /* sombre : Mica sombre Windows 11 (gris neutre, PAS bleu) */
-    --mica-a: #202020;
-    --mica-b: #1b1b1b;
-    --tint: rgba(96, 205, 255, 0.02);
-    --text: #ffffff;
-    --text-2: #cfcfcf;
-    --muted: #9b9b9b;
-    --layer: #2b2b2b;
-    --layer-2: #323232;
-    --card: rgba(255, 255, 255, 0.05);
-    --acrylic: rgba(44, 44, 44, 0.85);
-    --stroke: rgba(255, 255, 255, 0.07);
-    --stroke-2: rgba(255, 255, 255, 0.11);
-    --control: rgba(255, 255, 255, 0.06);
-    --control-hover: rgba(255, 255, 255, 0.09);
-    --field: rgba(255, 255, 255, 0.04);
-    --shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
-    --shadow-flyout: 0 16px 40px rgba(0, 0, 0, 0.5);
-  }
+  /* Mica neutre Windows 11 : clair (gris chaud), sombre (gris neutre, PAS bleu) */
+  --mica-a: light-dark(#f3f3f3, #202020);
+  --mica-b: light-dark(#eaeaea, #1b1b1b);
+  --tint: light-dark(rgba(0, 95, 184, 0.03), rgba(96, 205, 255, 0.02));
+  --text: light-dark(#1a1a1a, #ffffff);
+  --text-2: light-dark(#5c5c5c, #cfcfcf);
+  --muted: light-dark(#767676, #9b9b9b);
+  --layer: light-dark(#fbfbfb, #2b2b2b);
+  --layer-2: light-dark(#ffffff, #323232);
+  --card: light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.05));
+  --acrylic: light-dark(rgba(252, 252, 252, 0.85), rgba(44, 44, 44, 0.85));
+  --stroke: light-dark(rgba(0, 0, 0, 0.07), rgba(255, 255, 255, 0.07));
+  --stroke-2: light-dark(rgba(0, 0, 0, 0.11), rgba(255, 255, 255, 0.11));
+  --control: light-dark(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.06));
+  --control-hover: light-dark(rgba(249, 249, 249, 0.9), rgba(255, 255, 255, 0.09));
+  --field: light-dark(#ffffff, rgba(255, 255, 255, 0.04));
+  --shadow: light-dark(0 4px 12px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.28));
+  --shadow-flyout: light-dark(0 16px 40px rgba(0, 0, 0, 0.18), 0 16px 40px rgba(0, 0, 0, 0.5));
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -121,7 +97,8 @@ body {
 @media (prefers-reduced-motion: reduce) { .view, .hist li, .fcard, .devchip, .modal-card { animation: none !important; } }
 
 /* ---------- radar ---------- */
-.radar-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 440px; }
+/* overflow caché : les ondes ne débordent plus de la zone du radar */
+.radar-wrap { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 440px; overflow: hidden; }
 .radar { position: relative; width: min(520px, 72vh); aspect-ratio: 1; border-radius: 50%; }
 .rring { position: absolute; border-radius: 50%; border: 1px solid var(--stroke-2); }
 .rr1 { inset: 0; }
@@ -209,6 +186,14 @@ body {
 }
 .clip-item .hbtn { flex: none; }
 #clipList { list-style: none; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+/* vignette d'aperçu (miniature YouTube / image) */
+.clip-thumb { flex: none; width: 64px; height: 44px; border-radius: 6px; overflow: hidden; position: relative; background: var(--field); border: 1px solid var(--stroke); display: flex; align-items: center; justify-content: center; }
+.clip-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.clip-thumb-fallback { font-size: 18px; color: var(--muted); }
+.clip-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,0.6); background: rgba(0,0,0,0.18); }
+/* pastille typée (lien, e-mail, code, couleur, texte) */
+.clip-badge { flex: none; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); border: 1px solid var(--stroke); }
+.kind-color .clip-badge { color: transparent; }
 
 /* ---------- vue envoyer ---------- */
 .send-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -250,12 +235,12 @@ label.check input { width: auto; accent-color: var(--accent); }
 }
 .btn:hover { background: var(--control-hover); }
 .btn:active { opacity: 0.7; }
-.btn.primary { background: var(--accent); border: 1px solid transparent; color: #fff; }
+/* accent clair = fond bleu foncé, texte blanc ; accent sombre = bleu clair, texte foncé */
+.btn.primary { background: var(--accent); border: 1px solid transparent; color: light-dark(#fff, #003a63); }
 .btn.primary:hover { background: var(--accent-2); }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--accent-text); }
 .btn.danger { background: var(--control); border-color: var(--stroke-2); color: var(--danger); }
 .btn[disabled] { opacity: 0.5; pointer-events: none; }
-@media (prefers-color-scheme: dark) { .btn.primary { color: #003a63; } }
 
 .settings-card { max-width: 680px; }
 .steps { padding-left: 20px; display: flex; flex-direction: column; gap: 8px; color: var(--text-2); font-size: 13px; }

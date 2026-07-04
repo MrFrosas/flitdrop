@@ -55,6 +55,10 @@ const CSP = [
   "form-action 'self'",
 ].join('; ')
 
+// Variante pour la page du PC (loopback + jeton) : autorise les miniatures https
+// des aperçus de liens dans l'historique du presse-papiers.
+const CSP_ADMIN = CSP.replace("img-src 'self' data: blob:", "img-src 'self' data: blob: https:")
+
 export interface StartOptions {
   port?: number
   home?: string
@@ -166,10 +170,13 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const app = express()
   app.disable('x-powered-by')
 
-  app.use((_req, res, next) => {
+  app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('Referrer-Policy', 'no-referrer')
-    res.setHeader('Content-Security-Policy', CSP)
+    // La page du PC (loopback + jeton) affiche des miniatures d'aperçu de liens
+    // (YouTube, images) dans l'historique du presse-papiers : on autorise donc
+    // les images https, mais seulement là. La page téléphone reste stricte.
+    res.setHeader('Content-Security-Policy', req.path.startsWith('/app') ? CSP_ADMIN : CSP)
     next()
   })
 
@@ -550,6 +557,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         clipHistoryEnabled: cfg.clipHistoryEnabled,
         clipHistoryMaxItems: cfg.clipHistoryMaxItems,
         clipHistoryMaxDays: cfg.clipHistoryMaxDays,
+        theme: cfg.theme,
+        telemetryConsent: cfg.telemetryConsent,
         port: actualPort,
       },
       hostname: os.hostname(),
@@ -671,6 +680,16 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     res.json({ ok: true })
   })
 
+  admin.post('/open-url', jsonSmall, (req, res) => {
+    const url = typeof (req.body as { url?: unknown })?.url === 'string' ? (req.body as { url: string }).url.trim() : ''
+    // uniquement http(s) : on n'ouvre pas file:, javascript:, etc.
+    if (!/^https?:\/\/[^\s]+$/i.test(url) || url.length > 2048) return res.status(400).json({ error: 'lien invalide' })
+    const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open'
+    // le lien est passé en argument unique, jamais interprété par un shell
+    spawn(cmd, [url], { detached: true, stdio: 'ignore' }).unref()
+    res.json({ ok: true })
+  })
+
   admin.post('/approve', jsonSmall, (req, res) => {
     const body = req.body as { id?: unknown; accept?: unknown }
     const cb = typeof body.id === 'string' ? pendingApprovals.get(body.id) : undefined
@@ -712,6 +731,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       cfg.clipHistoryMaxDays = clampInt(body.clipHistoryMaxDays, 1, 90, cfg.clipHistoryMaxDays)
       clipHistory.purge(cfg)
     }
+    if (body.theme === 'system' || body.theme === 'light' || body.theme === 'dark') cfg.theme = body.theme
+    if (typeof body.telemetryConsent === 'boolean') cfg.telemetryConsent = body.telemetryConsent
     saveConfig(home, cfg)
     hub.broadcast('settings-changed', {})
     res.json({ ok: true })

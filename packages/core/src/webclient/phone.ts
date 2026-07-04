@@ -108,6 +108,14 @@ function platformLabel(): { platform: string; label: string } {
   return { platform: 'web', label: 'Téléphone' }
 }
 
+/** Adapte l'apparence au système du téléphone : Apple (iOS/iPadOS) ou Android.
+ *  Chaque OS reçoit sa police système, ses couleurs et ses formes natives. */
+function applyOsSkin() {
+  const { platform } = platformLabel()
+  const os = platform === 'android' ? 'android' : platform === 'web' ? 'web' : 'apple'
+  document.documentElement.setAttribute('data-os', os)
+}
+
 // ---------- appairage ----------
 
 function loadPairing(): Pairing | null {
@@ -537,6 +545,7 @@ function initUI() {
 
 // ---------- démarrage ----------
 
+applyOsSkin()
 initUI()
 pair = loadPairing()
 if (!pair) {

@@ -44,7 +44,7 @@ And it works in **every direction, between every brand**: Windows or Mac on one 
 **Download from the [releases page](https://github.com/MrFrosas/flitdrop/releases/latest).**
 
 - **Windows**: run the `.exe`, done. Installing also adds **Send to → Flitdrop** to the right-click menu in Explorer. (Windows SmartScreen shows an "unknown publisher" prompt at first, since the build is not code-signed yet; that goes away with the Microsoft Store version.)
-- **Mac**: open the `.dmg`, drag Flitdrop into Applications. First open: right-click the app and choose Open, because the build is not notarized yet.
+- **Mac**: open the `.dmg`, drag Flitdrop into Applications. The build is ad-hoc signed but not yet notarized by Apple, so on first open macOS may block it. Two ways through: **System Settings → Privacy & Security → Open Anyway**, or, if it says "damaged", run this once in Terminal: `xattr -cr /Applications/Flitdrop.app`. (Both go away with the notarized Mac App Store version.)
 
 On first launch, a short walkthrough, then a QR code. Scan it with the phone once, and it stays paired, even after the computer restarts. No re-scanning.
 
@@ -107,7 +107,7 @@ npm run dist:mac -w @flitdrop/desktop   # Mac: .dmg
 
 Sur Mac il y a AirDrop, sur Windows rien d'équivalent, et aucun moyen simple d'envoyer un fichier d'un iPhone vers un PC **sans installer d'app sur le téléphone**. Flitdrop le fait, et **dans tous les sens, entre toutes les marques** : Windows ou Mac d'un côté, iPhone, Android, Samsung ou Xiaomi de l'autre. Un Samsung vers un Mac, un iPhone vers un PC, la même app gère tout, ce qu'AirDrop ne sait pas faire.
 
-**Installation** : téléchargez depuis la [page des releases](https://github.com/MrFrosas/flitdrop/releases/latest). Windows : lancez le `.exe` (il ajoute aussi « Envoyer vers Flitdrop » au clic-droit). Mac : ouvrez le `.dmg`, glissez Flitdrop dans Applications. Au premier lancement, un QR code à scanner une fois avec le téléphone, et c'est appairé pour de bon.
+**Installation** : téléchargez depuis la [page des releases](https://github.com/MrFrosas/flitdrop/releases/latest). Windows : lancez le `.exe` (il ajoute aussi « Envoyer vers Flitdrop » au clic-droit). Mac : ouvrez le `.dmg`, glissez Flitdrop dans Applications ; au premier lancement, si macOS bloque, faites Réglages Système → Confidentialité et sécurité → Ouvrir quand même, ou en Terminal `xattr -cr /Applications/Flitdrop.app`. Au premier lancement, un QR code à scanner une fois avec le téléphone, et c'est appairé pour de bon.
 
 **Ce que ça fait** : envoi de fichiers avec reprise automatique, synchro et historique du presse-papiers façon Paste (local, cherchable, rétention réglable), envoi PC vers téléphone (glisser ou clic-droit), radar temps réel, mode hors-ligne sans box, chiffrement de bout en bout.
 

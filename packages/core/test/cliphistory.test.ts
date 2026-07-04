@@ -17,6 +17,8 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     clipHistoryEnabled: true,
     clipHistoryMaxItems: maxItems,
     clipHistoryMaxDays: maxDays,
+    theme: 'system',
+    telemetryConsent: false,
   }
 }
 

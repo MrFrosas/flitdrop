@@ -12,5 +12,7 @@ packages/core/public/desktop/app.js
 apps/desktop/core/
 apps/desktop/public/
 apps/desktop/build/*.png
-# mais on versionne le script d'installation NSIS
+apps/desktop/build/*.ico
+# mais on versionne les scripts de build (NSIS, hook afterPack)
 !apps/desktop/build/installer.nsh
+!apps/desktop/build/afterPack.cjs
