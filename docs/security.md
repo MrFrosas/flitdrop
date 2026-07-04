@@ -16,11 +16,17 @@
 
 **Anti-abuse.** The chunk route rejects unknown devices before reading the body. Rate limits per IP. Bounded JSON bodies. Devices are revocable in one click (key destroyed).
 
-## Accepted trade-offs (v1)
+## Per-PC binding and QR safety (v0.2 → v0.3)
 
-1. **The iOS Shortcut routes (`/api/shortcut/*`) use a bearer token, without application-layer encryption**, because the Shortcuts app cannot do crypto. On a hostile Wi-Fi, content sent by the Shortcut is readable by a local network observer. On your own Wi-Fi (the use case) the risk is low. The token is per-device and revocable. The web page is end-to-end encrypted everywhere.
-2. **No TLS on the LAN**, on purpose: a self-signed certificate triggers blocking warnings on mobile. The application-layer AEAD covers confidentiality and integrity of the data; HTTP metadata (paths, sizes) stays visible on the LAN.
-3. **Shared localhost.** Another program running under your session can read the admin token in `~/.flitdrop/config.json`. That is the standard desktop-app threat model (local malware has already won).
+- **Each computer has a secret `instanceId`.** Every pairing is bound to it. A phone paired to computer A is cryptographically refused by computer B (HTTP 409), even on the same Wi-Fi. The phone also pins the `instanceId` and refuses a different computer answering at the same address. "Reset this PC" rotates it and wipes all pairings, clipboard history and pending files (for lending/selling the machine).
+- **The QR key is single-use (rotation on first hello).** The key in the QR is only an ephemeral *pairing* key. On the phone's first `hello`, the computer generates a fresh **session key**, returns it encrypted under the pairing key, and replaces the stored key. So **a photo of the QR is worthless once the real phone has connected** — the pairing key no longer authenticates anything. Pending (un-scanned) QRs also expire in ~3 minutes, enforced by a timer.
+- **Restrictive file permissions.** `~/.flitdrop` is created `0700` and its sensitive files (`config.json` with the tokens, `devices.json` with the keys, clipboard history and images) are written `0600` — no effect on Windows ACLs, real protection on macOS/Linux against other users and sync tools.
+
+## Accepted trade-offs
+
+1. **The iOS Shortcut routes (`/api/shortcut/*`) use a bearer token, without application-layer encryption**, because the Shortcuts app cannot do crypto. On a hostile Wi-Fi, content sent by the Shortcut is readable by a local network observer. This channel is now a **toggle in Settings** (default on), so you can turn it off on untrusted networks; the rest of the app is end-to-end encrypted regardless.
+2. **No TLS on the LAN**, on purpose: a self-signed certificate triggers blocking warnings on mobile. The application-layer AEAD covers confidentiality and integrity of the data; HTTP metadata (paths, sizes, timing) stays visible on the LAN.
+3. **Shared localhost / same-user malware.** A program running under your own OS user can read `~/.flitdrop` and drive the loopback admin API. This is the universal desktop-app threat model: once code runs as you, local-data confidentiality is lost by definition — no app can fully prevent it. The `0600` perms above shrink the blast radius (other users, backup/sync tools); a future macOS App Sandbox / hardened-runtime build would further contain the app itself from being weaponized.
 
 ## Automated security tests
 

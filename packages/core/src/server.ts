@@ -158,6 +158,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (clipHistory.size() > 0) clipHistory.purge(cfg)
   }, 10 * 60 * 1000)
   clipPurgeTimer.unref?.()
+  // expire les QR d'appairage non scannés (fenêtre d'exploitation d'une photo
+  // du QR minimale, indépendamment des clics sur « Appairer »)
+  const pendingTimer = setInterval(() => devices.prunePending(PENDING_PAIRING_TTL_MS), 60 * 1000)
+  pendingTimer.unref?.()
 
   const pendingApprovals = new Map<string, (ok: boolean) => void>()
   transfers.approvalHook = (info) =>
@@ -207,17 +211,23 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const phoneAuth = (purpose: string) => (req: Request, res: Response, next: NextFunction) => {
     const id = String(req.headers['x-wd-device'] ?? '')
     const dev = id ? devices.get(id) : undefined
-    const key = dev ? devices.key(dev.id) : undefined
-    if (!dev || !key) return res.status(403).json({ error: 'appareil inconnu ou révoqué' })
-    try {
-      const envelope = (req.body as { p?: unknown })?.p
-      if (typeof envelope !== 'string') throw new Error('enveloppe manquante')
-      const payload = openFreshJSON<Record<string, unknown>>(key, envelope, aad(dev.id, purpose), nonces)
-      ;(req as Request & { wd: PhoneContext }).wd = { dev, key, payload }
-      next()
-    } catch {
-      res.status(403).json({ error: 'authentification refusée' })
+    if (!dev) return res.status(403).json({ error: 'appareil inconnu ou révoqué' })
+    const envelope = (req.body as { p?: unknown })?.p
+    if (typeof envelope !== 'string') return res.status(403).json({ error: 'authentification refusée' })
+    // essaie la clé courante puis la clé de session en attente (fenêtre de
+    // rotation) ; si c'est celle en attente qui ouvre, on la promeut (preuve
+    // que le téléphone l'a bien adoptée) et on abandonne l'ancienne.
+    for (const cand of devices.candidateKeys(dev.id)) {
+      try {
+        const payload = openFreshJSON<Record<string, unknown>>(cand.key, envelope, aad(dev.id, purpose), nonces)
+        if (cand.pending) devices.promoteKey(dev.id)
+        ;(req as Request & { wd: PhoneContext }).wd = { dev, key: cand.key, payload }
+        return next()
+      } catch {
+        // clé suivante
+      }
     }
+    res.status(403).json({ error: 'authentification refusée' })
   }
 
   const wd = (req: Request): PhoneContext => (req as Request & { wd: PhoneContext }).wd
@@ -279,6 +289,14 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       name: typeof payload.deviceLabel === 'string' ? payload.deviceLabel : undefined,
       platform: typeof payload.platform === 'string' ? payload.platform : undefined,
     })
+    // Au TOUT PREMIER hello on démarre une rotation « make-before-break » : une
+    // clé de session est générée EN ATTENTE (l'ancienne reste valide) et renvoyée
+    // chiffrée sous l'ancienne (`key`, que le téléphone possède). On la re-renvoie
+    // à chaque hello tant qu'elle n'est pas confirmée : ainsi une réponse perdue
+    // ne bloque jamais le téléphone, et une photo du QR cesse de valoir dès que le
+    // vrai téléphone confirme (1re requête sous la nouvelle clé -> promotion).
+    if (wasPending) devices.beginRotation(dev.id)
+    const rotatedKey = devices.pendingKey(dev.id)
     const fresh = devices.get(dev.id)
     if (wasPending) hub.broadcast('device-paired', { id: dev.id, name: fresh?.name, platform: fresh?.platform })
     else hub.broadcast('device-online', { id: dev.id, name: fresh?.name })
@@ -295,6 +313,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
           // identité de CE PC : le téléphone l'épingle et refuse de dialoguer
           // avec un autre PC qui répondrait à la même adresse (wifi partagé).
           instanceId: cfg.instanceId,
+          // clé de session (présente seulement au 1er hello) : le téléphone
+          // remplace la clé du QR par celle-ci pour la suite.
+          newKey: rotatedKey,
           telemetryConsent: cfg.telemetryConsent,
           // adresses de secours : si l'IP du PC change, la page sait où le
           // retrouver sans re-scanner le QR code.
@@ -327,21 +348,27 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     async (req, res) => {
       const id = String(req.headers['x-wd-device'] ?? '')
       const dev = id ? devices.get(id) : undefined
-      const key = dev ? devices.key(dev.id) : undefined
-      if (!dev || !key) return res.status(403).json({ error: 'appareil inconnu ou révoqué' })
+      if (!dev) return res.status(403).json({ error: 'appareil inconnu ou révoqué' })
       const t = transfers.get(String(req.params.tid))
       if (!t || t.deviceId !== dev.id) return res.status(404).json({ error: 'transfert introuvable' })
       const n = Number(req.params.n)
       if (!Number.isInteger(n) || n < 0 || n >= t.chunks) return res.status(400).json({ error: 'index invalide' })
-      // ré-émission d'un chunk déjà écrit (reprise après coupure) : ack idempotent
-      if (n < t.received) return res.json({ received: t.received })
+      // ré-émission d'un chunk déjà écrit (reprise / envoi parallèle) : ack idempotent
+      if (t.have.has(n)) return res.json({ received: t.received })
       if (!Buffer.isBuffer(req.body)) return res.status(400).json({ error: 'corps manquant' })
-      let plain: Uint8Array
-      try {
-        plain = open(key, new Uint8Array(req.body), aad(dev.id, 'chunk', `${t.id}|${n}`))
-      } catch {
-        return res.status(403).json({ error: 'chunk corrompu ou clé invalide' })
+      // même déchiffrement double-clé que phoneAuth (fenêtre de rotation).
+      // req.body (Buffer) EST déjà un Uint8Array : pas de copie inutile de 8 Mo.
+      let plain: Uint8Array | undefined
+      for (const cand of devices.candidateKeys(dev.id)) {
+        try {
+          plain = open(cand.key, req.body, aad(dev.id, 'chunk', `${t.id}|${n}`))
+          if (cand.pending) devices.promoteKey(dev.id)
+          break
+        } catch {
+          // clé suivante
+        }
       }
+      if (!plain) return res.status(403).json({ error: 'chunk corrompu ou clé invalide' })
       try {
         await transfers.writeChunk(t, n, plain)
         res.json({ received: t.received })
@@ -361,7 +388,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (!dev) return res.status(403).json({ error: 'appareil inconnu ou révoqué' })
     const t = transfers.get(String(req.params.tid))
     if (!t || t.deviceId !== dev.id) return res.status(404).json({ error: 'transfert introuvable' })
-    res.json({ received: t.received, chunks: t.chunks, bytes: t.bytes, size: t.size })
+    // `have` = indices déjà reçus : le téléphone reprend en ne renvoyant QUE ce
+    // qui manque (envoi parallèle, reprise après coupure), à l'octet près.
+    res.json({ received: t.received, chunks: t.chunks, bytes: t.bytes, size: t.size, have: [...t.have] })
   })
 
   app.post('/api/phone/transfer/:tid/finish', jsonSmall, phoneAuth('finish'), async (req, res) => {
@@ -488,7 +517,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         const sealed = seal(key, chunk as Buffer, aad(dev.id, 'dl', `${item.id}|${index}`))
         const len = Buffer.alloc(4)
         len.writeUInt32BE(sealed.length, 0)
-        const okWrite = res.write(Buffer.concat([len, Buffer.from(sealed)]))
+        // deux écritures (entête + charge) : évite un Buffer.concat/copie par frame
+        res.write(len)
+        const okWrite = res.write(sealed)
         if (!okWrite) {
           // attendre le drain, mais débloquer si la connexion se ferme
           await new Promise<void>((resolve) => {
@@ -526,7 +557,16 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   // ---------- API Raccourci iOS (jeton simple, voir docs/raccourci-ios.md) ----------
 
-  const rlShortcut = rateLimit(120, 60_000)
+  const rlShortcut = rateLimit(60, 60_000)
+
+  // Le partage par Raccourci est pratique mais NON chiffré (jeton et contenu en
+  // clair sur le réseau). On peut le couper : sur un wifi public non fiable, ou
+  // si on n'utilise pas cette fonctionnalité.
+  app.use('/api/shortcut', (req, res, next) => {
+    if (!cfg.shortcutsEnabled)
+      return res.status(403).type('text/plain; charset=utf-8').send('Le partage par Raccourci est désactivé sur ce PC (réglage « Partage direct iPhone »).')
+    next()
+  })
 
   const shortcutDevice = (req: Request): Device | undefined => {
     const token = String(req.query.t ?? '')
@@ -623,6 +663,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         clipHistoryMaxDays: cfg.clipHistoryMaxDays,
         theme: cfg.theme,
         skin: cfg.skin,
+        lang: cfg.lang,
+        shortcutsEnabled: cfg.shortcutsEnabled,
         telemetryConsent: cfg.telemetryConsent,
         port: actualPort,
       },
@@ -838,6 +880,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
     if (body.theme === 'system' || body.theme === 'light' || body.theme === 'dark') cfg.theme = body.theme
     if (body.skin === 'auto' || body.skin === 'apple' || body.skin === 'windows') cfg.skin = body.skin
+    if (body.lang === 'auto' || body.lang === 'fr' || body.lang === 'en') cfg.lang = body.lang
+    if (typeof body.shortcutsEnabled === 'boolean') cfg.shortcutsEnabled = body.shortcutsEnabled
     if (typeof body.telemetryConsent === 'boolean') cfg.telemetryConsent = body.telemetryConsent
     saveConfig(home, cfg)
     hub.broadcast('settings-changed', {})
@@ -953,6 +997,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     close: async () => {
       clearInterval(clipTimer)
       clearInterval(clipPurgeTimer)
+      clearInterval(pendingTimer)
       await transfers.closeAll()
       wss.close()
       await new Promise<void>((resolve) => server.close(() => resolve()))

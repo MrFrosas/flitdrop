@@ -54,6 +54,8 @@ interface State {
     clipHistoryMaxDays: number
     theme: 'system' | 'light' | 'dark'
     skin: 'auto' | 'apple' | 'windows'
+    lang: 'auto' | 'fr' | 'en'
+    shortcutsEnabled: boolean
     telemetryConsent: boolean
     port: number
   }
@@ -270,6 +272,7 @@ function renderSettings() {
   ;($('setMax') as unknown as HTMLSelectElement).value = String(state.config.maxFileMB)
   ;($('setApproval') as unknown as HTMLInputElement).checked = state.config.requireApproval
   ;($('setClipboard') as unknown as HTMLInputElement).checked = state.config.clipboardAutoPush
+  ;($('setShortcuts') as unknown as HTMLInputElement).checked = state.config.shortcutsEnabled
   ;($('setClipHistory') as unknown as HTMLInputElement).checked = state.config.clipHistoryEnabled
   ;($('setClipMax') as unknown as HTMLSelectElement).value = String(state.config.clipHistoryMaxItems)
   ;($('setClipDays') as unknown as HTMLSelectElement).value = String(state.config.clipHistoryMaxDays)
@@ -782,6 +785,7 @@ function initUI() {
         maxFileMB: Number(($('setMax') as unknown as HTMLSelectElement).value),
         requireApproval: ($('setApproval') as unknown as HTMLInputElement).checked,
         clipboardAutoPush: ($('setClipboard') as unknown as HTMLInputElement).checked,
+        shortcutsEnabled: ($('setShortcuts') as unknown as HTMLInputElement).checked,
         clipHistoryEnabled: ($('setClipHistory') as unknown as HTMLInputElement).checked,
         clipHistoryMaxItems: Number(($('setClipMax') as unknown as HTMLSelectElement).value),
         clipHistoryMaxDays: Number(($('setClipDays') as unknown as HTMLSelectElement).value),

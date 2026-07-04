@@ -60,7 +60,7 @@ export class History {
     if (this.timer) return
     this.timer = setTimeout(() => {
       this.timer = null
-      fs.writeFile(this.file, JSON.stringify(this.entries), () => {})
+      fs.writeFile(this.file, JSON.stringify(this.entries), { mode: 0o600 }, () => {})
     }, 400)
   }
 }

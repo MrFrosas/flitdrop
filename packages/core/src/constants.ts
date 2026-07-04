@@ -16,7 +16,9 @@ export const MAX_ACTIVE_TRANSFERS_PER_DEVICE = 4
 // large fenêtre : un téléphone qui se met en veille puis revient reprend son
 // transfert tant qu'il ne dépasse pas ce délai d'inactivité.
 export const TRANSFER_IDLE_TIMEOUT_MS = 30 * 60 * 1000
-export const PENDING_PAIRING_TTL_MS = 15 * 60 * 1000
+// un QR d'appairage non scanné expire vite : la fenêtre où une photo du QR
+// serait exploitable reste minimale (le vrai téléphone scanne en quelques sec).
+export const PENDING_PAIRING_TTL_MS = 3 * 60 * 1000
 // hygiène : on oublie automatiquement un appareil appairé resté inactif au-delà
 // de ce délai (évite l'accumulation d'anciens appairages sur une machine).
 export const DEVICE_MAX_IDLE_MS = 60 * 24 * 60 * 60 * 1000

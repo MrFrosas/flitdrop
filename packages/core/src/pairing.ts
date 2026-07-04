@@ -15,6 +15,12 @@ export interface Device {
   // identité du PC qui a créé cet appairage. Un appareil dont l'instanceId ne
   // correspond pas à ce PC est refusé (appairage lié à une autre machine).
   instanceId?: string
+  // clé de session en ATTENTE de confirmation (rotation « make-before-break ») :
+  // générée au 1er hello, renvoyée au téléphone, mais l'ancienne clé reste
+  // valide jusqu'à ce qu'une requête arrive chiffrée sous la nouvelle (preuve
+  // que le téléphone l'a bien reçue). Évite tout blocage si la réponse hello
+  // se perd sur un wifi capricieux.
+  pendingKeyB64?: string
 }
 
 export class DeviceStore {
@@ -32,7 +38,9 @@ export class DeviceStore {
   }
 
   private save(): void {
-    fs.writeFileSync(this.file, JSON.stringify([...this.devices.values()], null, 2))
+    // 0600 : le fichier contient les clés des appareils ; on le garde lisible
+    // par le seul propriétaire (sans effet sur Windows, utile sur macOS/Linux).
+    fs.writeFileSync(this.file, JSON.stringify([...this.devices.values()], null, 2), { mode: 0o600 })
   }
 
   create(instanceId?: string): Device {
@@ -64,6 +72,42 @@ export class DeviceStore {
       if (d.status === 'active' && timingSafeEqualStr(d.shortcutToken, token)) return d
     }
     return undefined
+  }
+
+  /** Démarre une rotation de clé (au tout premier hello) : génère une clé de
+   *  session en attente SANS écraser la clé du QR. Idempotent : un hello répété
+   *  (réponse perdue) renvoie la MÊME clé en attente, pas une nouvelle. */
+  beginRotation(id: string): void {
+    const d = this.devices.get(id)
+    if (!d || d.pendingKeyB64) return
+    d.pendingKeyB64 = b64u.enc(newKey())
+    this.save()
+  }
+
+  /** Clé de session en attente (base64url) à renvoyer au téléphone, ou undefined. */
+  pendingKey(id: string): string | undefined {
+    return this.devices.get(id)?.pendingKeyB64
+  }
+
+  /** Clés à essayer pour déchiffrer une requête : la clé courante, puis la clé
+   *  en attente (fenêtre de rotation). `pending:true` signale qu'ouvrir avec
+   *  celle-ci doit déclencher la promotion. */
+  candidateKeys(id: string): { key: Uint8Array; pending: boolean }[] {
+    const d = this.devices.get(id)
+    if (!d) return []
+    const out = [{ key: b64u.dec(d.keyB64), pending: false }]
+    if (d.pendingKeyB64) out.push({ key: b64u.dec(d.pendingKeyB64), pending: true })
+    return out
+  }
+
+  /** Promotion : le téléphone a prouvé qu'il détient la clé de session ; elle
+   *  devient la clé unique et l'ancienne (celle du QR) est abandonnée. */
+  promoteKey(id: string): void {
+    const d = this.devices.get(id)
+    if (!d || !d.pendingKeyB64) return
+    d.keyB64 = d.pendingKeyB64
+    delete d.pendingKeyB64
+    this.save()
   }
 
   /** Retourne true si l'appareil vient d'être appairé (était en attente). */

@@ -13,6 +13,8 @@ interface HelloRes {
   chunkSize: number
   requireApproval: boolean
   instanceId?: string
+  // clé de session renvoyée au 1er hello : remplace la clé (éphémère) du QR.
+  newKey?: string
   telemetryConsent?: boolean
   hosts?: string[]
 }
@@ -31,7 +33,11 @@ const HOSTS_KEY = 'wd_hosts'
 const SKIN_KEY = 'wd_skin'
 const THEME_KEY = 'wd_theme'
 const INSTALL_KEY = 'wd_install_seen'
-const SEND_CHUNK = 4 * 1024 * 1024
+// 8 Mo = taille de chunk du serveur (CHUNK_SIZE) : moitié moins d'allers-retours.
+const SEND_CHUNK = 8 * 1024 * 1024
+// nombre de chunks envoyés EN PARALLÈLE : sature le wifi au lieu d'attendre
+// chaque accusé de réception (le débit passe de ~3 Mo/s à la vitesse de la ligne).
+const SEND_WINDOW = 4
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
 
@@ -254,6 +260,14 @@ async function connect() {
         localStorage.setItem(PAIR_KEY, JSON.stringify(pair))
       }
     }
+    // rotation de clé : au 1er appairage, le PC renvoie une clé de session (la
+    // réponse a été déchiffrée avec la clé du QR) ; on l'adopte pour la suite,
+    // rendant une éventuelle photo du QR inutilisable.
+    if (hello.newKey && pair) {
+      pair.keyB64 = hello.newKey
+      key = b64uToBytes(hello.newKey)
+      localStorage.setItem(PAIR_KEY, JSON.stringify(pair))
+    }
     initTelemetry({ consent: hello.telemetryConsent === true, version: '' })
     track('phone_connect', { platform })
     $('pcName').textContent = hello.desktopName
@@ -332,10 +346,10 @@ async function sendChunk(tid: string, n: number, sealed: Uint8Array): Promise<vo
   throw lastErr
 }
 
-async function transferStatus(tid: string): Promise<{ received: number; chunks: number } | null> {
+async function transferStatus(tid: string): Promise<{ received: number; chunks: number; have?: number[] } | null> {
   const r = await fetch(`/api/phone/transfer/${tid}/status`, { headers: { 'x-wd-device': pair!.id } })
   if (!r.ok) return null
-  return (await r.json()) as { received: number; chunks: number }
+  return (await r.json()) as { received: number; chunks: number; have?: number[] }
 }
 
 async function sendFile(file: File): Promise<void> {
@@ -359,34 +373,58 @@ async function sendFile(file: File): Promise<void> {
     })
     const tid = init.transferId
     const started = Date.now()
-    let n = 0
+    const acked = new Set<number>()
+    let sentBytes = 0
     let resumes = 0
-    // boucle reprennable : si le réseau coupe (téléphone en veille, wifi perdu),
-    // on demande au PC combien de morceaux il a reçus et on repart de là : sans
-    // renvoyer ce qui est déjà arrivé.
-    while (n < chunks) {
-      try {
-        const slice = file.slice(n * chunkSize, Math.min((n + 1) * chunkSize, file.size))
-        const plain = new Uint8Array(await slice.arrayBuffer())
-        const sealed = seal(key!, plain, aad('chunk', `${tid}|${n}`))
-        await sendChunk(tid, n, sealed)
-        n++
-        const sent = Math.min(file.size, n * chunkSize)
-        const pct = Math.round((sent / file.size) * 100)
-        ui.bar.style.width = pct + '%'
-        const speed = sent / Math.max(0.4, (Date.now() - started) / 1000)
-        ui.state.textContent = `${pct} % · ${fmtSize(speed)}/s`
-      } catch (e) {
-        const err = e as ApiFail
-        // erreur définitive (refus, transfert perdu) : on abandonne
-        if (err.status && err.status !== 429 && err.status < 500 && err.status !== 408) throw e
-        if (resumes >= 30) throw e
+
+    // envoie un chunk (sendChunk retente déjà 3× les erreurs transitoires)
+    const sendOne = async (n: number) => {
+      const slice = file.slice(n * chunkSize, Math.min((n + 1) * chunkSize, file.size))
+      const plain = new Uint8Array(await slice.arrayBuffer())
+      const sealed = seal(key!, plain, aad('chunk', `${tid}|${n}`))
+      await sendChunk(tid, n, sealed)
+      acked.add(n)
+      sentBytes += plain.length
+      const pct = Math.round((sentBytes / file.size) * 100)
+      ui.bar.style.width = pct + '%'
+      const speed = sentBytes / Math.max(0.4, (Date.now() - started) / 1000)
+      ui.state.textContent = `${pct} % · ${fmtSize(speed)}/s`
+    }
+
+    const isHard = (e: ApiFail) => !!e.status && e.status !== 429 && e.status < 500 && e.status !== 408
+
+    // boucle reprennable : à chaque passe on lance SEND_WINDOW envois EN PARALLÈLE
+    // (les workers se partagent la file des chunks restants) ; si le réseau coupe,
+    // on resynchronise avec le PC (quels chunks lui manquent) et on repart, sans
+    // jamais renvoyer ce qui est déjà arrivé.
+    while (acked.size < chunks) {
+      let cursor = 0
+      const worker = async () => {
+        for (;;) {
+          const n = cursor++
+          if (n >= chunks) return
+          if (!acked.has(n)) await sendOne(n)
+        }
+      }
+      const results = await Promise.allSettled(Array.from({ length: Math.min(SEND_WINDOW, chunks) }, worker))
+      const failures = results.filter((r) => r.status === 'rejected').map((r) => (r as PromiseRejectedResult).reason as ApiFail)
+      if (failures.length) {
+        const hard = failures.find(isHard)
+        if (hard) throw hard
+        if (resumes >= 30) throw failures[0]
         resumes++
         ui.state.textContent = 'Connexion perdue, reprise…'
         await new Promise((r) => setTimeout(r, Math.min(8000, 1000 * resumes)))
-        // reprendre à l'octet près : on redemande la position au PC
+        // reprendre à l'octet près : le PC nous dit quels chunks il a déjà
         const st = await transferStatus(tid).catch(() => null)
-        if (st) n = st.received
+        if (st?.have) {
+          acked.clear()
+          sentBytes = 0
+          for (const i of st.have) {
+            acked.add(i)
+            sentBytes += i === chunks - 1 ? file.size - (chunks - 1) * chunkSize : chunkSize
+          }
+        }
       }
     }
     await post(`/api/phone/transfer/${tid}/finish`, 'finish', { transferId: tid })
@@ -480,28 +518,63 @@ async function downloadItem(item: OutboxItem, li: HTMLLIElement) {
     })
     if (!r.ok || !r.body) throw new Error('téléchargement impossible')
     const reader = r.body.getReader()
-    let buf = new Uint8Array(0)
+    // file de morceaux réseau : on ne recopie JAMAIS tout l'accumulateur (l'ancien
+    // code était en O(n²) et ramait sur les gros fichiers). peek/take sont en O(n).
+    const queue: Uint8Array[] = []
+    let queued = 0
     const parts: Uint8Array[] = []
     let frameIndex = 0
     let received = 0
     const total = item.size ?? 0
+    // lit la longueur (4 o) en tête sans consommer, même si elle chevauche 2 morceaux
+    const peekLen = (): number | null => {
+      if (queued < 4) return null
+      const b = new Uint8Array(4)
+      let filled = 0
+      let qi = 0
+      let off = 0
+      while (filled < 4) {
+        const head = queue[qi]!
+        const t = Math.min(head.length - off, 4 - filled)
+        b.set(head.subarray(off, off + t), filled)
+        filled += t
+        off += t
+        if (off >= head.length) {
+          qi++
+          off = 0
+        }
+      }
+      return new DataView(b.buffer).getUint32(0)
+    }
+    // consomme et renvoie n octets de la file
+    const take = (n: number): Uint8Array => {
+      const out = new Uint8Array(n)
+      let filled = 0
+      while (filled < n) {
+        const head = queue[0]!
+        const t = Math.min(head.length, n - filled)
+        out.set(head.subarray(0, t), filled)
+        filled += t
+        if (t === head.length) queue.shift()
+        else queue[0] = head.subarray(t)
+        queued -= t
+      }
+      return out
+    }
     for (;;) {
       const { done, value } = await reader.read()
       if (value) {
-        const merged = new Uint8Array(buf.length + value.length)
-        merged.set(buf, 0)
-        merged.set(value, buf.length)
-        buf = merged
+        queue.push(value)
+        queued += value.length
         for (;;) {
-          if (buf.length < 4) break
-          const len = new DataView(buf.buffer, buf.byteOffset, 4).getUint32(0)
-          if (buf.length < 4 + len) break
-          const sealed = buf.subarray(4, 4 + len)
+          const len = peekLen()
+          if (len === null || queued < 4 + len) break
+          take(4)
+          const sealed = take(len)
           const plain = open(key!, sealed, aad('dl', `${item.id}|${frameIndex}`))
           parts.push(plain)
           received += plain.length
           frameIndex++
-          buf = buf.slice(4 + len)
           if (total > 0) {
             barFill.style.width = Math.round((received / total) * 100) + '%'
             state.textContent = `${Math.round((received / total) * 100)} %`

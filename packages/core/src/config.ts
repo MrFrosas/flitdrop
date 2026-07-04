@@ -29,13 +29,19 @@ export interface Config {
   // style de l'interface : 'auto' suit l'OS réel (Apple sur Mac, Windows sur
   // Windows) ; on peut forcer l'un ou l'autre indépendamment du système.
   skin: 'auto' | 'apple' | 'windows'
+  // langue de l'interface : 'auto' suit le système, sinon forcée.
+  lang: 'auto' | 'fr' | 'en'
+  // partage direct via le Raccourci iOS. Pratique mais NON chiffré (jeton en
+  // clair sur le réseau) : à désactiver sur un wifi public non fiable.
+  shortcutsEnabled: boolean
   // consentement à l'envoi anonyme d'usage et d'erreurs (opt-in, décoché par défaut).
   telemetryConsent: boolean
 }
 
 export function flitdropHome(override?: string): string {
   const h = override || process.env.FLITDROP_HOME || path.join(os.homedir(), '.flitdrop')
-  fs.mkdirSync(h, { recursive: true })
+  // 0700 : dossier privé (clés, presse-papiers, jetons). Sans effet sur Windows.
+  fs.mkdirSync(h, { recursive: true, mode: 0o700 })
   return h
 }
 
@@ -67,6 +73,8 @@ export function loadConfig(home: string): Config {
     clipHistoryMaxDays: clampInt(stored.clipHistoryMaxDays, 1, 90, 7),
     theme: stored.theme === 'light' || stored.theme === 'dark' ? stored.theme : 'system',
     skin: stored.skin === 'apple' || stored.skin === 'windows' ? stored.skin : 'auto',
+    lang: stored.lang === 'fr' || stored.lang === 'en' ? stored.lang : 'auto',
+    shortcutsEnabled: stored.shortcutsEnabled !== false,
     telemetryConsent: stored.telemetryConsent === true,
   }
   saveConfig(home, cfg)
@@ -74,7 +82,8 @@ export function loadConfig(home: string): Config {
 }
 
 export function saveConfig(home: string, cfg: Config): void {
-  fs.writeFileSync(path.join(home, 'config.json'), JSON.stringify(cfg, null, 2))
+  // 0600 : contient le jeton admin et l'instanceId.
+  fs.writeFileSync(path.join(home, 'config.json'), JSON.stringify(cfg, null, 2), { mode: 0o600 })
 }
 
 export function clampInt(v: unknown, min: number, max: number, fallback: number): number {

@@ -24,12 +24,7 @@ interface Phone {
   post: (p: string, purpose: string, obj: Record<string, unknown>) => Promise<Response>
 }
 
-function makePhone(pairUrl: string): Phone {
-  const frag = pairUrl.split('#')[1] as string
-  // format du fragment : id.cléB64.instanceId (l'instanceId lie l'appairage au PC)
-  const parts = frag.split('.')
-  const id = parts[0] as string
-  const key = b64u.dec(parts[1] as string)
+function phoneFrom(id: string, key: Uint8Array): Phone {
   const aad = (purpose: string, extra = '') => `wd1|${id}|${purpose}${extra ? '|' + extra : ''}`
   const envelope = (purpose: string, obj: Record<string, unknown>) =>
     JSON.stringify({ p: sealJSON(key, { ...obj, ts: Date.now(), jti: randomToken(9) }, aad(purpose)) })
@@ -42,6 +37,13 @@ function makePhone(pairUrl: string): Phone {
   return { id, key, aad, envelope, post }
 }
 
+function makePhone(pairUrl: string): Phone {
+  const frag = pairUrl.split('#')[1] as string
+  // format du fragment : id.cléB64.instanceId (l'instanceId lie l'appairage au PC)
+  const parts = frag.split('.')
+  return phoneFrom(parts[0] as string, b64u.dec(parts[1] as string))
+}
+
 async function pairPhone(): Promise<Phone> {
   const res = await admin('/pair/new', { method: 'POST' })
   expect(res.status).toBe(200)
@@ -50,9 +52,10 @@ async function pairPhone(): Promise<Phone> {
   const hello = await phone.post('/api/phone/hello', 'hello', { deviceLabel: 'iPhone de test', platform: 'iphone' })
   expect(hello.status).toBe(200)
   const body = (await hello.json()) as { p: string }
-  const decoded = openJSON<{ desktopName: string }>(phone.key, body.p, phone.aad('hello:res'))
+  const decoded = openJSON<{ desktopName: string; newKey?: string }>(phone.key, body.p, phone.aad('hello:res'))
   expect(decoded.desktopName.length).toBeGreaterThan(0)
-  return phone
+  // rotation de clé au 1er hello : on adopte la clé de session pour la suite.
+  return decoded.newKey ? phoneFrom(phone.id, b64u.dec(decoded.newKey)) : phone
 }
 
 beforeAll(async () => {
@@ -184,6 +187,94 @@ describe('transfert téléphone -> PC', () => {
     expect((await send(sealed1, 1)).status).toBe(200)
     const fin = await phone.post(`/api/phone/transfer/${transferId}/finish`, 'finish', { transferId })
     expect(fin.status).toBe(200)
+  })
+
+  it('accepte les chunks dans le désordre (envoi parallèle) et reconstruit le fichier', async () => {
+    const phone = await pairPhone()
+    const size = 1_600_000
+    const data = crypto.randomBytes(size)
+    const chunkSize = 500_000
+    const chunks = Math.ceil(size / chunkSize) // 4, dernier = 100_000
+    const initRes = await phone.post('/api/phone/transfer/init', 'init', {
+      meta: { name: 'desordre.bin', size, chunkSize, chunks },
+    })
+    const { transferId } = openJSON<{ transferId: string }>(
+      phone.key,
+      ((await initRes.json()) as { p: string }).p,
+      phone.aad('init:res')
+    )
+    const sendChunk = (nn: number) => {
+      const slice = data.subarray(nn * chunkSize, Math.min((nn + 1) * chunkSize, size))
+      const sealed = seal(phone.key, slice, phone.aad('chunk', `${transferId}|${nn}`))
+      return fetch(`${base}/api/phone/transfer/${transferId}/chunk/${nn}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/octet-stream', 'x-wd-device': phone.id },
+        body: sealed as unknown as BodyInit,
+      })
+    }
+    // ordre volontairement mélangé, envoyés EN PARALLÈLE
+    const results = await Promise.all([3, 1, 0, 2].map(sendChunk))
+    for (const r of results) expect(r.status).toBe(200)
+    const st = (await (
+      await fetch(`${base}/api/phone/transfer/${transferId}/status`, { headers: { 'x-wd-device': phone.id } })
+    ).json()) as { received: number; have: number[] }
+    expect(st.received).toBe(4)
+    expect([...st.have].sort((a, b) => a - b)).toEqual([0, 1, 2, 3])
+    const fin = await phone.post(`/api/phone/transfer/${transferId}/finish`, 'finish', { transferId })
+    expect(fin.status).toBe(200)
+    const written = fs.readFileSync(path.join(dl, 'desordre.bin'))
+    expect(Buffer.compare(written, data)).toBe(0)
+  })
+
+  it('des envois concurrents du MÊME chunk ne cassent pas finish()', async () => {
+    const phone = await pairPhone()
+    const size = 1_000_000
+    const data = crypto.randomBytes(size)
+    const chunkSize = 500_000
+    const initRes = await phone.post('/api/phone/transfer/init', 'init', {
+      meta: { name: 'dup.bin', size, chunkSize, chunks: 2 },
+    })
+    const { transferId } = openJSON<{ transferId: string }>(
+      phone.key,
+      ((await initRes.json()) as { p: string }).p,
+      phone.aad('init:res')
+    )
+    const sendChunk = (nn: number) => {
+      const slice = data.subarray(nn * chunkSize, Math.min((nn + 1) * chunkSize, size))
+      const sealed = seal(phone.key, slice, phone.aad('chunk', `${transferId}|${nn}`))
+      return fetch(`${base}/api/phone/transfer/${transferId}/chunk/${nn}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/octet-stream', 'x-wd-device': phone.id },
+        body: sealed as unknown as BodyInit,
+      })
+    }
+    // le chunk 0 est envoyé 3× EN PARALLÈLE (réémissions concurrentes) + le chunk 1
+    const rs = await Promise.all([sendChunk(0), sendChunk(0), sendChunk(0), sendChunk(1)])
+    for (const r of rs) expect(r.status).toBe(200)
+    const fin = await phone.post(`/api/phone/transfer/${transferId}/finish`, 'finish', { transferId })
+    expect(fin.status).toBe(200) // octets non double-comptés -> bytes === size
+    const written = fs.readFileSync(path.join(dl, 'dup.bin'))
+    expect(Buffer.compare(written, data)).toBe(0)
+  })
+
+  it('rejette un chunk de taille incorrecte', async () => {
+    const phone = await pairPhone()
+    const initRes = await phone.post('/api/phone/transfer/init', 'init', {
+      meta: { name: 'badlen.bin', size: 300, chunkSize: 200, chunks: 2 },
+    })
+    const { transferId } = openJSON<{ transferId: string }>(
+      phone.key,
+      ((await initRes.json()) as { p: string }).p,
+      phone.aad('init:res')
+    )
+    // le chunk 0 doit faire exactement 200 o ; on en envoie 150 -> refus
+    const bad = seal(phone.key, crypto.randomBytes(150), phone.aad('chunk', `${transferId}|0`))
+    const r = await fetch(`${base}/api/phone/transfer/${transferId}/chunk/0`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/octet-stream', 'x-wd-device': phone.id },
+      body: bad as unknown as BodyInit,
+    })
+    expect(r.status).toBe(400)
   })
 
   it('rejette un chunk altéré', async () => {
@@ -393,5 +484,53 @@ describe('confidentialité : liaison au PC + historique téléphone', () => {
     expect(reset.status).toBe(200)
     const after = await phone.post('/api/phone/hello', 'hello', { deviceLabel: 'x', platform: 'iphone' })
     expect(after.status).toBe(403)
+  })
+
+  it('rotation make-before-break : une réponse hello perdue ne bloque pas le téléphone', async () => {
+    const res = await admin('/pair/new', { method: 'POST' })
+    const { url } = (await res.json()) as { url: string }
+    const phone = makePhone(url) // clé du QR (K0)
+    const h1 = await phone.post('/api/phone/hello', 'hello', { deviceLabel: 'iPhone', platform: 'iphone' })
+    expect(h1.status).toBe(200) // réponse « perdue » : on ne l'exploite pas
+    // le téléphone re-tente hello sous K0 (comme s'il n'avait rien reçu) : accepté,
+    // et la MÊME clé de session est re-renvoyée
+    const h2 = await phone.post('/api/phone/hello', 'hello', { deviceLabel: 'iPhone', platform: 'iphone' })
+    expect(h2.status).toBe(200)
+    const decoded = openJSON<{ newKey?: string }>(
+      phone.key,
+      ((await h2.json()) as { p: string }).p,
+      phone.aad('hello:res')
+    )
+    expect(typeof decoded.newKey).toBe('string')
+  })
+
+  it('la clé du QR est consommée APRÈS confirmation : une photo du QR ne vaut alors plus rien', async () => {
+    const res = await admin('/pair/new', { method: 'POST' })
+    const { url } = (await res.json()) as { url: string }
+    const real0 = makePhone(url) // clé du QR (K0)
+    const h1 = await real0.post('/api/phone/hello', 'hello', { deviceLabel: 'iPhone', platform: 'iphone' })
+    expect(h1.status).toBe(200)
+    const decoded = openJSON<{ newKey?: string }>(
+      real0.key,
+      ((await h1.json()) as { p: string }).p,
+      real0.aad('hello:res')
+    )
+    expect(typeof decoded.newKey).toBe('string')
+    // le vrai téléphone adopte la clé de session et s'en sert (=> promotion, K0 abandonnée)
+    const real1 = phoneFrom(real0.id, b64u.dec(decoded.newKey as string))
+    const confirm = await real1.post('/api/phone/outbox', 'outbox', {})
+    expect(confirm.status).toBe(200)
+    // désormais une photo du QR (clé K0) est refusée
+    const attacker = makePhone(url)
+    const h2 = await attacker.post('/api/phone/hello', 'hello', { deviceLabel: 'pirate', platform: 'iphone' })
+    expect(h2.status).toBe(403)
+  })
+
+  it('le partage par Raccourci peut être désactivé', async () => {
+    const original = srv.cfg.shortcutsEnabled
+    srv.cfg.shortcutsEnabled = false
+    const r = await fetch(`${base}/api/shortcut/clipboard?t=${'a'.repeat(20)}`)
+    expect(r.status).toBe(403)
+    srv.cfg.shortcutsEnabled = original
   })
 })

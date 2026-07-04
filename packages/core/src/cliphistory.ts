@@ -39,7 +39,7 @@ export class ClipHistory {
   constructor(home: string) {
     this.file = path.join(home, 'cliphistory.json')
     this.imgDir = path.join(home, 'clipimg')
-    fs.mkdirSync(this.imgDir, { recursive: true })
+    fs.mkdirSync(this.imgDir, { recursive: true, mode: 0o700 })
     try {
       const list = JSON.parse(fs.readFileSync(this.file, 'utf8')) as ClipEntry[]
       if (Array.isArray(list)) {
@@ -71,7 +71,7 @@ export class ClipHistory {
     const id = randomToken(6)
     const file = path.join(this.imgDir, `${id}.png`)
     try {
-      fs.writeFileSync(file, png)
+      fs.writeFileSync(file, png, { mode: 0o600 })
     } catch {
       return null
     }
@@ -155,7 +155,8 @@ export class ClipHistory {
     if (this.timer) return
     this.timer = setTimeout(() => {
       this.timer = null
-      fs.writeFile(this.file, JSON.stringify(this.entries), () => {})
+      // 0600 : l'historique du presse-papiers peut contenir des données sensibles
+      fs.writeFile(this.file, JSON.stringify(this.entries), { mode: 0o600 }, () => {})
     }, 400)
   }
 }

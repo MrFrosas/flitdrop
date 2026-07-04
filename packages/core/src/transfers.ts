@@ -31,6 +31,9 @@ export interface Transfer {
   chunkSize: number
   received: number
   bytes: number
+  /** indices déjà écrits : permet un envoi PARALLÈLE (hors ordre) tout en
+   *  restant idempotent et vérifiable à la reprise. */
+  have: Set<number>
   tmpPath: string
   status: 'active' | 'done' | 'error'
   startedAt: number
@@ -111,6 +114,7 @@ export class TransferManager {
       chunkSize,
       received: 0,
       bytes: 0,
+      have: new Set<number>(),
       tmpPath,
       status: 'active',
       startedAt: Date.now(),
@@ -132,21 +136,37 @@ export class TransferManager {
     return this.active.get(id)
   }
 
+  /** Longueur EXACTE attendue pour un chunk donné (le dernier est plus court).
+   *  On la vérifie strictement : empêche un chunk qui déborde/chevauche un autre
+   *  et toute triche sur la taille annoncée. */
+  private expectedLen(t: Transfer, index: number): number {
+    return index === t.chunks - 1 ? t.size - (t.chunks - 1) * t.chunkSize : t.chunkSize
+  }
+
   async writeChunk(t: Transfer, index: number, plain: Uint8Array): Promise<void> {
     if (t.status !== 'active') throw new ApiError('transfert terminé')
-    if (index !== t.received) throw new ApiError('ordre de chunks invalide')
-    if (plain.length > t.chunkSize) throw new ApiError('chunk trop grand')
-    if (t.bytes + plain.length > t.size) throw new ApiError('dépassement de la taille annoncée')
+    if (!Number.isInteger(index) || index < 0 || index >= t.chunks) throw new ApiError('index invalide')
+    // idempotent : un chunk déjà écrit (reprise, réémission) est acquitté sans réécriture
+    if (t.have.has(index)) return
+    if (plain.length !== this.expectedLen(t, index)) throw new ApiError('taille de chunk invalide')
     const handle = this.handles.get(t.id)
     if (!handle) throw new ApiError('transfert introuvable', 404)
+    // RÉSERVATION avant tout await : ferme la fenêtre TOCTOU. Une 2e requête
+    // concurrente du même index (réémission, reprise) verra have.has(index)=true
+    // et sortira tout de suite -> les octets ne sont comptés qu'UNE fois, sinon
+    // t.bytes dépasserait t.size et finish() échouerait à jamais.
+    t.have.add(index)
     try {
-      await handle.write(plain, 0, plain.length, t.bytes)
+      // écriture POSITIONNELLE à l'offset du chunk : les chunks peuvent arriver
+      // dans n'importe quel ordre (envoi parallèle), chacun à sa place.
+      await handle.write(plain, 0, plain.length, index * t.chunkSize)
     } catch (e) {
+      t.have.delete(index) // rollback : cet index n'a pas été écrit
       await this.abort(t, 'erreur d’écriture disque')
       throw new ApiError('erreur d’écriture disque', 500)
     }
     t.bytes += plain.length
-    t.received++
+    t.received = t.have.size
     t.lastActivity = Date.now()
 
     const last = this.lastProgressPush.get(t.id) ?? 0

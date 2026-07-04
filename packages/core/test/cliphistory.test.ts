@@ -20,6 +20,8 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     clipHistoryMaxDays: maxDays,
     theme: 'system',
     skin: 'auto',
+    lang: 'auto',
+    shortcutsEnabled: true,
     telemetryConsent: false,
   }
 }
