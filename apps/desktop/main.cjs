@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, Notification, shell } = require('electron')
+const { app, BrowserWindow, Tray, Menu, Notification, clipboard, nativeImage, shell } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 
@@ -6,6 +6,38 @@ let win = null
 let tray = null
 let core = null
 let quitting = false
+let clipImageTimer = null
+
+// Surveille les IMAGES du presse-papiers (ce que la page web ne peut pas lire).
+// Electron donne la vraie image copiée : on en fait une miniature et on la
+// confie au coeur pour l'historique. `lastSig` évite les doublons.
+function watchClipboardImages() {
+  let lastSig = ''
+  clipImageTimer = setInterval(() => {
+    if (!core || !core.cfg.clipHistoryEnabled) return
+    let img
+    try {
+      img = clipboard.readImage()
+    } catch {
+      return
+    }
+    if (!img || img.isEmpty()) return
+    const size = img.getSize()
+    const png = img.toPNG()
+    const sig = `${png.length}:${size.width}x${size.height}`
+    if (sig === lastSig) return
+    lastSig = sig
+    // miniature 256px de large max pour l'aperçu
+    const thumbImg = size.width > 256 ? img.resize({ width: 256 }) : img
+    const thumb = thumbImg.toDataURL()
+    try {
+      core.addClipboardImage(png, thumb, size.width, size.height)
+    } catch {
+      // non critique
+    }
+  }, 1500)
+  clipImageTimer.unref?.()
+}
 
 // fichiers passés en argument : clic-droit "Envoyer vers > Flitdrop" dans
 // l'Explorateur Windows, "Ouvrir avec", ou glisser sur l'icône de l'app.
@@ -74,7 +106,18 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     const { startServer } = require(path.join(__dirname, 'core', 'flitdrop.cjs'))
-    core = await startServer({ quiet: true })
+    core = await startServer({
+      quiet: true,
+      // recopie d'une image de l'historique dans le presse-papiers système
+      writeImageToClipboard: (png) => {
+        try {
+          clipboard.writeImage(nativeImage.createFromBuffer(png))
+        } catch {
+          // non critique
+        }
+      },
+    })
+    watchClipboardImages()
     const isMac = process.platform === 'darwin'
     const isWin = process.platform === 'win32'
     const osTag = isMac ? 'mac' : isWin ? 'win' : 'linux'

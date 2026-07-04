@@ -63,6 +63,9 @@ body {
   line-height: 1.45;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+  text-rendering: optimizeLegibility;
   overflow-x: hidden;
 }
 /* Android : Material réduit le crénage serré et le verre translucide */
@@ -106,29 +109,51 @@ html[data-os='android'] .modal-card, html[data-os='android'] .iconbtn { backdrop
 h1 { font-weight: 700; font-size: 27px; line-height: 1.2; letter-spacing: -0.02em; text-wrap: balance; }
 .lead { color: var(--muted); font-size: 16px; max-width: 32ch; margin: 0 auto; }
 
-/* ---------- écran principal ---------- */
-.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding: 2px 2px 0; }
-.pc { display: flex; align-items: center; gap: 11px; }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 16%, transparent); flex: none; }
-.dot.off { background: var(--danger); box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 16%, transparent); }
-.pc-label { font-size: 12.5px; color: var(--muted); }
-.pc-name { font-weight: 650; font-size: 19px; letter-spacing: -0.02em; }
+/* ---------- écran principal : barre de nav + grand titre iOS 26 ---------- */
+.topbar { display: block; margin-bottom: 18px; padding: 0 1px; }
+.nav-row { display: flex; align-items: center; justify-content: space-between; min-height: 40px; }
+.nav-title { font-weight: 590; font-size: 17px; letter-spacing: -0.02em; color: var(--text); }
+.large-title { font-weight: 700; font-size: 34px; line-height: 1.08; letter-spacing: -0.035em; margin-top: 4px; }
+.conn { display: flex; align-items: center; gap: 7px; margin-top: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 16%, transparent); flex: none; }
+.dot.off { background: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent); }
+.conn .pc-name { font-weight: 400; font-size: 15px; letter-spacing: -0.01em; color: var(--muted); }
 .iconbtn {
-  width: 40px; height: 40px; border-radius: 50%; border: 0.5px solid var(--hair);
+  width: 34px; height: 34px; border-radius: 50%; border: 0.5px solid var(--hair);
   background: var(--glass); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
-  color: var(--text); font-size: 19px; cursor: pointer;
+  color: var(--text); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1);
 }
+.iconbtn:active { transform: scale(0.9); }
 
-/* segmented control iOS */
-.tabs { display: flex; gap: 2px; background: var(--seg); border-radius: 12px; padding: 3px; margin-bottom: 20px; }
+/* segmented control iOS 26 (piste dépolie, pastille flottante en verre) */
+.tabs { display: flex; gap: 0; background: var(--seg); border-radius: 11px; padding: 2px; margin-bottom: 20px; }
 .tab {
-  flex: 1; padding: 9px 6px; border: 0; border-radius: 9px; background: transparent;
-  color: var(--text); font: 600 14.5px var(--font); cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  flex: 1; padding: 8px 6px; border: 0; border-radius: 9px; background: transparent;
+  color: var(--text); font: 510 14px var(--font); letter-spacing: -0.01em; cursor: pointer;
+  transition: color 0.2s ease, background 0.25s cubic-bezier(0.32, 0.72, 0, 1);
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  position: relative;
 }
-.tab.active { background: var(--glass-strong); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 1px 6px rgba(20, 30, 60, 0.12); color: var(--text); }
+/* fins séparateurs entre segments inactifs, effacés autour de la pastille active */
+.tab:not(.active) + .tab:not(.active)::before {
+  content: ''; position: absolute; left: 0; top: 22%; bottom: 22%; width: 1px;
+  background: var(--hair-line);
+}
+.tab.active {
+  background: var(--glass-strong); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  color: var(--text); font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 3px 8px rgba(0, 0, 0, 0.06);
+}
+.tab:active { transform: scale(0.96); }
 .badge { background: var(--blue); color: var(--on-accent); font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 7px; min-width: 18px; }
+
+/* Android : entête Material (barre d'app + titre medium), segmented arrondi */
+html[data-os='android'] .large-title { font-size: 24px; font-weight: 500; letter-spacing: 0; margin-top: 2px; }
+html[data-os='android'] .nav-title { font-weight: 500; }
+html[data-os='android'] .tabs { border-radius: var(--radius-ctl); }
+html[data-os='android'] .tab { border-radius: calc(var(--radius-ctl) - 2px); }
+html[data-os='android'] .tab.active { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); }
 
 .panel { display: flex; flex-direction: column; gap: 13px; animation: fade 0.3s ease both; }
 @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -144,10 +169,15 @@ h1 { font-weight: 700; font-size: 27px; line-height: 1.2; letter-spacing: -0.02e
   transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .bigsend:active { transform: scale(0.98); }
-.bigsend > svg { color: var(--blue); }
+.bigsend > svg {
+  color: var(--blue); box-sizing: border-box;
+  width: 60px; height: 60px; padding: 14px; border-radius: 19px;
+  background: color-mix(in srgb, var(--blue) 13%, transparent);
+}
+html[data-os='android'] .bigsend > svg { border-radius: 16px; background: color-mix(in srgb, var(--blue) 16%, transparent); }
 .bigsend b { font-weight: 650; font-size: 19px; letter-spacing: -0.02em; }
 .bigsend small { color: var(--muted); font-size: 14px; max-width: 30ch; }
-.bigsend-halo { position: absolute; left: 50%; top: 30px; width: 76px; height: 76px; margin-left: -38px; border-radius: 50%; border: 1.5px solid color-mix(in srgb, var(--blue) 40%, transparent); animation: sonar 2.6s ease-out infinite; pointer-events: none; }
+.bigsend-halo { position: absolute; left: 50%; top: 34px; width: 92px; height: 92px; margin-left: -46px; border-radius: 22px; border: 1.5px solid color-mix(in srgb, var(--blue) 34%, transparent); animation: sonar 2.6s ease-out infinite; pointer-events: none; }
 
 .send-summary { font-size: 14px; color: var(--muted); text-align: center; }
 .send-summary b { color: var(--blue); }

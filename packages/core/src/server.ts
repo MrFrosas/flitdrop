@@ -64,6 +64,9 @@ export interface StartOptions {
   home?: string
   quiet?: boolean
   disableClipboard?: boolean
+  // fourni par l'app de bureau (Electron) pour recopier une image de
+  // l'historique dans le presse-papiers du système.
+  writeImageToClipboard?: (png: Buffer) => void
 }
 
 export interface RunningServer {
@@ -75,6 +78,9 @@ export interface RunningServer {
   /** Met des fichiers locaux à disposition des téléphones (clic-droit
    *  « Envoyer vers », glisser sur l'icône, ligne de commande). */
   addLocalFiles: (paths: string[]) => Promise<number>
+  /** Enregistre une image copiée sur le PC dans l'historique du presse-papiers
+   *  (appelé par l'app de bureau qui lit l'image via Electron). */
+  addClipboardImage: (png: Buffer, thumb: string, w: number, h: number) => void
   close: () => Promise<void>
 }
 
@@ -123,6 +129,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // téléphones (si la synchro est activée). `lastClip` sert d'anti-boucle : le
   // texte reçu d'un téléphone ne doit pas être renvoyé.
   let lastClip = ''
+  // pour les images : l'app de bureau pousse les images copiées via
+  // addClipboardImage. `lastImageHash` évite de ré-enregistrer une image qu'on
+  // vient de recopier soi-même depuis l'historique.
+  let lastImageHash = ''
+  const imageHash = (png: Buffer): string => `${png.length}:${png.length > 64 ? png.subarray(0, 64).toString('hex') : png.toString('hex')}`
   readClipboard().then((t) => (lastClip = t)).catch(() => {})
   const clipTimer = setInterval(async () => {
     if (!cfg.clipboardAutoPush && !cfg.clipHistoryEnabled) return
@@ -576,12 +587,23 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   admin.post('/cliphistory/:id/copy', async (req, res) => {
     const entry = clipHistory.get(String(req.params.id))
     if (!entry) return res.status(404).json({ error: 'entrée introuvable' })
-    const ok = await writeClipboard(entry.text).then(
-      () => true,
-      () => false
-    )
-    if (!ok) return res.status(500).json({ error: 'impossible d’écrire dans le presse-papiers' })
-    lastClip = entry.text
+    if (entry.kind === 'image' && entry.image) {
+      if (!opts.writeImageToClipboard) return res.status(400).json({ error: 'recopie d’image indisponible' })
+      try {
+        const png = fs.readFileSync(entry.image.path)
+        opts.writeImageToClipboard(png)
+        lastImageHash = imageHash(png)
+      } catch {
+        return res.status(410).json({ error: 'image plus disponible' })
+      }
+    } else {
+      const ok = await writeClipboard(entry.text).then(
+        () => true,
+        () => false
+      )
+      if (!ok) return res.status(500).json({ error: 'impossible d’écrire dans le presse-papiers' })
+      lastClip = entry.text
+    }
     clipHistory.bump(entry.id)
     hub.broadcast('cliphistory-changed', {})
     res.json({ ok: true })
@@ -590,7 +612,19 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   admin.post('/cliphistory/:id/tophone', (req, res) => {
     const entry = clipHistory.get(String(req.params.id))
     if (!entry) return res.status(404).json({ error: 'entrée introuvable' })
-    outbox.addText(entry.text)
+    if (entry.kind === 'image' && entry.image) {
+      const reserved = reserveUniquePath(outbox.dir, `image-${entry.id}.png`)
+      fs.closeSync(reserved.fd)
+      try {
+        fs.copyFileSync(entry.image.path, reserved.path)
+      } catch {
+        return res.status(410).json({ error: 'image plus disponible' })
+      }
+      const st = fs.statSync(reserved.path)
+      outbox.addFile(path.basename(reserved.path), reserved.path, st.size, 'image/png')
+    } else {
+      outbox.addText(entry.text)
+    }
     hub.broadcast('outbox-changed', {})
     res.json({ ok: true })
   })
@@ -828,6 +862,15 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     return added
   }
 
+  const addClipboardImage = (png: Buffer, thumb: string, w: number, h: number): void => {
+    if (!cfg.clipHistoryEnabled || !png || png.length === 0) return
+    const hash = imageHash(png)
+    if (hash === lastImageHash) return // image qu'on vient de recopier soi-même
+    lastImageHash = hash
+    const entry = clipHistory.addImage(png, thumb, w, h, 'pc', cfg)
+    if (entry) hub.broadcast('cliphistory-changed', {})
+  }
+
   return {
     port: actualPort,
     adminToken: cfg.adminToken,
@@ -835,6 +878,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     home,
     adminUrl,
     addLocalFiles,
+    addClipboardImage,
     close: async () => {
       clearInterval(clipTimer)
       clearInterval(clipPurgeTimer)

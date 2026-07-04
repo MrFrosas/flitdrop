@@ -42,14 +42,14 @@
   <!-- Écran principal -->
   <main id="screen-main" class="screen hidden">
     <header class="topbar">
-      <div class="pc">
-        <span class="dot" id="statusDot"></span>
-        <div>
-          <div class="pc-label">Connecté à</div>
-          <div class="pc-name" id="pcName">…</div>
-        </div>
+      <div class="nav-row">
+        <span class="nav-title">Flitdrop</span>
+        <button class="iconbtn" id="btnMenu" aria-label="Menu">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="19" cy="12" r="1.7" fill="currentColor"/></svg>
+        </button>
       </div>
-      <button class="iconbtn" id="btnMenu" aria-label="Menu">⋯</button>
+      <h1 class="large-title">Partager</h1>
+      <div class="conn"><span class="dot" id="statusDot"></span><span class="pc-name" id="pcName">…</span></div>
     </header>
 
     <nav class="tabs" role="tablist">

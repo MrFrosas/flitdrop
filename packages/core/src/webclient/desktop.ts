@@ -36,7 +36,9 @@ interface ClipEntry {
   id: string
   ts: string
   text: string
+  kind: 'text' | 'image'
   source: string
+  image?: { thumb: string; w: number; h: number }
 }
 interface State {
   product: string
@@ -312,14 +314,15 @@ function renderClipHistory() {
   $('clipDisabled').classList.toggle('hidden', enabled)
   $('clipEmpty').classList.toggle('hidden', !enabled || items.length > 0 || q.length > 0)
   for (const e of items.slice(0, 200)) {
-    const c = classifyClip(e.text)
+    const isImg = e.kind === 'image' && !!e.image
+    const c = isImg ? { kind: 'image' as const, label: 'Image', icon: '▦', domain: undefined, thumb: e.image?.thumb } : classifyClip(e.text)
     const li = document.createElement('li')
     li.className = 'clip-item kind-' + c.kind
 
-    // vignette (miniature YouTube/image) ou pastille de couleur ou icône typée
+    // vignette (image copiée, miniature YouTube/image URL) ou pastille typée
     if (c.thumb) {
       const th = document.createElement('div')
-      th.className = 'clip-thumb'
+      th.className = 'clip-thumb' + (isImg ? ' clip-thumb-img' : '')
       const img = document.createElement('img')
       img.loading = 'lazy'
       img.src = c.thumb
@@ -357,7 +360,7 @@ function renderClipHistory() {
     main.append(txt, sub)
     li.appendChild(main)
 
-    if (c.kind === 'link' || c.kind === 'youtube' || c.kind === 'image') {
+    if (!isImg && (c.kind === 'link' || c.kind === 'youtube' || c.kind === 'image')) {
       const open = document.createElement('button')
       open.className = 'hbtn'
       open.textContent = 'Ouvrir'

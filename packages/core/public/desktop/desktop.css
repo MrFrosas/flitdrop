@@ -273,6 +273,9 @@ html[data-platform='mac'] .feed { background: light-dark(rgba(255,255,255,0.25),
 /* vignette d'aperçu (miniature YouTube / image) */
 .clip-thumb { flex: none; width: 64px; height: 44px; border-radius: 6px; overflow: hidden; position: relative; background: var(--field); border: 1px solid var(--stroke); display: flex; align-items: center; justify-content: center; }
 .clip-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* image copiée : damier discret sous les PNG transparents, aperçu contain */
+.clip-thumb-img { background-image: linear-gradient(45deg, var(--stroke) 25%, transparent 25%), linear-gradient(-45deg, var(--stroke) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, var(--stroke) 75%), linear-gradient(-45deg, transparent 75%, var(--stroke) 75%); background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0; }
+.clip-thumb-img img { object-fit: contain; }
 .clip-thumb-fallback { font-size: 18px; color: var(--muted); }
 .clip-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; text-shadow: 0 1px 3px rgba(0,0,0,0.6); background: rgba(0,0,0,0.18); }
 /* pastille typée (lien, e-mail, code, couleur, texte) */

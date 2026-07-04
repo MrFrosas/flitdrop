@@ -3,12 +3,24 @@ import path from 'node:path'
 import { randomToken } from './crypto.js'
 import type { Config } from './config.js'
 
+export interface ClipImage {
+  /** fichier PNG complet sur le disque (~/.flitdrop/clipimg/<id>.png) */
+  path: string
+  /** miniature en data URL, pour l'aperçu dans l'historique */
+  thumb: string
+  w: number
+  h: number
+}
+
 export interface ClipEntry {
   id: string
   ts: string
+  /** texte pour une entrée texte, ou légende ("Image 1200×800") pour une image. */
   text: string
+  kind: 'text' | 'image'
   /** 'pc' pour une copie locale, sinon le nom de l'appareil qui a envoyé. */
   source: string
+  image?: ClipImage
 }
 
 // un élément d'historique reste un extrait de presse-papiers, pas un fichier :
@@ -16,29 +28,61 @@ export interface ClipEntry {
 const MAX_TEXT_CHARS = 100_000
 
 /** Historique local du presse-papiers, façon Paste : stocké sur le PC
- *  uniquement (~/.flitdrop/cliphistory.json), jamais envoyé à un serveur,
- *  purgé automatiquement selon la rétention choisie. */
+ *  uniquement (~/.flitdrop/cliphistory.json + clipimg/), jamais envoyé à un
+ *  serveur, purgé automatiquement selon la rétention choisie. */
 export class ClipHistory {
   private entries: ClipEntry[] = []
   private file: string
+  readonly imgDir: string
   private timer: ReturnType<typeof setTimeout> | null = null
 
   constructor(home: string) {
     this.file = path.join(home, 'cliphistory.json')
+    this.imgDir = path.join(home, 'clipimg')
+    fs.mkdirSync(this.imgDir, { recursive: true })
     try {
       const list = JSON.parse(fs.readFileSync(this.file, 'utf8')) as ClipEntry[]
-      if (Array.isArray(list)) this.entries = list.filter((e) => e && typeof e.text === 'string')
+      if (Array.isArray(list)) {
+        this.entries = list
+          .filter((e) => e && typeof e.text === 'string')
+          .map((e) => ({ ...e, kind: e.kind === 'image' ? ('image' as const) : ('text' as const) }))
+      }
     } catch {
       // pas encore d'historique
     }
   }
 
-  /** Ajoute une entrée (dédoublonne contre la plus récente) et purge. */
+  /** Ajoute une entrée texte (dédoublonne contre la plus récente) et purge. */
   add(text: string, source: string, cfg: Config): ClipEntry | null {
     const t = text.length > MAX_TEXT_CHARS ? text.slice(0, MAX_TEXT_CHARS) : text
     if (!t.trim()) return null
-    if (this.entries[0]?.text === t) return null
-    const entry: ClipEntry = { id: randomToken(6), ts: new Date().toISOString(), text: t, source: source.slice(0, 40) }
+    if (this.entries[0]?.kind === 'text' && this.entries[0]?.text === t) return null
+    const entry: ClipEntry = { id: randomToken(6), ts: new Date().toISOString(), text: t, kind: 'text', source: source.slice(0, 40) }
+    this.entries.unshift(entry)
+    this.purge(cfg)
+    this.persist()
+    return entry
+  }
+
+  /** Ajoute une image copiée sur le PC. `png` est écrit sur le disque, `thumb`
+   *  (data URL) sert d'aperçu. */
+  addImage(png: Buffer, thumb: string, w: number, h: number, source: string, cfg: Config): ClipEntry | null {
+    if (!png || png.length === 0) return null
+    const id = randomToken(6)
+    const file = path.join(this.imgDir, `${id}.png`)
+    try {
+      fs.writeFileSync(file, png)
+    } catch {
+      return null
+    }
+    const entry: ClipEntry = {
+      id,
+      ts: new Date().toISOString(),
+      text: `Image ${w}×${h}`,
+      kind: 'image',
+      source: source.slice(0, 40),
+      image: { path: file, thumb, w, h },
+    }
     this.entries.unshift(entry)
     this.purge(cfg)
     this.persist()
@@ -62,28 +106,45 @@ export class ClipHistory {
   }
 
   remove(id: string): boolean {
-    const before = this.entries.length
+    const entry = this.entries.find((e) => e.id === id)
+    if (!entry) return false
     this.entries = this.entries.filter((e) => e.id !== id)
-    if (this.entries.length !== before) {
-      this.persist()
-      return true
-    }
-    return false
+    this.deleteImageFile(entry)
+    this.persist()
+    return true
   }
 
   clear(): void {
+    for (const e of this.entries) this.deleteImageFile(e)
     this.entries = []
     this.persist()
   }
 
   purge(cfg: Config): void {
     const cutoff = Date.now() - cfg.clipHistoryMaxDays * 24 * 60 * 60 * 1000
-    this.entries = this.entries.filter((e) => Date.parse(e.ts) >= cutoff)
-    if (this.entries.length > cfg.clipHistoryMaxItems) this.entries.length = cfg.clipHistoryMaxItems
+    const kept: ClipEntry[] = []
+    const dropped: ClipEntry[] = []
+    for (const e of this.entries) {
+      if (Date.parse(e.ts) >= cutoff && kept.length < cfg.clipHistoryMaxItems) kept.push(e)
+      else dropped.push(e)
+    }
+    this.entries = kept
+    for (const e of dropped) this.deleteImageFile(e)
   }
 
-  list(n = 300): ClipEntry[] {
-    return this.entries.slice(0, n)
+  private deleteImageFile(e: ClipEntry): void {
+    if (e.kind === 'image' && e.image?.path && e.image.path.startsWith(this.imgDir)) {
+      fs.unlink(e.image.path, () => {})
+    }
+  }
+
+  /** Vue publique : sans le chemin disque (usage interne seulement). */
+  list(n = 300): (Omit<ClipEntry, 'image'> & { image?: Omit<ClipImage, 'path'> })[] {
+    return this.entries.slice(0, n).map((e) =>
+      e.kind === 'image' && e.image
+        ? { ...e, image: { thumb: e.image.thumb, w: e.image.w, h: e.image.h } }
+        : e
+    )
   }
 
   size(): number {
