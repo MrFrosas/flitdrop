@@ -13,8 +13,10 @@
     "dist:mac": "npm run prepare:app && electron-builder --mac dir --publish never && node make-dmg.mjs"
   },
   "devDependencies": {
-    "appdmg": "^0.6.6",
     "electron": "33.2.1",
     "electron-builder": "25.1.8"
+  },
+  "optionalDependencies": {
+    "appdmg": "^0.6.6"
   }
 }

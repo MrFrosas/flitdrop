@@ -9,19 +9,12 @@ on:
 permissions:
   contents: write
 
+# Le CI construit l'installeur Windows (.exe) et publie la release. Le .dmg
+# macOS est construit et attache manuellement (appdmg ne compile pas sur le
+# Node du runner ; il tourne de facon fiable en local). Voir docs/release.md.
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            buildscript: 'dist:win:ci'
-            artifact: 'apps/desktop/release/*.exe'
-          - os: macos-latest
-            buildscript: 'dist:mac'
-            artifact: 'apps/desktop/release/*.dmg'
-    runs-on: ${{ matrix.os }}
+  build-windows:
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -39,20 +32,20 @@ jobs:
       - name: Tests
         run: npm test -w @flitdrop/core
 
-      - name: Empaqueter l'installeur
-        run: npm run ${{ matrix.buildscript }} -w @flitdrop/desktop
+      - name: Empaqueter l'installeur Windows
+        run: npm run dist:win:ci -w @flitdrop/desktop
 
       - uses: actions/upload-artifact@v4
         with:
-          name: flitdrop-${{ matrix.os }}
-          path: ${{ matrix.artifact }}
+          name: flitdrop-windows
+          path: apps/desktop/release/*.exe
           if-no-files-found: warn
 
       - name: Publier la release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.artifact }}
+          files: apps/desktop/release/*.exe
           generate_release_notes: true
           body: |
             Flitdrop. L'AirDrop multi-OS, chiffre de bout en bout.
