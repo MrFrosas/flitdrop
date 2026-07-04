@@ -29,6 +29,7 @@ import { NonceCache, open, seal, openFreshJSON, sealJSON, randomToken } from './
 import { readClipboard, writeClipboard } from './clip.js'
 import { ClipHistory } from './cliphistory.js'
 import { saveMultipartFiles } from './uploads.js'
+import { t as tr, resolveLang, langFrom, acceptLang } from './i18n.js'
 import {
   b64u,
   isLoopback,
@@ -39,6 +40,9 @@ import {
   sanitizeFilename,
   timingSafeEqualStr,
 } from './util.js'
+
+// ré-exporté pour l'app Electron (main.cjs) : tray, notifications, dialogue.
+export { t, resolveLang, langFrom } from './i18n.js'
 
 const PUBLIC_DIR = path.join(moduleDir(import.meta.url), '..', 'public')
 const ADMIN_COOKIE = 'wd_admin'
@@ -104,7 +108,7 @@ function rateLimit(max: number, windowMs: number) {
       h = { n: 0, reset: now + windowMs }
       hits.set(ip, h)
     }
-    if (++h.n > max) return res.status(429).json({ error: 'trop de requêtes, réessaie dans une minute' })
+    if (++h.n > max) return res.status(429).json({ code: 'rateLimited' })
     next()
   }
 }
@@ -185,6 +189,12 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const aad = (deviceId: string, purpose: string, extra = '') =>
     `${PROTOCOL_TAG}|${deviceId}|${purpose}${extra ? '|' + extra : ''}`
 
+  // Langue des réponses en clair (Raccourci iOS, garde admin) : le réglage du PC,
+  // sinon la langue de l'appareil/navigateur qui appelle. Les erreurs de l'API
+  // JSON, elles, sont renvoyées en CODES et traduites côté client.
+  const reqLang = (req: Request) => resolveLang(cfg.lang, acceptLang(req.headers['accept-language']))
+  const st = (req: Request, key: string, params?: Record<string, string | number>) => tr(reqLang(req), key, params)
+
   const app = express()
   app.disable('x-powered-by')
 
@@ -211,9 +221,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const phoneAuth = (purpose: string) => (req: Request, res: Response, next: NextFunction) => {
     const id = String(req.headers['x-wd-device'] ?? '')
     const dev = id ? devices.get(id) : undefined
-    if (!dev) return res.status(403).json({ error: 'appareil inconnu ou révoqué' })
+    if (!dev) return res.status(403).json({ code: 'deviceUnknown' })
     const envelope = (req.body as { p?: unknown })?.p
-    if (typeof envelope !== 'string') return res.status(403).json({ error: 'authentification refusée' })
+    if (typeof envelope !== 'string') return res.status(403).json({ code: 'authRefused' })
     // essaie la clé courante puis la clé de session en attente (fenêtre de
     // rotation) ; si c'est celle en attente qui ouvre, on la promeut (preuve
     // que le téléphone l'a bien adoptée) et on abandonne l'ancienne.
@@ -227,7 +237,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         // clé suivante
       }
     }
-    res.status(403).json({ error: 'authentification refusée' })
+    res.status(403).json({ code: 'authRefused' })
   }
 
   const wd = (req: Request): PhoneContext => (req as Request & { wd: PhoneContext }).wd
@@ -247,8 +257,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   app.use('/assets', express.static(path.join(PUBLIC_DIR, 'assets'), { maxAge: '7d' }))
 
   const desktopGuard = (req: Request, res: Response, next: NextFunction) => {
-    if (!isLoopback(req.socket.remoteAddress)) return res.status(403).send('Interface accessible depuis ce PC uniquement.')
-    if (!adminOk(req)) return res.status(401).send(`${PRODUCT_NAME} : lien invalide. Relance l’application pour obtenir le bon lien.`)
+    if (!isLoopback(req.socket.remoteAddress)) return res.status(403).send(st(req, 'srv.loopbackOnly'))
+    if (!adminOk(req)) return res.status(401).send(st(req, 'srv.adminBadLink'))
     if (typeof req.query.k === 'string' && req.query.k.length > 0) {
       res.setHeader('Set-Cookie', `${ADMIN_COOKIE}=${encodeURIComponent(cfg.adminToken)}; HttpOnly; SameSite=Strict; Path=/`)
     }
@@ -275,11 +285,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   app.use('/api/phone', phoneRate, (req, res, next) => {
     const id = String(req.headers['x-wd-device'] ?? '')
     const dev = id ? devices.get(id) : undefined
-    if (!dev) return res.status(403).json({ error: 'appareil inconnu ou révoqué' })
+    if (!dev) return res.status(403).json({ code: 'deviceUnknown' })
     // liaison au PC : un appairage créé sur une autre machine (instanceId
     // différent) est refusé, même s'il se présente sur le même wifi.
     if (dev.instanceId && dev.instanceId !== cfg.instanceId)
-      return res.status(409).json({ error: 'appareil appairé à un autre PC', code: 'wrong_pc' })
+      return res.status(409).json({ code: 'wrongPc' })
     next()
   })
 
@@ -336,7 +346,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       res.json({ p: sealJSON(key, { transferId: t.id }, aad(dev.id, 'init:res')) })
     } catch (e) {
       const err = e as ApiError
-      res.status(err.code ?? 400).json({ error: err.message })
+      res.status(err.code ?? 400).json({ code: err.key ?? 'internal' })
     }
   })
 
@@ -348,14 +358,14 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     async (req, res) => {
       const id = String(req.headers['x-wd-device'] ?? '')
       const dev = id ? devices.get(id) : undefined
-      if (!dev) return res.status(403).json({ error: 'appareil inconnu ou révoqué' })
+      if (!dev) return res.status(403).json({ code: 'deviceUnknown' })
       const t = transfers.get(String(req.params.tid))
-      if (!t || t.deviceId !== dev.id) return res.status(404).json({ error: 'transfert introuvable' })
+      if (!t || t.deviceId !== dev.id) return res.status(404).json({ code: 'transferNotFound' })
       const n = Number(req.params.n)
-      if (!Number.isInteger(n) || n < 0 || n >= t.chunks) return res.status(400).json({ error: 'index invalide' })
+      if (!Number.isInteger(n) || n < 0 || n >= t.chunks) return res.status(400).json({ code: 'badIndex' })
       // ré-émission d'un chunk déjà écrit (reprise / envoi parallèle) : ack idempotent
       if (t.have.has(n)) return res.json({ received: t.received })
-      if (!Buffer.isBuffer(req.body)) return res.status(400).json({ error: 'corps manquant' })
+      if (!Buffer.isBuffer(req.body)) return res.status(400).json({ code: 'missingBody' })
       // même déchiffrement double-clé que phoneAuth (fenêtre de rotation).
       // req.body (Buffer) EST déjà un Uint8Array : pas de copie inutile de 8 Mo.
       let plain: Uint8Array | undefined
@@ -368,7 +378,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
           // clé suivante
         }
       }
-      if (!plain) return res.status(403).json({ error: 'chunk corrompu ou clé invalide' })
+      if (!plain) return res.status(403).json({ code: 'badChunk' })
       try {
         await transfers.writeChunk(t, n, plain)
         res.json({ received: t.received })
@@ -385,9 +395,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   app.get('/api/phone/transfer/:tid/status', (req, res) => {
     const id = String(req.headers['x-wd-device'] ?? '')
     const dev = id ? devices.get(id) : undefined
-    if (!dev) return res.status(403).json({ error: 'appareil inconnu ou révoqué' })
+    if (!dev) return res.status(403).json({ code: 'deviceUnknown' })
     const t = transfers.get(String(req.params.tid))
-    if (!t || t.deviceId !== dev.id) return res.status(404).json({ error: 'transfert introuvable' })
+    if (!t || t.deviceId !== dev.id) return res.status(404).json({ code: 'transferNotFound' })
     // `have` = indices déjà reçus : le téléphone reprend en ne renvoyant QUE ce
     // qui manque (envoi parallèle, reprise après coupure), à l'octet près.
     res.json({ received: t.received, chunks: t.chunks, bytes: t.bytes, size: t.size, have: [...t.have] })
@@ -397,14 +407,14 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const { dev, key, payload } = wd(req)
     const t = transfers.get(String(req.params.tid))
     if (!t || t.deviceId !== dev.id || payload.transferId !== t.id)
-      return res.status(404).json({ error: 'transfert introuvable' })
+      return res.status(404).json({ code: 'transferNotFound' })
     try {
       const finalPath = await transfers.finish(t)
       devices.touch(dev.id)
       res.json({ p: sealJSON(key, { ok: true, name: path.basename(finalPath) }, aad(dev.id, 'finish:res')) })
     } catch (e) {
       const err = e as ApiError
-      res.status(err.code ?? 400).json({ error: err.message })
+      res.status(err.code ?? 400).json({ code: err.key ?? 'internal' })
     }
   })
 
@@ -412,7 +422,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const { dev, key, payload } = wd(req)
     const text = typeof payload.text === 'string' ? payload.text : ''
     if (!text || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES)
-      return res.status(400).json({ error: 'texte vide ou trop long' })
+      return res.status(400).json({ code: 'textEmpty' })
     const mode = payload.mode === 'message' ? 'message' : 'clip'
     let copied = false
     if (mode === 'clip') {
@@ -473,14 +483,14 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   app.post('/api/phone/cliphistory/:id/tophone', jsonSmall, phoneAuth('clip-tophone'), (req, res) => {
     const { dev, key, payload } = wd(req)
     const entry = clipHistory.get(String(req.params.id))
-    if (!entry || payload.entryId !== entry.id) return res.status(404).json({ error: 'entrée introuvable' })
+    if (!entry || payload.entryId !== entry.id) return res.status(404).json({ code: 'entryNotFound' })
     if (entry.kind === 'image' && entry.image) {
       const reserved = reserveUniquePath(outbox.dir, `image-${entry.id}.png`)
       fs.closeSync(reserved.fd)
       try {
         fs.copyFileSync(entry.image.path, reserved.path)
       } catch {
-        return res.status(410).json({ error: 'image plus disponible' })
+        return res.status(410).json({ code: 'imageGone' })
       }
       const st = fs.statSync(reserved.path)
       outbox.addFile(path.basename(reserved.path), reserved.path, st.size, 'image/png')
@@ -492,13 +502,13 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   app.post('/api/phone/outbox/:id/download', jsonSmall, phoneAuth('download'), async (req, res) => {
     const { dev, key, payload } = wd(req)
     const item = outbox.get(String(req.params.id))
-    if (!item || payload.itemId !== item.id) return res.status(404).json({ error: 'élément introuvable' })
-    if (item.kind !== 'file' || !item.filePath) return res.status(400).json({ error: 'pas un fichier' })
+    if (!item || payload.itemId !== item.id) return res.status(404).json({ code: 'itemNotFound' })
+    if (item.kind !== 'file' || !item.filePath) return res.status(400).json({ code: 'notAFile' })
     let stream: fs.ReadStream
     try {
       stream = fs.createReadStream(item.filePath, { highWaterMark: 4 * 1024 * 1024 })
     } catch {
-      return res.status(410).json({ error: 'fichier plus disponible' })
+      return res.status(410).json({ code: 'fileGone' })
     }
     res.setHeader('Content-Type', 'application/octet-stream')
     res.setHeader('Cache-Control', 'no-store')
@@ -564,7 +574,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // si on n'utilise pas cette fonctionnalité.
   app.use('/api/shortcut', (req, res, next) => {
     if (!cfg.shortcutsEnabled)
-      return res.status(403).type('text/plain; charset=utf-8').send('Le partage par Raccourci est désactivé sur ce PC (réglage « Partage direct iPhone »).')
+      return res.status(403).type('text/plain; charset=utf-8').send(st(req, 'srv.shortcutOff'))
     next()
   })
 
@@ -579,11 +589,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   app.post('/api/shortcut/upload', rlShortcut, async (req, res) => {
     const dev = shortcutDevice(req)
-    if (!dev) return res.status(401).type('text/plain; charset=utf-8').send('Jeton invalide. Re-scanne le QR code Flitdrop sur ton PC.')
+    if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
     fs.mkdirSync(cfg.downloadDir, { recursive: true })
     try {
       const saved = await saveMultipartFiles(req, cfg.downloadDir, cfg.maxFileMB * 1024 * 1024)
-      if (saved.length === 0) return res.status(400).type('text/plain; charset=utf-8').send('Aucun fichier reçu.')
+      if (saved.length === 0) return res.status(400).type('text/plain; charset=utf-8').send(st(req, 'srv.scNoFile'))
       for (const f of saved) {
         history.add({
           dir: 'in',
@@ -601,20 +611,20 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       const total = saved.length
       res
         .type('text/plain; charset=utf-8')
-        .send(total === 1 ? `« ${saved[0]?.name} » est arrivé sur ${cfg.deviceName} ✅` : `${total} fichiers sont arrivés sur ${cfg.deviceName} ✅`)
+        .send(total === 1 ? st(req, 'srv.scArrivedOne', { name: saved[0]?.name ?? '', pc: cfg.deviceName }) : st(req, 'srv.scArrivedMany', { n: total, pc: cfg.deviceName }))
     } catch (e) {
       const err = e as Error & { code?: number }
       res.status(err.code === 413 ? 413 : 400).type('text/plain; charset=utf-8').send(
-        err.code === 413 ? `Fichier trop volumineux (limite ${cfg.maxFileMB} Mo).` : 'Échec de la réception.'
+        err.code === 413 ? st(req, 'srv.scTooBig', { mb: cfg.maxFileMB }) : st(req, 'srv.scFailed')
       )
     }
   })
 
   app.post('/api/shortcut/text', rlShortcut, express.text({ limit: '1mb', type: () => true }), async (req, res) => {
     const dev = shortcutDevice(req)
-    if (!dev) return res.status(401).type('text/plain; charset=utf-8').send('Jeton invalide.')
+    if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
     const text = typeof req.body === 'string' ? req.body : ''
-    if (!text) return res.status(400).type('text/plain; charset=utf-8').send('Rien à copier.')
+    if (!text) return res.status(400).type('text/plain; charset=utf-8').send(st(req, 'srv.scNothing'))
     const copied = await writeClipboard(text).then(
       () => true,
       () => false
@@ -622,12 +632,12 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     history.add({ dir: 'in', kind: 'clip', preview: text.slice(0, 160), deviceId: dev.id, deviceName: dev.name, status: 'ok' })
     hub.broadcast('text-received', { deviceName: dev.name, mode: 'clip', copied, text: text.slice(0, 32_000) })
     devices.touch(dev.id)
-    res.type('text/plain; charset=utf-8').send(`Copié sur ${cfg.deviceName} ✅`)
+    res.type('text/plain; charset=utf-8').send(st(req, 'srv.scCopied', { pc: cfg.deviceName }))
   })
 
   app.get('/api/shortcut/clipboard', rlShortcut, async (req, res) => {
     const dev = shortcutDevice(req)
-    if (!dev) return res.status(401).type('text/plain; charset=utf-8').send('Jeton invalide.')
+    if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
     const text = await readClipboard().catch(() => '')
     history.add({ dir: 'out', kind: 'clip', preview: text.slice(0, 160), deviceId: dev.id, deviceName: dev.name, status: 'ok' })
     devices.touch(dev.id)
@@ -638,8 +648,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   const admin = express.Router()
   admin.use((req, res, next) => {
-    if (!isLoopback(req.socket.remoteAddress)) return res.status(403).json({ error: 'accès local uniquement' })
-    if (!adminOk(req)) return res.status(401).json({ error: 'non autorisé' })
+    if (!isLoopback(req.socket.remoteAddress)) return res.status(403).json({ code: 'localOnly' })
+    if (!adminOk(req)) return res.status(401).json({ code: 'unauthorized' })
     next()
   })
 
@@ -681,22 +691,22 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   admin.post('/cliphistory/:id/copy', async (req, res) => {
     const entry = clipHistory.get(String(req.params.id))
-    if (!entry) return res.status(404).json({ error: 'entrée introuvable' })
+    if (!entry) return res.status(404).json({ code: 'entryNotFound' })
     if (entry.kind === 'image' && entry.image) {
-      if (!opts.writeImageToClipboard) return res.status(400).json({ error: 'recopie d’image indisponible' })
+      if (!opts.writeImageToClipboard) return res.status(400).json({ code: 'imgCopyUnavailable' })
       try {
         const png = fs.readFileSync(entry.image.path)
         opts.writeImageToClipboard(png)
         lastImageHash = imageHash(png)
       } catch {
-        return res.status(410).json({ error: 'image plus disponible' })
+        return res.status(410).json({ code: 'imageGone' })
       }
     } else {
       const ok = await writeClipboard(entry.text).then(
         () => true,
         () => false
       )
-      if (!ok) return res.status(500).json({ error: 'impossible d’écrire dans le presse-papiers' })
+      if (!ok) return res.status(500).json({ code: 'clipWriteFailed' })
       lastClip = entry.text
     }
     clipHistory.bump(entry.id)
@@ -706,14 +716,14 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   admin.post('/cliphistory/:id/tophone', (req, res) => {
     const entry = clipHistory.get(String(req.params.id))
-    if (!entry) return res.status(404).json({ error: 'entrée introuvable' })
+    if (!entry) return res.status(404).json({ code: 'entryNotFound' })
     if (entry.kind === 'image' && entry.image) {
       const reserved = reserveUniquePath(outbox.dir, `image-${entry.id}.png`)
       fs.closeSync(reserved.fd)
       try {
         fs.copyFileSync(entry.image.path, reserved.path)
       } catch {
-        return res.status(410).json({ error: 'image plus disponible' })
+        return res.status(410).json({ code: 'imageGone' })
       }
       const st = fs.statSync(reserved.path)
       outbox.addFile(path.basename(reserved.path), reserved.path, st.size, 'image/png')
@@ -725,7 +735,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   })
 
   admin.post('/cliphistory/:id/remove', (req, res) => {
-    if (!clipHistory.remove(String(req.params.id))) return res.status(404).json({ error: 'entrée introuvable' })
+    if (!clipHistory.remove(String(req.params.id))) return res.status(404).json({ code: 'entryNotFound' })
     hub.broadcast('cliphistory-changed', {})
     res.json({ ok: true })
   })
@@ -761,7 +771,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   admin.get('/pair/:id/qr.svg', async (req, res) => {
     const d = devices.get(String(req.params.id))
-    if (!d || d.status !== 'pending') return res.status(404).json({ error: 'appairage introuvable' })
+    if (!d || d.status !== 'pending') return res.status(404).json({ code: 'pairingNotFound' })
     const svg = await QRCode.toString(pairUrl(d), {
       type: 'svg',
       margin: 1,
@@ -775,20 +785,20 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   admin.post('/device/:id/rename', jsonSmall, (req, res) => {
     const name = typeof (req.body as { name?: unknown })?.name === 'string' ? (req.body as { name: string }).name : ''
-    if (!name.trim()) return res.status(400).json({ error: 'nom vide' })
-    if (!devices.rename(String(req.params.id), name.trim())) return res.status(404).json({ error: 'appareil introuvable' })
+    if (!name.trim()) return res.status(400).json({ code: 'emptyName' })
+    if (!devices.rename(String(req.params.id), name.trim())) return res.status(404).json({ code: 'deviceNotFound' })
     res.json({ ok: true })
   })
 
   admin.post('/device/:id/revoke', (req, res) => {
-    if (!devices.revoke(String(req.params.id))) return res.status(404).json({ error: 'appareil introuvable' })
+    if (!devices.revoke(String(req.params.id))) return res.status(404).json({ code: 'deviceNotFound' })
     hub.broadcast('device-revoked', { id: String(req.params.id) })
     res.json({ ok: true })
   })
 
   admin.post('/outbox/text', jsonText, (req, res) => {
     const text = typeof (req.body as { text?: unknown })?.text === 'string' ? (req.body as { text: string }).text : ''
-    if (!text || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) return res.status(400).json({ error: 'texte vide ou trop long' })
+    if (!text || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) return res.status(400).json({ code: 'textEmpty' })
     const item = outbox.addText(text)
     hub.broadcast('outbox-changed', {})
     res.json({ ok: true, id: item.id })
@@ -802,19 +812,19 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       res.json({ ok: true, ids: items.map((i) => i.id) })
     } catch (e) {
       const err = e as Error & { code?: number }
-      res.status(err.code === 413 ? 413 : 400).json({ error: err.message })
+      res.status(err.code === 413 ? 413 : 400).json({ code: err.code === 413 ? 'tooBig' : 'internal' })
     }
   })
 
   admin.post('/outbox/:id/remove', (req, res) => {
-    if (!outbox.remove(String(req.params.id))) return res.status(404).json({ error: 'élément introuvable' })
+    if (!outbox.remove(String(req.params.id))) return res.status(404).json({ code: 'itemNotFound' })
     hub.broadcast('outbox-changed', {})
     res.json({ ok: true })
   })
 
   admin.post('/clipboard/push', async (_req, res) => {
     const text = await readClipboard().catch(() => '')
-    if (!text) return res.status(400).json({ error: 'presse-papiers vide' })
+    if (!text) return res.status(400).json({ code: 'clipboardEmpty' })
     const item = outbox.addText(text.slice(0, MAX_TEXT_BYTES))
     hub.broadcast('outbox-changed', {})
     res.json({ ok: true, id: item.id, preview: text.slice(0, 120) })
@@ -830,7 +840,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   admin.post('/open-url', jsonSmall, (req, res) => {
     const url = typeof (req.body as { url?: unknown })?.url === 'string' ? (req.body as { url: string }).url.trim() : ''
     // uniquement http(s) : on n'ouvre pas file:, javascript:, etc.
-    if (!/^https?:\/\/[^\s]+$/i.test(url) || url.length > 2048) return res.status(400).json({ error: 'lien invalide' })
+    if (!/^https?:\/\/[^\s]+$/i.test(url) || url.length > 2048) return res.status(400).json({ code: 'badLink' })
     const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open'
     // le lien est passé en argument unique, jamais interprété par un shell
     spawn(cmd, [url], { detached: true, stdio: 'ignore' }).unref()
@@ -840,7 +850,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   admin.post('/approve', jsonSmall, (req, res) => {
     const body = req.body as { id?: unknown; accept?: unknown }
     const cb = typeof body.id === 'string' ? pendingApprovals.get(body.id) : undefined
-    if (!cb) return res.status(404).json({ error: 'demande expirée' })
+    if (!cb) return res.status(404).json({ code: 'requestExpired' })
     cb(body.accept === true)
     res.json({ ok: true })
   })
@@ -850,11 +860,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (typeof body.deviceName === 'string' && body.deviceName.trim()) cfg.deviceName = body.deviceName.trim().slice(0, 40)
     if (typeof body.downloadDir === 'string' && body.downloadDir.trim()) {
       const dir = body.downloadDir.trim()
-      if (!path.isAbsolute(dir)) return res.status(400).json({ error: 'chemin de dossier invalide' })
+      if (!path.isAbsolute(dir)) return res.status(400).json({ code: 'badFolderPath' })
       try {
         fs.mkdirSync(dir, { recursive: true })
       } catch {
-        return res.status(400).json({ error: 'impossible de créer ce dossier' })
+        return res.status(400).json({ code: 'cannotCreateFolder' })
       }
       cfg.downloadDir = dir
     }
@@ -892,10 +902,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   // ---------- erreurs ----------
 
-  app.use((_req, res) => res.status(404).json({ error: 'introuvable' }))
+  app.use((_req, res) => res.status(404).json({ code: 'notFound' }))
   app.use((err: Error & { status?: number; type?: string }, _req: Request, res: Response, _next: NextFunction) => {
     if (res.headersSent) return res.destroy()
-    res.status(err.status ?? 500).json({ error: err.status ? err.message : 'erreur interne' })
+    res.status(err.status ?? 500).json({ code: 'internal' })
   })
 
   // ---------- HTTP + WebSocket ----------

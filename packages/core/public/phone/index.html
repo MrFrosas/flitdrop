@@ -25,23 +25,23 @@
       <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div>
       <div class="core"></div>
     </div>
-    <h1>Connecte ce téléphone à ton PC</h1>
-    <p class="lead">Ouvre Flitdrop sur le PC, clique sur « Appairer un téléphone » et scanne le QR code avec l’appareil photo.</p>
+    <h1 data-i18n="ph.scan.title">Connecte ce téléphone à ton PC</h1>
+    <p class="lead" data-i18n="ph.scan.lead">Ouvre Flitdrop sur le PC, clique sur « Appairer un téléphone » et scanne le QR code avec l’appareil photo.</p>
     <div id="scanPaste" class="scan-paste hidden">
-      <p class="hint">Depuis l’écran d’accueil, tu ne peux pas scanner. Sur le PC, ouvre « Appairer un téléphone » &gt; « Copier le lien d’appairage », puis colle-le ici :</p>
-      <input id="pastePairInput" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Colle le lien d’appairage">
-      <button class="btn primary wide" id="btnPastePair">Se connecter</button>
+      <p class="hint" data-i18n="ph.paste.hint">Depuis l’écran d’accueil, tu ne peux pas scanner. Sur le PC, ouvre « Appairer un téléphone » &gt; « Copier le lien d’appairage », puis colle-le ici :</p>
+      <input id="pastePairInput" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" data-i18n-ph="ph.paste.placeholder" placeholder="Colle le lien d’appairage">
+      <button class="btn primary wide" id="btnPastePair" data-i18n="ph.paste.btn">Se connecter</button>
     </div>
   </main>
 
   <!-- Erreur / PC injoignable -->
   <main id="screen-error" class="screen hidden">
     <div class="brand"><span class="brand-dot off"></span>Flitdrop</div>
-    <h1 id="errTitle">PC introuvable</h1>
-    <p class="lead" id="errMsg">Vérifie que Flitdrop est ouvert sur le PC et que ton téléphone est sur le même wifi.</p>
-    <button class="btn primary" id="btnRetry">Réessayer</button>
+    <h1 id="errTitle" data-i18n="ph.err.notFound">PC introuvable</h1>
+    <p class="lead" id="errMsg" data-i18n="ph.err.notFoundMsg">Vérifie que Flitdrop est ouvert sur le PC et que ton téléphone est sur le même wifi.</p>
+    <button class="btn primary" id="btnRetry" data-i18n="ph.err.retry">Réessayer</button>
     <div id="altHosts" class="alt-hosts hidden"></div>
-    <button class="btn ghost" id="btnForget">Oublier ce PC</button>
+    <button class="btn ghost" id="btnForget" data-i18n="ph.err.forget">Oublier ce PC</button>
   </main>
 
   <!-- Écran principal -->
@@ -53,58 +53,58 @@
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="19" cy="12" r="1.7" fill="currentColor"/></svg>
         </button>
       </div>
-      <h1 class="large-title">Partager</h1>
+      <h1 class="large-title" data-i18n="ph.title">Partager</h1>
       <div class="conn"><span class="dot" id="statusDot"></span><span class="pc-name" id="pcName">…</span></div>
     </header>
 
     <div id="installBanner" class="install-banner hidden">
-      <div class="ib-text"><b>Ajoute Flitdrop à l’écran d’accueil</b><span>Un appui et ça s’ouvre comme une vraie app, déjà connectée.</span></div>
-      <button class="ib-add" id="bannerInstall">Ajouter</button>
-      <button class="ib-close" id="bannerClose" aria-label="Fermer">✕</button>
+      <div class="ib-text"><b data-i18n="ph.install.title">Ajoute Flitdrop à l’écran d’accueil</b><span data-i18n="ph.install.sub">Un appui et ça s’ouvre comme une vraie app, déjà connectée.</span></div>
+      <button class="ib-add" id="bannerInstall" data-i18n="ph.install.add">Ajouter</button>
+      <button class="ib-close" id="bannerClose" data-i18n-aria="common.close" aria-label="Fermer">✕</button>
     </div>
 
     <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="send" role="tab">Envoyer</button>
-      <button class="tab" data-tab="text" role="tab">Texte</button>
-      <button class="tab" data-tab="recv" role="tab">Reçus <span class="badge hidden" id="recvBadge">0</span></button>
-      <button class="tab" data-tab="clip" role="tab">Historique</button>
+      <button class="tab active" data-tab="send" role="tab" data-i18n="ph.tab.send">Envoyer</button>
+      <button class="tab" data-tab="text" role="tab" data-i18n="ph.tab.text">Texte</button>
+      <button class="tab" data-tab="recv" role="tab"><span data-i18n="ph.tab.recv">Reçus</span> <span class="badge hidden" id="recvBadge">0</span></button>
+      <button class="tab" data-tab="clip" role="tab" data-i18n="ph.tab.clip">Historique</button>
     </nav>
 
     <section class="panel" id="panel-send">
       <button class="bigsend" id="btnPick">
         <span class="bigsend-halo" aria-hidden="true"></span>
         <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M12 19V6M6 12l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <b>Choisir des fichiers</b>
-        <small>Photos, vidéos, documents. Ils arrivent dans le dossier Flitdrop du PC.</small>
+        <b data-i18n="ph.send.title">Choisir des fichiers</b>
+        <small data-i18n="ph.send.hint">Photos, vidéos, documents. Ils arrivent dans le dossier Flitdrop du PC.</small>
       </button>
       <div id="sendSummary" class="send-summary hidden"></div>
       <ul id="sendQueue" class="queue"></ul>
     </section>
 
     <section class="panel hidden" id="panel-text">
-      <textarea id="txtInput" rows="7" placeholder="Colle ou écris ton texte ici…" maxlength="500000"></textarea>
-      <div class="txt-meta"><span id="txtCount">0 caractère</span></div>
-      <button class="btn primary wide" id="btnSendText">Envoyer sur le PC</button>
-      <p class="hint">Le texte atterrit directement dans le presse-papiers du PC. Ctrl+V, et c’est collé.</p>
+      <textarea id="txtInput" rows="7" data-i18n-ph="ph.text.placeholder" placeholder="Colle ou écris ton texte ici…" maxlength="500000"></textarea>
+      <div class="txt-meta"><span id="txtCount"></span></div>
+      <button class="btn primary wide" id="btnSendText" data-i18n="ph.text.btn">Envoyer sur le PC</button>
+      <p class="hint" data-i18n="ph.text.hint">Le texte atterrit directement dans le presse-papiers du PC. Ctrl+V, et c’est collé.</p>
     </section>
 
     <section class="panel hidden" id="panel-recv">
       <ul id="recvList" class="queue"></ul>
       <div id="recvEmpty" class="empty">
-        <p>Rien en attente.</p>
-        <p class="hint">Sur le PC, glisse un fichier dans Flitdrop, onglet « Envoyer », et il apparaîtra ici.</p>
+        <p data-i18n="ph.recv.empty">Rien en attente.</p>
+        <p class="hint" data-i18n="ph.recv.emptyHint">Sur le PC, glisse un fichier dans Flitdrop, onglet « Envoyer », et il apparaîtra ici.</p>
       </div>
     </section>
 
     <section class="panel hidden" id="panel-clip">
       <ul id="clipList" class="queue"></ul>
       <div id="clipEmpty" class="empty hidden">
-        <p>Presse-papiers vide</p>
-        <p class="hint">Copie un texte, un lien ou une image sur le PC : ça apparaît ici, prêt à recoller sur ce téléphone.</p>
+        <p data-i18n="ph.clip.empty">Presse-papiers vide</p>
+        <p class="hint" data-i18n="ph.clip.emptyHint">Copie un texte, un lien ou une image sur le PC : ça apparaît ici, prêt à recoller sur ce téléphone.</p>
       </div>
       <div id="clipDisabled" class="empty hidden">
-        <p>Historique désactivé</p>
-        <p class="hint">Active « Historique du presse-papiers » dans les réglages de Flitdrop sur le PC.</p>
+        <p data-i18n="ph.clip.disabled">Historique désactivé</p>
+        <p class="hint" data-i18n="ph.clip.disabledHint">Active « Historique du presse-papiers » dans les réglages de Flitdrop sur le PC.</p>
       </div>
     </section>
   </main>
@@ -115,43 +115,50 @@
 
   <div id="imgModal" class="modal hidden">
     <div class="modal-card">
-      <img id="imgPreview" alt="Image reçue">
-      <p class="hint">Reste appuyé sur l’image pour l’enregistrer dans tes photos.</p>
-      <button class="btn ghost wide" id="btnCloseImg">Fermer</button>
+      <img id="imgPreview" alt="">
+      <p class="hint" data-i18n="ph.img.hint">Reste appuyé sur l’image pour l’enregistrer dans tes photos.</p>
+      <button class="btn ghost wide" id="btnCloseImg" data-i18n="common.close">Fermer</button>
     </div>
   </div>
 
   <div id="menuSheet" class="modal hidden">
     <div class="modal-card">
-      <h2>Ce téléphone</h2>
+      <h2 data-i18n="ph.menu.title">Ce téléphone</h2>
       <p class="hint" id="menuInfo"></p>
       <div class="menu-row">
-        <label class="menu-field">Style
+        <label class="menu-field"><span data-i18n="ph.menu.style">Style</span>
           <select id="setPhoneSkin">
-            <option value="auto">Automatique</option>
-            <option value="apple">Apple</option>
-            <option value="android">Android</option>
+            <option value="auto" data-i18n="opt.auto">Automatique</option>
+            <option value="apple" data-i18n="set.apple">Apple</option>
+            <option value="android" data-i18n="ph.menu.android">Android</option>
           </select>
         </label>
-        <label class="menu-field">Thème
+        <label class="menu-field"><span data-i18n="ph.menu.theme">Thème</span>
           <select id="setPhoneTheme">
-            <option value="system">Automatique</option>
-            <option value="light">Clair</option>
-            <option value="dark">Sombre</option>
+            <option value="system" data-i18n="opt.auto">Automatique</option>
+            <option value="light" data-i18n="set.light">Clair</option>
+            <option value="dark" data-i18n="set.dark">Sombre</option>
           </select>
         </label>
       </div>
-      <button class="btn wide" id="btnInstall">Ajouter à l’écran d’accueil</button>
-      <button class="btn danger wide" id="btnForget2">Oublier ce PC</button>
-      <button class="btn ghost wide" id="menuClose">Fermer</button>
+      <label class="menu-field"><span data-i18n="ph.menu.lang">Langue</span>
+        <select id="setPhoneLang">
+          <option value="auto" data-i18n="opt.auto">Automatique</option>
+          <option value="fr" data-i18n="set.langFr">Français</option>
+          <option value="en" data-i18n="set.langEn">English</option>
+        </select>
+      </label>
+      <button class="btn wide" id="btnInstall" data-i18n="ph.menu.install">Ajouter à l’écran d’accueil</button>
+      <button class="btn danger wide" id="btnForget2" data-i18n="ph.menu.forget">Oublier ce PC</button>
+      <button class="btn ghost wide" id="menuClose" data-i18n="ph.menu.close">Fermer</button>
     </div>
   </div>
 
   <div id="installSheet" class="modal hidden">
     <div class="modal-card">
-      <h2>Flitdrop comme une app</h2>
+      <h2 data-i18n="ph.installSheet.title">Flitdrop comme une app</h2>
       <p class="hint" id="installSteps"></p>
-      <button class="btn ghost wide" id="installClose">Fermer</button>
+      <button class="btn ghost wide" id="installClose" data-i18n="common.close">Fermer</button>
     </div>
   </div>
 

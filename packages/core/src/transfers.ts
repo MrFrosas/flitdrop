@@ -44,7 +44,9 @@ export interface Transfer {
 export class ApiError extends Error {
   constructor(
     message: string,
-    readonly code = 400
+    readonly code = 400,
+    // clé d'erreur stable, localisée côté client (i18n).
+    readonly key = 'internal'
   ) {
     super(message)
   }
@@ -71,20 +73,20 @@ export class TransferManager {
     const size = Number(meta?.size)
     const chunkSize = Number(meta?.chunkSize)
     const chunks = Number(meta?.chunks)
-    if (!Number.isInteger(size) || size <= 0) throw new ApiError('taille invalide')
-    if (size > cfg.maxFileMB * 1024 * 1024) throw new ApiError(`fichier trop volumineux (limite ${cfg.maxFileMB} Mo)`, 413)
-    if (!Number.isInteger(chunkSize) || chunkSize <= 0 || chunkSize > CHUNK_SIZE) throw new ApiError('chunkSize invalide')
-    if (!Number.isInteger(chunks) || chunks !== Math.ceil(size / chunkSize)) throw new ApiError('découpage incohérent')
+    if (!Number.isInteger(size) || size <= 0) throw new ApiError('taille invalide', 400, 'badSize')
+    if (size > cfg.maxFileMB * 1024 * 1024) throw new ApiError(`fichier trop volumineux (limite ${cfg.maxFileMB} Mo)`, 413, 'tooBig')
+    if (!Number.isInteger(chunkSize) || chunkSize <= 0 || chunkSize > CHUNK_SIZE) throw new ApiError('chunkSize invalide', 400, 'badChunkSize')
+    if (!Number.isInteger(chunks) || chunks !== Math.ceil(size / chunkSize)) throw new ApiError('découpage incohérent', 400, 'badSplit')
 
     let concurrent = 0
     for (const t of this.active.values()) if (t.deviceId === device.id && t.status === 'active') concurrent++
-    if (concurrent >= MAX_ACTIVE_TRANSFERS_PER_DEVICE) throw new ApiError('trop de transferts simultanés', 429)
+    if (concurrent >= MAX_ACTIVE_TRANSFERS_PER_DEVICE) throw new ApiError('trop de transferts simultanés', 429, 'tooManyTransfers')
 
     const name = sanitizeFilename(meta?.name)
 
     if (cfg.requireApproval && this.approvalHook) {
       const ok = await this.approvalHook({ deviceName: device.name, name, size })
-      if (!ok) throw new ApiError('transfert refusé sur le PC', 403)
+      if (!ok) throw new ApiError('transfert refusé sur le PC', 403, 'refused')
     }
 
     const tmpDir = path.join(cfg.downloadDir, '.tmp')
@@ -144,13 +146,13 @@ export class TransferManager {
   }
 
   async writeChunk(t: Transfer, index: number, plain: Uint8Array): Promise<void> {
-    if (t.status !== 'active') throw new ApiError('transfert terminé')
-    if (!Number.isInteger(index) || index < 0 || index >= t.chunks) throw new ApiError('index invalide')
+    if (t.status !== 'active') throw new ApiError('transfert terminé', 400, 'transferDone')
+    if (!Number.isInteger(index) || index < 0 || index >= t.chunks) throw new ApiError('index invalide', 400, 'badIndex')
     // idempotent : un chunk déjà écrit (reprise, réémission) est acquitté sans réécriture
     if (t.have.has(index)) return
-    if (plain.length !== this.expectedLen(t, index)) throw new ApiError('taille de chunk invalide')
+    if (plain.length !== this.expectedLen(t, index)) throw new ApiError('taille de chunk invalide', 400, 'badChunkSize')
     const handle = this.handles.get(t.id)
-    if (!handle) throw new ApiError('transfert introuvable', 404)
+    if (!handle) throw new ApiError('transfert introuvable', 404, 'transferNotFound')
     // RÉSERVATION avant tout await : ferme la fenêtre TOCTOU. Une 2e requête
     // concurrente du même index (réémission, reprise) verra have.has(index)=true
     // et sortira tout de suite -> les octets ne sont comptés qu'UNE fois, sinon
@@ -163,7 +165,7 @@ export class TransferManager {
     } catch (e) {
       t.have.delete(index) // rollback : cet index n'a pas été écrit
       await this.abort(t, 'erreur d’écriture disque')
-      throw new ApiError('erreur d’écriture disque', 500)
+      throw new ApiError('erreur d’écriture disque', 500, 'diskWrite')
     }
     t.bytes += plain.length
     t.received = t.have.size
@@ -177,8 +179,8 @@ export class TransferManager {
   }
 
   async finish(t: Transfer): Promise<string> {
-    if (t.status !== 'active') throw new ApiError('transfert terminé')
-    if (t.received !== t.chunks || t.bytes !== t.size) throw new ApiError('transfert incomplet')
+    if (t.status !== 'active') throw new ApiError('transfert terminé', 400, 'transferDone')
+    if (t.received !== t.chunks || t.bytes !== t.size) throw new ApiError('transfert incomplet', 400, 'transferIncomplete')
     const handle = this.handles.get(t.id)
     if (handle) {
       await handle.sync().catch(() => {})

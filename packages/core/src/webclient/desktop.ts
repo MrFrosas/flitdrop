@@ -1,5 +1,11 @@
-import { fmtSize } from './wdcrypto.js'
 import { initTelemetry, setTelemetryConsent, track } from './telemetry.js'
+import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '../i18n.js'
+import { applyI18n } from '../i18n-dom.js'
+
+// langue courante : détectée d'abord, puis alignée sur le réglage serveur.
+let lang: Lang = langFrom(navigator.language)
+const t = (key: string, params?: Record<string, string | number>) => tr(lang, key, params)
+const fmtSize = (bytes: number) => fmtBytes(lang, bytes)
 
 interface DevicePub {
   id: string
@@ -80,8 +86,9 @@ const progressCards = new Map<string, { li: HTMLLIElement; bar: HTMLSpanElement;
 async function api<T = Record<string, unknown>>(path: string, init?: RequestInit): Promise<T> {
   const r = await fetch('/api/admin' + path, init)
   if (!r.ok) {
-    const j = (await r.json().catch(() => ({}))) as { error?: string }
-    throw new Error(j.error || `erreur ${r.status}`)
+    // le serveur renvoie un CODE d'erreur stable, traduit ici (jamais de texte figé)
+    const j = (await r.json().catch(() => ({}))) as { code?: string }
+    throw new Error(j.code ? t('err.' + j.code) : t('err.generic', { status: r.status }))
   }
   return r.json() as Promise<T>
 }
@@ -104,38 +111,31 @@ function toast(title: string, sub?: string) {
   setTimeout(() => t.remove(), 4200)
 }
 
-function rel(ts?: string): string {
-  if (!ts) return 'jamais vu'
-  const d = Date.now() - Date.parse(ts)
-  if (d < 45_000) return 'à l’instant'
-  if (d < 3_600_000) return `il y a ${Math.round(d / 60_000)} min`
-  if (d < 86_400_000) return `il y a ${Math.round(d / 3_600_000)} h`
-  return `il y a ${Math.round(d / 86_400_000)} j`
-}
+const rel = (ts?: string): string => rtf(lang, ts)
 
 async function copy(text: string) {
   try {
     await navigator.clipboard.writeText(text)
-    toast('Copié ✓')
+    toast(t('common.copied'))
   } catch {
-    toast('Impossible de copier')
+    toast(t('common.copyFailed'))
   }
 }
 
 // ---------- rendu ----------
 
-const VIEW_TITLES: Record<string, string> = {
-  radar: 'Radar',
-  activity: 'Historique',
-  send: 'Envoyer vers le téléphone',
-  clip: 'Presse-papiers',
-  settings: 'Réglages',
+const VIEW_KEYS: Record<string, string> = {
+  radar: 'nav.radar',
+  activity: 'nav.history',
+  send: 'nav.send',
+  clip: 'nav.clipboard',
+  settings: 'nav.settings',
 }
 
 function switchView(view: string) {
   document.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === view))
-  for (const v of Object.keys(VIEW_TITLES)) $(`view-${v}`).classList.toggle('hidden', v !== view)
-  $('viewTitle').textContent = VIEW_TITLES[view] ?? 'Flitdrop'
+  for (const v of Object.keys(VIEW_KEYS)) $(`view-${v}`).classList.toggle('hidden', v !== view)
+  $('viewTitle').textContent = VIEW_KEYS[view] ? t(VIEW_KEYS[view]!) : 'Flitdrop'
 }
 
 /** Silhouette d'appareil pour le radar, selon le type détecté à l'appairage. */
@@ -209,19 +209,19 @@ function renderHistory() {
     main.className = 'hmain'
     const name = document.createElement('div')
     name.className = 'hname'
-    name.textContent = e.kind === 'file' ? (e.name ?? 'fichier') : (e.preview ?? 'texte')
+    name.textContent = e.kind === 'file' ? (e.name ?? t('hist.file')) : (e.preview ?? t('hist.text'))
     const sub = document.createElement('div')
     sub.className = 'hsub'
-    const what = e.kind === 'file' ? fmtSize(e.size ?? 0) : e.kind === 'clip' ? 'presse-papiers' : 'texte'
-    const who = e.deviceName ? (e.dir === 'in' ? `depuis ${e.deviceName}` : `vers ${e.deviceName}`) : ''
+    const what = e.kind === 'file' ? fmtSize(e.size ?? 0) : e.kind === 'clip' ? t('hist.clip') : t('hist.text')
+    const who = e.deviceName ? (e.dir === 'in' ? t('hist.from', { name: e.deviceName }) : t('hist.to', { name: e.deviceName })) : ''
     sub.textContent = [what, who, rel(e.ts), e.error ?? ''].filter(Boolean).join(' · ')
     main.append(name, sub)
     li.append(icon, main)
     if (e.dir === 'in' && e.kind === 'file' && e.status === 'ok') {
       const b = document.createElement('button')
       b.className = 'hbtn'
-      b.textContent = 'Ouvrir le dossier'
-      b.onclick = () => void postJSON('/open-folder', {}).catch(() => toast('Impossible d’ouvrir le dossier'))
+      b.textContent = t('hist.open')
+      b.onclick = () => void postJSON('/open-folder', {}).catch(() => toast(t('common.copyFailed')))
       li.appendChild(b)
     }
     list.appendChild(li)
@@ -242,11 +242,11 @@ function renderOutbox() {
     main.className = 'hmain'
     const name = document.createElement('div')
     name.className = 'hname'
-    name.textContent = item.kind === 'text' ? (item.preview ?? 'texte') : (item.name ?? 'fichier')
+    name.textContent = item.kind === 'text' ? (item.preview ?? t('hist.text')) : (item.name ?? t('hist.file'))
     const sub = document.createElement('div')
     sub.className = 'hsub'
     const picked = Object.keys(item.downloads).length > 0
-    sub.textContent = [item.kind === 'file' ? fmtSize(item.size ?? 0) : 'texte', picked ? 'récupéré ✓' : 'en attente', rel(item.createdAt)].join(' · ')
+    sub.textContent = [item.kind === 'file' ? fmtSize(item.size ?? 0) : t('hist.text'), picked ? t('outbox.downloaded') : t('outbox.waiting'), rel(item.createdAt)].join(' · ')
     main.append(name, sub)
     const del = document.createElement('button')
     del.className = 'hbtn x'
@@ -267,6 +267,7 @@ function renderSettings() {
   if (!state) return
   ;($('setTheme') as unknown as HTMLSelectElement).value = state.config.theme
   ;($('setSkin') as unknown as HTMLSelectElement).value = state.config.skin
+  ;($('setLang') as unknown as HTMLSelectElement).value = state.config.lang
   ;($('setName') as unknown as HTMLInputElement).value = state.config.deviceName
   ;($('setDir') as unknown as HTMLInputElement).value = state.config.downloadDir
   ;($('setMax') as unknown as HTMLSelectElement).value = String(state.config.maxFileMB)
@@ -292,7 +293,7 @@ interface ClipKind {
 function classifyClip(text: string): ClipKind {
   const t = text.trim()
   const yt = t.match(/^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^ ]*v=|youtu\.be\/)([\w-]{11})/i)
-  if (yt) return { kind: 'youtube', label: 'Vidéo YouTube', icon: '▶', domain: 'youtube.com', thumb: `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg` }
+  if (yt) return { kind: 'youtube', label: tr(lang, 'clip.kind.youtube'), icon: '▶', domain: 'youtube.com', thumb: `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg` }
   if (/^https?:\/\/\S+$/i.test(t) && !/\s/.test(t)) {
     let domain = t
     try {
@@ -300,13 +301,13 @@ function classifyClip(text: string): ClipKind {
     } catch {
       // garde le texte brut comme domaine
     }
-    if (/\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?\S*)?$/i.test(t)) return { kind: 'image', label: 'Image', icon: '▦', domain, thumb: t }
-    return { kind: 'link', label: 'Lien', icon: '🔗', domain }
+    if (/\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?\S*)?$/i.test(t)) return { kind: 'image', label: tr(lang, 'clip.kind.image'), icon: '▦', domain, thumb: t }
+    return { kind: 'link', label: tr(lang, 'clip.kind.link'), icon: '🔗', domain }
   }
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return { kind: 'email', label: 'E-mail', icon: '✉' }
-  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(t) || /^rgba?\([\d.,\s%/]+\)$/i.test(t)) return { kind: 'color', label: 'Couleur', icon: '●' }
-  if (/[{};=()<>]/.test(t) && /\n/.test(t)) return { kind: 'code', label: 'Code', icon: '⟨⟩' }
-  return { kind: 'text', label: 'Texte', icon: '≡' }
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return { kind: 'email', label: tr(lang, 'clip.kind.email'), icon: '✉' }
+  if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(t) || /^rgba?\([\d.,\s%/]+\)$/i.test(t)) return { kind: 'color', label: tr(lang, 'clip.kind.color'), icon: '●' }
+  if (/[{};=()<>]/.test(t) && /\n/.test(t)) return { kind: 'code', label: tr(lang, 'clip.kind.code'), icon: '⟨⟩' }
+  return { kind: 'text', label: tr(lang, 'clip.kind.text'), icon: '≡' }
 }
 
 let clipFilter = ''
@@ -321,7 +322,7 @@ function renderClipHistory() {
   $('clipEmpty').classList.toggle('hidden', !enabled || items.length > 0 || q.length > 0)
   for (const e of items.slice(0, 200)) {
     const isImg = e.kind === 'image' && !!e.image
-    const c = isImg ? { kind: 'image' as const, label: 'Image', icon: '▦', domain: undefined, thumb: e.image?.thumb } : classifyClip(e.text)
+    const c = isImg ? { kind: 'image' as const, label: t('clip.kind.image'), icon: '▦', domain: undefined, thumb: e.image?.thumb } : classifyClip(e.text)
     const li = document.createElement('li')
     li.className = 'clip-item kind-' + c.kind
 
@@ -361,7 +362,7 @@ function renderClipHistory() {
     txt.textContent = e.text.length > 300 ? e.text.slice(0, 300) + '…' : e.text
     const sub = document.createElement('div')
     sub.className = 'hsub'
-    const origin = e.source === 'pc' ? 'copié sur ce PC' : `reçu de ${e.source}`
+    const origin = e.source === 'pc' ? t('clip.copiedHere') : t('clip.received', { name: e.source })
     sub.textContent = [c.label + (c.domain ? ` · ${c.domain}` : ''), origin, rel(e.ts)].join(' · ')
     main.append(txt, sub)
     li.appendChild(main)
@@ -369,19 +370,19 @@ function renderClipHistory() {
     if (!isImg && (c.kind === 'link' || c.kind === 'youtube' || c.kind === 'image')) {
       const open = document.createElement('button')
       open.className = 'hbtn'
-      open.textContent = 'Ouvrir'
-      open.onclick = () => void postJSON('/open-url', { url: e.text.trim() }).catch(() => toast('Impossible d’ouvrir'))
+      open.textContent = t('clip.open')
+      open.onclick = () => void postJSON('/open-url', { url: e.text.trim() }).catch(() => toast(t('common.copyFailed')))
       li.appendChild(open)
     }
     const btnCopy = document.createElement('button')
     btnCopy.className = 'hbtn'
-    btnCopy.textContent = 'Copier'
-    btnCopy.onclick = () => void postJSON(`/cliphistory/${e.id}/copy`, {}).then(() => toast('Copié ✓')).catch(() => toast('Impossible de copier'))
+    btnCopy.textContent = t('clip.copy')
+    btnCopy.onclick = () => void postJSON(`/cliphistory/${e.id}/copy`, {}).then(() => toast(t('common.copied'))).catch(() => toast(t('common.copyFailed')))
     const btnPhone = document.createElement('button')
     btnPhone.className = 'hbtn'
-    btnPhone.textContent = 'Téléphone'
-    btnPhone.title = 'Mettre à disposition du téléphone'
-    btnPhone.onclick = () => void postJSON(`/cliphistory/${e.id}/tophone`, {}).then(() => toast('Prêt sur le téléphone ✓', 'Onglet « Recevoir ».')).catch(() => {})
+    btnPhone.textContent = t('clip.phone')
+    btnPhone.title = t('clip.phoneTitle')
+    btnPhone.onclick = () => void postJSON(`/cliphistory/${e.id}/tophone`, {}).then(() => toast(t('clip.readyPhone'), t('clip.recvTab'))).catch(() => {})
     const del = document.createElement('button')
     del.className = 'hbtn x'
     del.textContent = '✕'
@@ -400,7 +401,7 @@ function renderShortcutSection() {
   const active = state.devices.filter((d) => d.status === 'active')
   if (active.length === 0) {
     const opt = document.createElement('option')
-    opt.textContent = 'Appaire d’abord un téléphone'
+    opt.textContent = t('sc.pairFirst')
     opt.value = ''
     sel.appendChild(opt)
     $('shortcutInfo').innerHTML = ''
@@ -419,10 +420,10 @@ function renderShortcutSection() {
   const base = `http://${host}.local:${state.config.port}`
   const ipBase = `http://${state.ips[0] ?? '127.0.0.1'}:${state.config.port}`
   const rows: { lbl: string; url: string }[] = [
-    { lbl: 'Envoyer des fichiers', url: `${base}/api/shortcut/upload?t=${dev.shortcutToken}` },
-    { lbl: 'Coller sur le PC', url: `${base}/api/shortcut/text?t=${dev.shortcutToken}` },
-    { lbl: 'Lire le presse-papiers du PC', url: `${base}/api/shortcut/clipboard?t=${dev.shortcutToken}` },
-    { lbl: 'Secours si .local ne répond pas', url: `${ipBase}/api/shortcut/upload?t=${dev.shortcutToken}` },
+    { lbl: t('sc.rowFiles'), url: `${base}/api/shortcut/upload?t=${dev.shortcutToken}` },
+    { lbl: t('sc.rowText'), url: `${base}/api/shortcut/text?t=${dev.shortcutToken}` },
+    { lbl: t('sc.rowClip'), url: `${base}/api/shortcut/clipboard?t=${dev.shortcutToken}` },
+    { lbl: t('sc.rowFallback'), url: `${ipBase}/api/shortcut/upload?t=${dev.shortcutToken}` },
   ]
   const box = $('shortcutInfo')
   box.innerHTML = ''
@@ -437,7 +438,7 @@ function renderShortcutSection() {
     url.textContent = r.url
     const btn = document.createElement('button')
     btn.className = 'hbtn'
-    btn.textContent = 'Copier'
+    btn.textContent = t('clip.copy')
     btn.onclick = () => void copy(r.url)
     row.append(lbl, url, btn)
     box.appendChild(row)
@@ -446,6 +447,12 @@ function renderShortcutSection() {
 
 function renderAll() {
   if (!state) return
+  // aligne la langue sur le réglage serveur (auto -> langue du navigateur)
+  const wanted = resolveLang(state.config.lang, langFrom(navigator.language))
+  if (wanted !== lang) {
+    lang = wanted
+    applyI18n(lang)
+  }
   applyTheme(state.config.theme)
   applyPlatformSkin(state.config.skin)
   $('pcNameHead').textContent = state.config.deviceName
@@ -495,7 +502,7 @@ function feedTransferStart(d: { id: string; name: string; size: number; deviceNa
   head.appendChild(name)
   const sub = document.createElement('div')
   sub.className = 'fsub'
-  sub.textContent = `Réception depuis ${d.deviceName}…`
+  sub.textContent = t('feed.receiving', { name: d.deviceName })
   const bar = document.createElement('div')
   bar.className = 'fbar'
   const fill = document.createElement('span')
@@ -517,11 +524,11 @@ function feedTransferDone(d: { id: string; name: string; size: number; deviceNam
   head.appendChild(name)
   const sub = document.createElement('div')
   sub.className = 'fsub'
-  sub.textContent = `${fmtSize(d.size)} · depuis ${d.deviceName}`
+  sub.textContent = `${fmtSize(d.size)} · ${t('hist.from', { name: d.deviceName })}`
   const btn = document.createElement('button')
   btn.className = 'hbtn'
-  btn.textContent = 'Ouvrir le dossier'
-  btn.onclick = () => void postJSON('/open-folder', {}).catch(() => toast('Impossible d’ouvrir le dossier'))
+  btn.textContent = t('feed.openFolder')
+  btn.onclick = () => void postJSON('/open-folder', {}).catch(() => toast(t('toast.openFolderFailed')))
   li.append(head, sub, btn)
   progressCards.delete(d.id)
 }
@@ -532,17 +539,17 @@ function feedText(d: { deviceName: string; mode: string; copied: boolean; text: 
   head.className = 'fhead'
   const name = document.createElement('div')
   name.className = 'fname'
-  name.textContent = d.copied ? 'Texte copié dans ton presse-papiers ✓' : `Texte reçu de ${d.deviceName}`
+  name.textContent = d.copied ? t('feed.textCopied') + ' ✓' : t('clip.received', { name: d.deviceName })
   head.appendChild(name)
   const sub = document.createElement('div')
   sub.className = 'fsub'
-  sub.textContent = `depuis ${d.deviceName}`
+  sub.textContent = t('hist.from', { name: d.deviceName })
   const txt = document.createElement('div')
   txt.className = 'ftext'
   txt.textContent = d.text
   const btn = document.createElement('button')
   btn.className = 'hbtn'
-  btn.textContent = 'Copier à nouveau'
+  btn.textContent = t('feed.copyAgain')
   btn.onclick = () => void copy(d.text)
   li.append(head, sub, txt, btn)
 }
@@ -562,11 +569,11 @@ function connectWS() {
         if (currentPairingId && (data as { id?: string }).id === currentPairingId) {
           const st = $('pairState')
           st.classList.add('ok')
-          st.textContent = 'Téléphone connecté ✓'
+          st.textContent = t('pair.connected')
           $('pairRenameRow').classList.remove('hidden')
           ;($('pairRenameInput') as unknown as HTMLInputElement).value = (data as { name?: string }).name ?? ''
         }
-        toast('Nouvel appareil appairé', (data as { name?: string }).name)
+        toast(t('toast.devicePaired'), (data as { name?: string }).name)
         void refresh()
         break
       }
@@ -610,7 +617,7 @@ function connectWS() {
       case 'approval-request': {
         const d = data as { id: string; deviceName: string; name: string; size: number }
         currentApprovalId = d.id
-        $('apprText').textContent = `${d.deviceName} veut envoyer « ${d.name} » (${fmtSize(d.size)}).`
+        $('apprText').textContent = t('appr.body', { name: d.deviceName, file: d.name, size: fmtSize(d.size) })
         $('apprModal').classList.remove('hidden')
         break
       }
@@ -619,7 +626,7 @@ function connectWS() {
         break
       case 'outbox-downloaded': {
         const d = data as { name?: string; deviceName?: string }
-        toast('Récupéré sur le téléphone ✓', d.name ? `${d.name} · ${d.deviceName}` : d.deviceName)
+        toast(t('toast.pickedUp'), d.name ? `${d.name} · ${d.deviceName}` : d.deviceName)
         void refresh()
         break
       }
@@ -627,7 +634,7 @@ function connectWS() {
         void refresh()
         break
       case 'clip-autopushed':
-        toast('Presse-papiers synchronisé ✓', (data as { preview?: string }).preview)
+        toast(t('toast.clipSynced'), (data as { preview?: string }).preview)
         break
       case 'cliphistory-changed':
         void refresh()
@@ -646,7 +653,7 @@ function openDeviceModal(id: string) {
   if (!dev) return
   currentDeviceId = id
   $('devTitle').textContent = dev.name
-  $('devSeen').textContent = `Appairé ${rel(dev.createdAt)} · vu ${rel(dev.lastSeenAt)}. Les échanges avec cet appareil sont chiffrés de bout en bout.`
+  $('devSeen').textContent = t('device.pairedSeen', { paired: rel(dev.createdAt), seen: rel(dev.lastSeenAt) })
   ;($('devRenameInput') as unknown as HTMLInputElement).value = dev.name
   $('devModal').classList.remove('hidden')
 }
@@ -656,10 +663,10 @@ async function openPairModal() {
   currentPairingId = res.deviceId
   currentPairUrl = res.url
   ;($('qrImg') as unknown as HTMLImageElement).src = `/api/admin/pair/${res.deviceId}/qr.svg`
-  $('pairUrlText').textContent = res.url.split('#')[0] + '  (ou scanne le QR code)'
+  $('pairUrlText').textContent = res.url.split('#')[0] + t('pair.orScan')
   const st = $('pairState')
   st.classList.remove('ok')
-  st.innerHTML = '<span class="spin"></span>En attente du scan…'
+  st.innerHTML = '<span class="spin"></span>' + t('pair.waiting')
   $('pairRenameRow').classList.add('hidden')
   $('pairModal').classList.remove('hidden')
 }
@@ -681,9 +688,9 @@ function initUI() {
     if (!currentPairUrl) return
     try {
       await navigator.clipboard.writeText(currentPairUrl)
-      toast('Lien d’appairage copié ✓', 'Ouvre-le sur le téléphone.')
+      toast(t('pair.linkCopied'), t('pair.linkCopiedHint'))
     } catch {
-      toast('Copie impossible')
+      toast(t('pair.copyFailed'))
     }
   }
   $('btnPairDone').onclick = async () => {
@@ -699,7 +706,7 @@ function initUI() {
     const name = ($('devRenameInput') as unknown as HTMLInputElement).value.trim()
     if (currentDeviceId && name) {
       await postJSON(`/device/${currentDeviceId}/rename`, { name })
-      toast('Appareil renommé ✓')
+      toast(t('toast.renamed'))
       $('devModal').classList.add('hidden')
       void refresh()
     }
@@ -707,7 +714,7 @@ function initUI() {
   $('btnDevRevoke').onclick = async () => {
     if (!currentDeviceId) return
     await postJSON(`/device/${currentDeviceId}/revoke`, {})
-    toast('Appareil retiré', 'Il ne peut plus rien envoyer vers ce PC.')
+    toast(t('toast.removed'), t('toast.removedHint'))
     $('devModal').classList.add('hidden')
     void refresh()
   }
@@ -762,16 +769,16 @@ function initUI() {
     if (!text) return
     await postJSON('/outbox/text', { text })
     ta.value = ''
-    toast('Texte mis à disposition ✓', 'Onglet « Recevoir » sur le téléphone.')
+    toast(t('toast.textQueued'), t('up.readyHint'))
     void refresh()
   }
   $('btnPushClip').onclick = async () => {
     try {
       const r = (await postJSON('/clipboard/push', {})) as { preview?: string }
-      toast('Presse-papiers envoyé ✓', r.preview)
+      toast(t('toast.clipPushed'), r.preview)
       void refresh()
     } catch (e) {
-      toast('Presse-papiers vide', (e as Error).message)
+      toast(t('clipboard.empty'), (e as Error).message)
     }
   }
 
@@ -780,6 +787,7 @@ function initUI() {
       await postJSON('/settings', {
         theme: ($('setTheme') as unknown as HTMLSelectElement).value,
         skin: ($('setSkin') as unknown as HTMLSelectElement).value,
+        lang: ($('setLang') as unknown as HTMLSelectElement).value,
         deviceName: ($('setName') as unknown as HTMLInputElement).value,
         downloadDir: ($('setDir') as unknown as HTMLInputElement).value,
         maxFileMB: Number(($('setMax') as unknown as HTMLSelectElement).value),
@@ -790,10 +798,10 @@ function initUI() {
         clipHistoryMaxItems: Number(($('setClipMax') as unknown as HTMLSelectElement).value),
         clipHistoryMaxDays: Number(($('setClipDays') as unknown as HTMLSelectElement).value),
       })
-      toast('Réglages enregistrés ✓')
+      toast(t('set.saved'))
       void refresh()
     } catch (e) {
-      toast('Réglage refusé', (e as Error).message)
+      toast(t('set.saveFailed'), (e as Error).message)
     }
   }
   ;($('shortcutDevice') as unknown as HTMLSelectElement).onchange = () => {
@@ -807,31 +815,37 @@ function initUI() {
   ;($('setSkin') as unknown as HTMLSelectElement).onchange = (e) => {
     applyPlatformSkin((e.target as HTMLSelectElement).value as 'auto' | 'apple' | 'windows')
   }
+  // langue : bascule en direct (ré-applique l'i18n + re-render dynamique)
+  ;($('setLang') as unknown as HTMLSelectElement).onchange = (e) => {
+    lang = resolveLang((e.target as HTMLSelectElement).value, langFrom(navigator.language))
+    applyI18n(lang)
+    if (state) renderAll()
+  }
   $('btnResetPc').onclick = async () => {
-    if (!confirm('Réinitialiser ce PC ?\n\nTous les téléphones appairés seront oubliés, l’historique du presse-papiers et les fichiers en attente seront effacés. Les téléphones devront re-scanner un QR code.')) return
+    if (!confirm(t('reset.confirm'))) return
     try {
       await postJSON('/reset', {})
-      toast('PC réinitialisé ✓', 'Appairages et historique effacés.')
+      toast(t('reset.done'), t('reset.doneHint'))
       void refresh()
     } catch (e) {
-      toast('Échec de la réinitialisation', (e as Error).message)
+      toast(t('reset.failed'), (e as Error).message)
     }
   }
 
   const REPO = 'https://github.com/MrFrosas/flitdrop'
   const openIssue = (kind: 'bug' | 'idea') => {
-    const title = kind === 'bug' ? 'Problème : ' : 'Idée : '
+    const title = kind === 'bug' ? t('help.issueBug') : t('help.issueIdea')
     const os = navigator.platform || ''
-    const body = `\n\n---\nVersion : v${state?.version ?? ''} · ${os}`
+    const body = `\n\n---\n${t('help.version')} : v${state?.version ?? ''} · ${os}`
     void postJSON('/open-url', {
       url: `${REPO}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`,
-    }).catch(() => toast('Impossible d’ouvrir GitHub'))
+    }).catch(() => toast(t('common.copyFailed')))
   }
   $('btnReportBug').onclick = () => openIssue('bug')
   $('btnSuggest').onclick = () => openIssue('idea')
   $('btnSavePrivacy').onclick = async () => {
     await postJSON('/settings', { telemetryConsent: ($('setTelemetry') as unknown as HTMLInputElement).checked })
-    toast('Préférence enregistrée ✓')
+    toast(t('help.savedPref'))
     void refresh()
   }
 
@@ -842,7 +856,7 @@ function initUI() {
   }
   $('btnClipClear').onclick = async () => {
     await postJSON('/cliphistory/clear', {})
-    toast('Historique effacé')
+    toast(t('toast.histCleared'))
     void refresh()
   }
 
@@ -866,9 +880,9 @@ async function uploadOutbox(files: FileList) {
       bar.classList.add('hidden')
       fill.style.width = '0%'
       if (xhr.status === 200) {
-        toast(files.length > 1 ? `${files.length} fichiers prêts ✓` : 'Fichier prêt ✓', 'Onglet « Recevoir » sur le téléphone.')
+        toast(tp(lang, 'up.filesReady', files.length), t('up.readyHint'))
       } else {
-        toast('Échec de l’envoi', `code ${xhr.status}`)
+        toast(t('up.failed'), `code ${xhr.status}`)
       }
       void refresh()
       resolve()
@@ -914,6 +928,7 @@ function applyPlatformSkin(skin: 'auto' | 'apple' | 'windows' = 'auto') {
 }
 
 detectHostOs()
+applyI18n(lang)
 applyPlatformSkin()
 initUI()
 history.replaceState(null, '', location.pathname)

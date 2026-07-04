@@ -13,25 +13,25 @@
   <aside class="side">
     <div class="mark" title="Flitdrop"><span></span><b class="mark-name">Flitdrop</b></div>
     <nav>
-      <button class="nav-btn active" data-view="radar" title="Radar">
+      <button class="nav-btn active" data-view="radar" data-i18n-title="nav.radar" title="Radar">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/><circle cx="12" cy="12" r="5" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".7"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/></svg>
-        <span class="nav-label">Radar</span>
+        <span class="nav-label" data-i18n="nav.radar">Radar</span>
       </button>
-      <button class="nav-btn" data-view="activity" title="Historique">
+      <button class="nav-btn" data-view="activity" data-i18n-title="nav.history" title="Historique">
         <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-        <span class="nav-label">Historique</span>
+        <span class="nav-label" data-i18n="nav.history">Historique</span>
       </button>
-      <button class="nav-btn" data-view="send" title="Envoyer vers le téléphone">
+      <button class="nav-btn" data-view="send" data-i18n-title="nav.send" title="Envoyer">
         <svg viewBox="0 0 24 24"><path d="M12 19V6M6 12l6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span class="nav-label">Envoyer</span>
+        <span class="nav-label" data-i18n="nav.send">Envoyer</span>
       </button>
-      <button class="nav-btn" data-view="clip" title="Presse-papiers">
+      <button class="nav-btn" data-view="clip" data-i18n-title="nav.clipboard" title="Presse-papiers">
         <svg viewBox="0 0 24 24"><rect x="6" y="4.5" width="12" height="16" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 4.5a2.5 2.5 0 0 1 5 0M9 10h6M9 13.5h6M9 17h3.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-        <span class="nav-label">Presse-papiers</span>
+        <span class="nav-label" data-i18n="nav.clipboard">Presse-papiers</span>
       </button>
-      <button class="nav-btn" data-view="settings" title="Réglages">
+      <button class="nav-btn" data-view="settings" data-i18n-title="nav.settings" title="Réglages">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1M7.7 16.3l-2.1 2.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-        <span class="nav-label">Réglages</span>
+        <span class="nav-label" data-i18n="nav.settings">Réglages</span>
       </button>
     </nav>
     <div class="side-foot" id="versionTag">v0.1</div>
@@ -40,10 +40,10 @@
   <main class="main">
     <header class="head">
       <div>
-        <h1 id="viewTitle">Radar</h1>
+        <h1 id="viewTitle" data-i18n="nav.radar">Radar</h1>
         <div class="head-sub"><span id="pcNameHead">…</span> · <span id="netInfo">…</span></div>
       </div>
-      <button class="btn primary" id="btnPair">Appairer un téléphone</button>
+      <button class="btn primary" id="btnPair" data-i18n="header.pair">Appairer un téléphone</button>
     </header>
 
     <!-- RADAR -->
@@ -59,13 +59,13 @@
             <div class="pcnode-core">
               <svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="5" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9 20h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
             </div>
-            <span id="pcNodeName">Ce PC</span>
+            <span id="pcNodeName" data-i18n="radar.thisPc">Ce PC</span>
           </div>
           <div id="deviceLayer"></div>
           <div class="radar-empty hidden" id="radarEmpty">
-            <p>Aucun téléphone appairé</p>
-            <button class="btn primary" id="btnPair2">Appairer un téléphone</button>
-            <small>30 secondes, un QR code, et c’est réglé.</small>
+            <p data-i18n="radar.empty">Aucun téléphone appairé</p>
+            <button class="btn primary" id="btnPair2" data-i18n="header.pair">Appairer un téléphone</button>
+            <small data-i18n="radar.emptyHint">30 secondes, un QR code, et c’est réglé.</small>
           </div>
         </div>
       </div>
@@ -75,8 +75,8 @@
     <section class="view hidden" id="view-activity">
       <ul class="hist" id="historyList"></ul>
       <div class="empty hidden" id="histEmpty">
-        <p>Encore rien ici</p>
-        <small>Chaque fichier ou texte échangé apparaîtra dans cet historique.</small>
+        <p data-i18n="hist.empty">Encore rien ici</p>
+        <small data-i18n="hist.emptyHint">Chaque fichier ou texte échangé apparaîtra dans cet historique.</small>
       </div>
     </section>
 
@@ -85,185 +85,192 @@
       <div class="send-grid">
         <div class="card dropzone" id="dropzone">
           <svg viewBox="0 0 24 24" width="30" height="30"><path d="M12 16V5m-5 4 5-5 5 5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <b>Glisse des fichiers ici</b>
-          <small>ou <u>clique pour parcourir</u>. Le téléphone les récupère dans son onglet « Recevoir ».</small>
+          <b data-i18n="send.drop">Glisse des fichiers ici</b>
+          <small data-i18n-html="send.dropHint">ou <u>clique pour parcourir</u>. Le téléphone les récupère dans son onglet « Recevoir ».</small>
           <div class="upbar hidden" id="upBar"><span id="upProgress"></span></div>
         </div>
         <div class="card">
-          <h3>Envoyer du texte</h3>
-          <textarea id="outText" rows="4" placeholder="Un lien, une adresse, un mot de passe wifi…"></textarea>
+          <h3 data-i18n="send.textTitle">Envoyer du texte</h3>
+          <textarea id="outText" rows="4" data-i18n-ph="send.textPh" placeholder="Un lien, une adresse, un mot de passe wifi…"></textarea>
           <div class="row">
-            <button class="btn primary" id="btnQueueText">Mettre à disposition</button>
-            <button class="btn" id="btnPushClip">Envoyer mon presse-papiers</button>
+            <button class="btn primary" id="btnQueueText" data-i18n="send.textBtn">Mettre à disposition</button>
+            <button class="btn" id="btnPushClip" data-i18n="send.pushClip">Envoyer mon presse-papiers</button>
           </div>
         </div>
       </div>
-      <h3 class="listtitle">À récupérer sur le téléphone</h3>
+      <h3 class="listtitle" data-i18n="send.queueTitle">À récupérer sur le téléphone</h3>
       <ul class="hist" id="outboxList"></ul>
       <div class="empty hidden" id="outboxEmpty">
-        <p>Rien en attente</p>
-        <small>Tout ce que tu déposes ici reste disponible pour tes téléphones appairés.</small>
+        <p data-i18n="send.outboxEmpty">Rien en attente</p>
+        <small data-i18n="send.outboxEmptyHint">Tout ce que tu déposes ici reste disponible pour tes téléphones appairés.</small>
       </div>
     </section>
 
     <!-- PRESSE-PAPIERS -->
     <section class="view hidden" id="view-clip">
       <div class="clip-toolbar">
-        <input id="clipSearch" type="search" placeholder="Rechercher dans l’historique…">
-        <button class="btn" id="btnClipClear">Tout effacer</button>
+        <input id="clipSearch" type="search" data-i18n-ph="clip.search" placeholder="Rechercher dans l’historique…">
+        <button class="btn" id="btnClipClear" data-i18n="clip.clear">Tout effacer</button>
       </div>
       <ul class="hist" id="clipList"></ul>
       <div class="empty hidden" id="clipEmpty">
-        <p>Historique vide</p>
-        <small>Tout ce que tu copies sur ce PC, et les textes reçus des téléphones, apparaîtront ici. Local, jamais envoyé sur internet.</small>
+        <p data-i18n="clip.empty">Historique vide</p>
+        <small data-i18n="clip.emptyHint">Tout ce que tu copies sur ce PC, et les textes reçus des téléphones, apparaîtront ici. Local, jamais envoyé sur internet.</small>
       </div>
       <div class="empty hidden" id="clipDisabled">
-        <p>Historique désactivé</p>
-        <small>Active « Historique du presse-papiers » dans les réglages pour retrouver ici tout ce que tu copies.</small>
+        <p data-i18n="clip.disabled">Historique désactivé</p>
+        <small data-i18n="clip.disabledHint">Active « Historique du presse-papiers » dans les réglages pour retrouver ici tout ce que tu copies.</small>
       </div>
     </section>
 
     <!-- RÉGLAGES -->
     <section class="view hidden" id="view-settings">
       <div class="card settings-card">
-        <h3>Ce PC</h3>
+        <h3 data-i18n="set.thisPc">Ce PC</h3>
         <div class="row">
-          <label class="grow">Style
+          <label class="grow"><span data-i18n="set.style">Style</span>
             <select id="setSkin">
-              <option value="auto">Automatique (système)</option>
-              <option value="apple">Apple</option>
-              <option value="windows">Windows</option>
+              <option value="auto" data-i18n="set.auto">Automatique (système)</option>
+              <option value="apple" data-i18n="set.apple">Apple</option>
+              <option value="windows" data-i18n="set.windows">Windows</option>
             </select>
           </label>
-          <label class="grow">Thème
+          <label class="grow"><span data-i18n="set.theme">Thème</span>
             <select id="setTheme">
-              <option value="system">Automatique (système)</option>
-              <option value="light">Clair</option>
-              <option value="dark">Sombre</option>
+              <option value="system" data-i18n="set.auto">Automatique (système)</option>
+              <option value="light" data-i18n="set.light">Clair</option>
+              <option value="dark" data-i18n="set.dark">Sombre</option>
+            </select>
+          </label>
+          <label class="grow"><span data-i18n="set.lang">Langue</span>
+            <select id="setLang">
+              <option value="auto" data-i18n="set.auto">Automatique (système)</option>
+              <option value="fr" data-i18n="set.langFr">Français</option>
+              <option value="en" data-i18n="set.langEn">English</option>
             </select>
           </label>
         </div>
-        <label>Nom visible par les téléphones
+        <label><span data-i18n="set.name">Nom visible par les téléphones</span>
           <input id="setName" maxlength="40">
         </label>
-        <label>Dossier de réception
+        <label><span data-i18n="set.dir">Dossier de réception</span>
           <input id="setDir">
         </label>
         <div class="row">
-          <label class="grow">Taille max par fichier
+          <label class="grow"><span data-i18n="set.maxFile">Taille max par fichier</span>
             <select id="setMax">
-              <option value="512">512 Mo</option>
-              <option value="1024">1 Go</option>
-              <option value="4096">4 Go</option>
-              <option value="8192">8 Go</option>
-              <option value="16384">16 Go</option>
+              <option value="512" data-i18n="sz.512mb">512 Mo</option>
+              <option value="1024" data-i18n="sz.1gb">1 Go</option>
+              <option value="4096" data-i18n="sz.4gb">4 Go</option>
+              <option value="8192" data-i18n="sz.8gb">8 Go</option>
+              <option value="16384" data-i18n="sz.16gb">16 Go</option>
             </select>
           </label>
           <label class="check">
             <input type="checkbox" id="setApproval">
-            <span>Me demander avant chaque réception</span>
+            <span data-i18n="set.approval">Me demander avant chaque réception</span>
           </label>
         </div>
         <label class="check">
           <input type="checkbox" id="setClipboard">
-          <span>Synchroniser mon presse-papiers vers les téléphones (quand je copie du texte sur le PC, il devient disponible sur le téléphone, onglet « Recevoir »)</span>
+          <span data-i18n="set.clipboard">Synchroniser mon presse-papiers vers les téléphones (quand je copie du texte sur le PC, il devient disponible sur le téléphone, onglet « Recevoir »)</span>
         </label>
         <label class="check">
           <input type="checkbox" id="setClipHistory">
-          <span>Historique du presse-papiers (local uniquement, purgé automatiquement)</span>
+          <span data-i18n="set.clipHistory">Historique du presse-papiers (local uniquement, purgé automatiquement)</span>
         </label>
         <div class="row">
-          <label class="grow">Garder au maximum
+          <label class="grow"><span data-i18n="set.keepMax">Garder au maximum</span>
             <select id="setClipMax">
-              <option value="50">50 éléments</option>
-              <option value="200">200 éléments</option>
-              <option value="500">500 éléments</option>
+              <option value="50" data-i18n="opt.items50">50 éléments</option>
+              <option value="200" data-i18n="opt.items200">200 éléments</option>
+              <option value="500" data-i18n="opt.items500">500 éléments</option>
             </select>
           </label>
-          <label class="grow">Effacer après
+          <label class="grow"><span data-i18n="set.eraseAfter">Effacer après</span>
             <select id="setClipDays">
-              <option value="1">24 heures</option>
-              <option value="7">7 jours</option>
-              <option value="30">30 jours</option>
+              <option value="1" data-i18n="opt.h24">24 heures</option>
+              <option value="7" data-i18n="opt.d7">7 jours</option>
+              <option value="30" data-i18n="opt.d30">30 jours</option>
             </select>
           </label>
         </div>
-        <button class="btn primary" id="btnSaveSettings">Enregistrer</button>
+        <button class="btn primary" id="btnSaveSettings" data-i18n="set.save">Enregistrer</button>
       </div>
 
       <div class="card settings-card">
-        <h3>Partage direct depuis l’iPhone (Raccourci)</h3>
-        <p class="cardhint">Avec un Raccourci Apple, « Envoyer au PC » apparaît dans la feuille de partage de l’iPhone : Photos → Partager → Envoyer au PC. Aucune app à installer.</p>
+        <h3 data-i18n="sc.title">Partage direct depuis l’iPhone (Raccourci)</h3>
+        <p class="cardhint" data-i18n="sc.hint">Avec un Raccourci Apple, « Envoyer au PC » apparaît dans la feuille de partage de l’iPhone : Photos → Partager → Envoyer au PC. Aucune app à installer.</p>
         <label class="check">
           <input type="checkbox" id="setShortcuts">
-          <span>Activer le partage par Raccourci. Pratique, mais ce canal n’est <b>pas chiffré</b> (contrairement au reste) : à désactiver sur un wifi public que tu ne contrôles pas.</span>
+          <span data-i18n-html="sc.enable">Activer le partage par Raccourci. Pratique, mais ce canal n’est <b>pas chiffré</b> (contrairement au reste) : à désactiver sur un wifi public que tu ne contrôles pas.</span>
         </label>
-        <label>Téléphone concerné
+        <label><span data-i18n="sc.device">Téléphone concerné</span>
           <select id="shortcutDevice"></select>
         </label>
         <div id="shortcutInfo"></div>
         <details>
-          <summary>Créer le raccourci (2 minutes, à faire une fois)</summary>
+          <summary data-i18n="sc.create">Créer le raccourci (2 minutes, à faire une fois)</summary>
           <ol class="steps">
-            <li>Sur l’iPhone, ouvre l’app <b>Raccourcis</b> puis crée un nouveau raccourci.</li>
-            <li>Dans ses réglages (icône ⓘ), active <b>« Afficher dans la feuille de partage »</b>.</li>
-            <li>Ajoute l’action <b>« Obtenir le contenu de l’URL »</b> avec l’adresse « Envoyer des fichiers » ci-dessus.</li>
-            <li>Méthode <b>POST</b>, corps <b>Formulaire</b> : ajoute un champ de type <b>Fichier</b>, nommé <code>file</code>, avec la variable <b>Entrée du raccourci</b>.</li>
-            <li>Nomme-le <b>« Envoyer au PC »</b>, choisis une icône, enregistre.</li>
-            <li>Depuis Photos ou n’importe quelle app : Partager → Envoyer au PC. Terminé.</li>
+            <li data-i18n-html="sc.step1">Sur l’iPhone, ouvre l’app <b>Raccourcis</b> puis crée un nouveau raccourci.</li>
+            <li data-i18n-html="sc.step2">Dans ses réglages (icône ⓘ), active <b>« Afficher dans la feuille de partage »</b>.</li>
+            <li data-i18n-html="sc.step3">Ajoute l’action <b>« Obtenir le contenu de l’URL »</b> avec l’adresse « Envoyer des fichiers » ci-dessus.</li>
+            <li data-i18n-html="sc.step4">Méthode <b>POST</b>, corps <b>Formulaire</b> : ajoute un champ de type <b>Fichier</b>, nommé <code>file</code>, avec la variable <b>Entrée du raccourci</b>.</li>
+            <li data-i18n-html="sc.step5">Nomme-le <b>« Envoyer au PC »</b>, choisis une icône, enregistre.</li>
+            <li data-i18n-html="sc.step6">Depuis Photos ou n’importe quelle app : Partager → Envoyer au PC. Terminé.</li>
           </ol>
         </details>
       </div>
 
       <div class="card settings-card">
-        <h3>Aide et confidentialité</h3>
-        <p class="cardhint">Une idée, un bug ? Dis-le en deux clics, ça ouvre un ticket prérempli sur GitHub.</p>
+        <h3 data-i18n="help.title">Aide et confidentialité</h3>
+        <p class="cardhint" data-i18n="help.hint">Une idée, un bug ? Dis-le en deux clics, ça ouvre un ticket prérempli sur GitHub.</p>
         <div class="row">
-          <button class="btn" id="btnReportBug">Signaler un problème</button>
-          <button class="btn" id="btnSuggest">Proposer une idée</button>
+          <button class="btn" id="btnReportBug" data-i18n="help.reportBug">Signaler un problème</button>
+          <button class="btn" id="btnSuggest" data-i18n="help.suggest">Proposer une idée</button>
         </div>
         <label class="check">
           <input type="checkbox" id="setTelemetry">
-          <span>Aider à améliorer Flitdrop en partageant des données d’usage et d’erreurs anonymes. Aucun contenu de vos fichiers ni de votre presse-papiers n’est jamais envoyé. Décoché par défaut, vous décidez.</span>
+          <span data-i18n="help.telemetry">Aider à améliorer Flitdrop en partageant des données d’usage et d’erreurs anonymes. Aucun contenu de vos fichiers ni de votre presse-papiers n’est jamais envoyé. Décoché par défaut, vous décidez.</span>
         </label>
-        <button class="btn primary" id="btnSavePrivacy">Enregistrer</button>
+        <button class="btn primary" id="btnSavePrivacy" data-i18n="set.save">Enregistrer</button>
       </div>
 
       <div class="card settings-card">
-        <h3>Réinitialiser ce PC</h3>
-        <p class="cardhint">Chaque téléphone que tu appaires est lié à CE PC uniquement : personne d’autre sur le wifi ne voit tes données. Si tu prêtes ou revends la machine, réinitialise pour tout effacer : appareils appairés, historique du presse-papiers et fichiers en attente. Les téléphones devront re-scanner un QR code pour se reconnecter.</p>
-        <button class="btn danger" id="btnResetPc">Réinitialiser ce PC</button>
+        <h3 data-i18n="reset.title">Réinitialiser ce PC</h3>
+        <p class="cardhint" data-i18n="reset.hint">Chaque téléphone que tu appaires est lié à CE PC uniquement : personne d’autre sur le wifi ne voit tes données. Si tu prêtes ou revends la machine, réinitialise pour tout effacer : appareils appairés, historique du presse-papiers et fichiers en attente. Les téléphones devront re-scanner un QR code pour se reconnecter.</p>
+        <button class="btn danger" id="btnResetPc" data-i18n="reset.btn">Réinitialiser ce PC</button>
       </div>
     </section>
   </main>
 
   <aside class="feed">
-    <h2>En direct</h2>
+    <h2 data-i18n="live.title">En direct</h2>
     <ul id="feedList"></ul>
     <div class="empty" id="feedEmpty">
-      <p>Tout est calme</p>
-      <small>Les réceptions apparaissent ici en temps réel.</small>
+      <p data-i18n="live.calm">Tout est calme</p>
+      <small data-i18n="live.calmHint">Les réceptions apparaissent ici en temps réel.</small>
     </div>
   </aside>
 
   <!-- Modale d'appairage -->
   <div class="modal hidden" id="pairModal">
     <div class="modal-card">
-      <h2>Appairer un téléphone</h2>
-      <p class="cardhint">Scanne ce QR code avec l’appareil photo du téléphone (même wifi que le PC).</p>
-      <div class="qrbox"><img id="qrImg" alt="QR code d’appairage"></div>
+      <h2 data-i18n="pair.title">Appairer un téléphone</h2>
+      <p class="cardhint" data-i18n="pair.hint">Scanne ce QR code avec l’appareil photo du téléphone (même wifi que le PC).</p>
+      <div class="qrbox"><img id="qrImg" alt=""></div>
       <div class="pairurl" id="pairUrlText"></div>
-      <div class="pairstate" id="pairState"><span class="spin"></span>En attente du scan…</div>
+      <div class="pairstate" id="pairState"><span class="spin"></span></div>
       <div class="row hidden" id="pairRenameRow">
-        <input id="pairRenameInput" maxlength="40" placeholder="Nom de l’appareil">
-        <button class="btn primary" id="btnPairDone">Terminer</button>
+        <input id="pairRenameInput" maxlength="40" data-i18n-ph="pair.rename" placeholder="Nom de l’appareil">
+        <button class="btn primary" id="btnPairDone" data-i18n="pair.done">Terminer</button>
       </div>
       <details class="pair-copy">
-        <summary>Le téléphone n’arrive pas à scanner ?</summary>
-        <p class="cardhint">Copie ce lien et ouvre-le sur le téléphone. Il contient la clé d’appairage : garde-le privé.</p>
-        <button class="btn" id="btnCopyPairLink">Copier le lien d’appairage</button>
+        <summary data-i18n="pair.cannotScan">Le téléphone n’arrive pas à scanner ?</summary>
+        <p class="cardhint" data-i18n="pair.copyHint">Copie ce lien et ouvre-le sur le téléphone. Il contient la clé d’appairage : garde-le privé.</p>
+        <button class="btn" id="btnCopyPairLink" data-i18n="pair.copyLink">Copier le lien d’appairage</button>
       </details>
-      <button class="btn ghost" id="btnPairCancel">Fermer</button>
+      <button class="btn ghost" id="btnPairCancel" data-i18n="pair.cancel">Fermer</button>
     </div>
   </div>
 
@@ -273,46 +280,46 @@
       <div class="welcome-art" aria-hidden="true">
         <div class="wring"></div><div class="wring w2"></div><div class="wcore"></div>
       </div>
-      <h2>Bienvenue dans Flitdrop</h2>
-      <p class="cardhint">L’AirDrop de ton PC. Trois choses à savoir, et c’est tout :</p>
+      <h2 data-i18n="welcome.title">Bienvenue dans Flitdrop</h2>
+      <p class="cardhint" data-i18n="welcome.intro">L’AirDrop de ton PC. Trois choses à savoir, et c’est tout :</p>
       <ol class="steps welcome-steps">
-        <li><b>Appaire ton téléphone une seule fois.</b> Un QR code à scanner, la connexion est mémorisée, même après un redémarrage.</li>
-        <li><b>Envoie dans les deux sens.</b> Le téléphone envoie photos et textes ; toi, tu glisses des fichiers ici, il les récupère.</li>
-        <li><b>Tout reste chez toi.</b> Chiffré de bout en bout, sur ton wifi, sans cloud ni compte.</li>
+        <li data-i18n-html="welcome.step1"><b>Appaire ton téléphone une seule fois.</b> Un QR code à scanner, la connexion est mémorisée, même après un redémarrage.</li>
+        <li data-i18n-html="welcome.step2"><b>Envoie dans les deux sens.</b> Le téléphone envoie photos et textes ; toi, tu glisses des fichiers ici, il les récupère.</li>
+        <li data-i18n-html="welcome.step3"><b>Tout reste chez toi.</b> Chiffré de bout en bout, sur ton wifi, sans cloud ni compte.</li>
       </ol>
-      <button class="btn primary" id="btnWelcome">Appairer mon téléphone</button>
-      <button class="btn ghost" id="btnWelcomeSkip">Plus tard</button>
+      <button class="btn primary" id="btnWelcome" data-i18n="welcome.start">Appairer mon téléphone</button>
+      <button class="btn ghost" id="btnWelcomeSkip" data-i18n="welcome.skip">Plus tard</button>
     </div>
   </div>
 
   <!-- Modale appareil -->
   <div class="modal hidden" id="devModal">
     <div class="modal-card">
-      <h2 id="devTitle">Appareil</h2>
+      <h2 id="devTitle" data-i18n="device.title">Appareil</h2>
       <p class="cardhint" id="devSeen"></p>
       <div class="row">
         <input id="devRenameInput" maxlength="40">
-        <button class="btn primary" id="btnDevRename">Renommer</button>
+        <button class="btn primary" id="btnDevRename" data-i18n="device.rename">Renommer</button>
       </div>
-      <button class="btn" id="btnDevShortcut">Configurer le raccourci iPhone</button>
-      <button class="btn danger" id="btnDevRevoke">Retirer cet appareil</button>
-      <button class="btn ghost" id="btnDevClose">Fermer</button>
+      <button class="btn" id="btnDevShortcut" data-i18n="device.shortcut">Configurer le raccourci iPhone</button>
+      <button class="btn danger" id="btnDevRevoke" data-i18n="device.revoke">Retirer cet appareil</button>
+      <button class="btn ghost" id="btnDevClose" data-i18n="common.close">Fermer</button>
     </div>
   </div>
 
   <!-- Modale validation -->
   <div class="modal hidden" id="apprModal">
     <div class="modal-card">
-      <h2>Réception entrante</h2>
+      <h2 data-i18n="appr.title">Réception entrante</h2>
       <p id="apprText"></p>
       <div class="row">
-        <button class="btn primary grow" id="btnAccept">Accepter</button>
-        <button class="btn danger grow" id="btnRefuse">Refuser</button>
+        <button class="btn primary grow" id="btnAccept" data-i18n="appr.accept">Accepter</button>
+        <button class="btn danger grow" id="btnRefuse" data-i18n="appr.decline">Refuser</button>
       </div>
     </div>
   </div>
 
-  <div class="dropoverlay hidden" id="dropOverlay"><div>Dépose pour mettre à disposition du téléphone</div></div>
+  <div class="dropoverlay hidden" id="dropOverlay"><div data-i18n="send.dropOverlay">Dépose pour mettre à disposition du téléphone</div></div>
   <div id="toasts"></div>
 
   <script src="app.js"></script>

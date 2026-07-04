@@ -1,5 +1,13 @@
-import { b64uToBytes, seal, sealJSON, openJSON, open, jti, fmtSize } from './wdcrypto.js'
+import { b64uToBytes, seal, sealJSON, openJSON, open, jti } from './wdcrypto.js'
 import { initTelemetry, track, sizeBucket } from './telemetry.js'
+import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '../i18n.js'
+import { applyI18n } from '../i18n-dom.js'
+
+const LANG_KEY = 'wd_lang'
+let lang: Lang = resolveLang(localStorage.getItem(LANG_KEY) || undefined, langFrom(navigator.language))
+// raccourcis liés à la langue courante
+const t = (key: string, params?: Record<string, string | number>) => tr(lang, key, params)
+const fmtSize = (bytes: number) => fmtBytes(lang, bytes)
 
 interface Pairing {
   id: string
@@ -59,10 +67,19 @@ function envelope(purpose: string, obj: Record<string, unknown>): string {
 class ApiFail extends Error {
   constructor(
     msg: string,
-    readonly status: number
+    readonly status: number,
+    readonly code?: string
   ) {
     super(msg)
   }
+}
+
+/** Texte d'erreur localisé : le serveur renvoie un CODE stable, traduit ici. */
+function errText(e: unknown): string {
+  const f = e as ApiFail
+  if (f?.code) return t('err.' + f.code)
+  if (f?.message === 'Failed to fetch') return t('ph.send.lostRetry')
+  return f?.message || t('err.generic', { status: f?.status ?? 0 })
 }
 
 async function post<T>(path: string, purpose: string, obj: Record<string, unknown>): Promise<T> {
@@ -72,8 +89,8 @@ async function post<T>(path: string, purpose: string, obj: Record<string, unknow
     body: envelope(purpose, obj),
   })
   if (!r.ok) {
-    const j = (await r.json().catch(() => ({}))) as { error?: string }
-    throw new ApiFail(j.error || `erreur ${r.status}`, r.status)
+    const j = (await r.json().catch(() => ({}))) as { error?: string; code?: string }
+    throw new ApiFail(j.code ? t('err.' + j.code) : t('err.generic', { status: r.status }), r.status, j.code)
   }
   const j = (await r.json()) as { p?: string }
   return (j.p ? openJSON(key!, j.p, aad(purpose + ':res')) : j) as T
@@ -229,12 +246,12 @@ function renderAltHosts() {
   box.classList.remove('hidden')
   const title = document.createElement('p')
   title.className = 'hint'
-  title.textContent = 'Le PC a peut-être changé d’adresse. Essaie :'
+  title.textContent = t('ph.altHint')
   box.appendChild(title)
   for (const h of alts.slice(0, 4)) {
     const a = document.createElement('a')
     a.className = 'btn wide'
-    a.textContent = `Se reconnecter via ${h.split(':')[0]}`
+    a.textContent = t('ph.reconnectVia', { host: h.split(':')[0] ?? h })
     a.href = `http://${h}/s/#${pair.id}.${pair.keyB64}${pair.instanceId ? '.' + pair.instanceId : ''}`
     box.appendChild(a)
   }
@@ -249,8 +266,8 @@ async function connect() {
     // IP recyclée) et on refuse plutôt que de mélanger les données.
     if (hello.instanceId) {
       if (pair!.instanceId && pair!.instanceId !== hello.instanceId) {
-        $('errTitle').textContent = 'Ce n’est pas le bon PC'
-        $('errMsg').textContent = 'Un autre PC répond à cette adresse. Re-scanne le QR code du PC appairé.'
+        $('errTitle').textContent = t('ph.err.notThisPc')
+        $('errMsg').textContent = t('ph.err.notThisPcMsg')
         $('altHosts').classList.add('hidden')
         show('error')
         return
@@ -272,7 +289,7 @@ async function connect() {
     track('phone_connect', { platform })
     $('pcName').textContent = hello.desktopName
     $('statusDot').classList.remove('off')
-    $('menuInfo').textContent = `Ce téléphone est appairé à « ${hello.desktopName} ». Les envois sont chiffrés de bout en bout.`
+    $('menuInfo').textContent = t('ph.menuInfo', { name: hello.desktopName })
     if (hello.hosts?.length) {
       const merged = [location.host, ...hello.hosts].filter((v, i, arr) => arr.indexOf(v) === i)
       localStorage.setItem(HOSTS_KEY, JSON.stringify(merged.slice(0, 6)))
@@ -284,16 +301,16 @@ async function connect() {
   } catch (e) {
     const err = e as ApiFail
     if (err.status === 409) {
-      $('errTitle').textContent = 'Appairé à un autre PC'
-      $('errMsg').textContent = 'Ce téléphone est appairé à un autre PC Flitdrop. Re-scanne le QR code du bon PC.'
+      $('errTitle').textContent = t('ph.err.wrongPc')
+      $('errMsg').textContent = t('ph.err.wrongPcMsg')
       $('altHosts').classList.add('hidden')
     } else if (err.status === 403) {
-      $('errTitle').textContent = 'Appairage refusé'
-      $('errMsg').textContent = 'Ce téléphone a été retiré sur le PC. Re-scanne un QR code pour le reconnecter.'
+      $('errTitle').textContent = t('ph.err.revoked')
+      $('errMsg').textContent = t('ph.err.revokedMsg')
       $('altHosts').classList.add('hidden')
     } else {
-      $('errTitle').textContent = 'PC introuvable'
-      $('errMsg').textContent = 'Vérifie que Flitdrop est ouvert sur le PC et que ton téléphone est sur le même wifi.'
+      $('errTitle').textContent = t('ph.err.notFound')
+      $('errMsg').textContent = t('ph.err.notFoundMsg')
       renderAltHosts()
     }
     show('error')
@@ -318,7 +335,7 @@ function queueItem(name: string, size: number): QueueUI {
       <div class="qsize"></div>
     </div>
     <div class="qbar"><span></span></div>
-    <div class="qstate">En attente…</div>`
+    <div class="qstate">${t('ph.send.queued')}</div>`
   ;(li.querySelector('.qname') as HTMLElement).textContent = name
   ;(li.querySelector('.qsize') as HTMLElement).textContent = fmtSize(size)
   $('sendQueue').prepend(li)
@@ -335,8 +352,8 @@ async function sendChunk(tid: string, n: number, sealed: Uint8Array): Promise<vo
         body: sealed as unknown as BodyInit,
       })
       if (r.ok) return
-      const j = (await r.json().catch(() => ({}))) as { error?: string }
-      throw new ApiFail(j.error || `erreur ${r.status}`, r.status)
+      const j = (await r.json().catch(() => ({}))) as { error?: string; code?: string }
+      throw new ApiFail(j.code ? t('err.' + j.code) : t('err.generic', { status: r.status }), r.status, j.code)
     } catch (e) {
       lastErr = e
       if (e instanceof ApiFail && e.status !== 429 && e.status < 500) throw e
@@ -353,23 +370,24 @@ async function transferStatus(tid: string): Promise<{ received: number; chunks: 
 }
 
 async function sendFile(file: File): Promise<void> {
-  const ui = queueItem(file.name || 'fichier', file.size)
+  const fallbackName = t('hist.file')
+  const ui = queueItem(file.name || fallbackName, file.size)
   if (file.size === 0) {
     ui.li.classList.add('err')
-    ui.state.textContent = 'Fichier vide, ignoré'
+    ui.state.textContent = t('ph.send.empty')
     return
   }
   const maxBytes = (hello?.maxFileMB ?? 8192) * 1024 * 1024
   if (file.size > maxBytes) {
     ui.li.classList.add('err')
-    ui.state.textContent = `Trop volumineux (limite ${fmtSize(maxBytes)})`
+    ui.state.textContent = t('ph.send.tooBig', { size: fmtSize(maxBytes) })
     return
   }
   const chunkSize = SEND_CHUNK
   const chunks = Math.ceil(file.size / chunkSize)
   try {
     const init = await post<{ transferId: string }>('/api/phone/transfer/init', 'init', {
-      meta: { name: file.name || 'fichier', size: file.size, mime: file.type || undefined, chunkSize, chunks },
+      meta: { name: file.name || fallbackName, size: file.size, mime: file.type || undefined, chunkSize, chunks },
     })
     const tid = init.transferId
     const started = Date.now()
@@ -388,7 +406,7 @@ async function sendFile(file: File): Promise<void> {
       const pct = Math.round((sentBytes / file.size) * 100)
       ui.bar.style.width = pct + '%'
       const speed = sentBytes / Math.max(0.4, (Date.now() - started) / 1000)
-      ui.state.textContent = `${pct} % · ${fmtSize(speed)}/s`
+      ui.state.textContent = t('ph.send.progress', { pct, speed: fmtSize(speed) })
     }
 
     const isHard = (e: ApiFail) => !!e.status && e.status !== 429 && e.status < 500 && e.status !== 408
@@ -413,7 +431,7 @@ async function sendFile(file: File): Promise<void> {
         if (hard) throw hard
         if (resumes >= 30) throw failures[0]
         resumes++
-        ui.state.textContent = 'Connexion perdue, reprise…'
+        ui.state.textContent = t('ph.send.lost')
         await new Promise((r) => setTimeout(r, Math.min(8000, 1000 * resumes)))
         // reprendre à l'octet près : le PC nous dit quels chunks il a déjà
         const st = await transferStatus(tid).catch(() => null)
@@ -430,18 +448,13 @@ async function sendFile(file: File): Promise<void> {
     await post(`/api/phone/transfer/${tid}/finish`, 'finish', { transferId: tid })
     ui.bar.style.width = '100%'
     ui.li.classList.add('done')
-    ui.state.textContent = `Arrivé sur ${hello?.desktopName ?? 'le PC'} ✓`
+    ui.state.textContent = t('ph.send.arrived', { name: hello?.desktopName ?? 'PC' })
     track('transfer_ok', { size: sizeBucket(file.size), resumes })
   } catch (e) {
     const err = e as ApiFail
-    track('transfer_fail', { status: err.status ?? 0, reason: (err.message || '').slice(0, 40) })
+    track('transfer_fail', { status: err.status ?? 0, reason: (err.code || err.message || '').slice(0, 40) })
     ui.li.classList.add('err')
-    ui.state.textContent =
-      err.status === 403 && /refus/i.test(err.message)
-        ? 'Refusé sur le PC'
-        : err.message === 'Failed to fetch'
-          ? 'Connexion perdue, réessaie'
-          : err.message || 'Échec de l’envoi'
+    ui.state.textContent = err.code === 'refused' ? t('ph.send.refused') : errText(err)
   }
 }
 
@@ -454,11 +467,11 @@ async function sendFiles(files: FileList | File[]) {
   summary.classList.remove('hidden')
   let done = 0
   for (const f of list) {
-    summary.innerHTML = `Envoi <b>${done + 1}/${list.length}</b>…`
+    summary.innerHTML = t('ph.send.sending', { a: done + 1, b: list.length })
     await sendFile(f)
     done++
   }
-  summary.innerHTML = list.length > 1 ? `<b>${list.length}</b> fichiers traités` : ''
+  summary.innerHTML = list.length > 1 ? t('ph.send.processed', { n: list.length }) : ''
   if (list.length === 1) summary.classList.add('hidden')
   sending = false
   $('btnPick').removeAttribute('disabled')
@@ -479,23 +492,23 @@ function renderRecv(items: OutboxItem[]) {
     li.className = 'qitem' + (downloadedIds.has(item.id) ? ' done' : '')
     if (item.kind === 'text') {
       li.innerHTML = `
-        <div class="qhead"><div class="qicon">✂</div><div class="qname">Texte du PC</div>
-        <button class="qbtn">Copier</button></div>
+        <div class="qhead"><div class="qicon">✂</div><div class="qname">${t('ph.recv.textFrom')}</div>
+        <button class="qbtn">${t('ph.recv.copy')}</button></div>
         <div class="rtext"></div>`
       ;(li.querySelector('.rtext') as HTMLElement).textContent = item.text ?? ''
       ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = () => {
         const ok = copyText(item.text ?? '')
         downloadedIds.add(item.id)
         li.classList.add('done')
-        toast(ok ? 'Copié dans ton presse-papiers ✓' : 'Sélectionne le texte pour le copier')
+        toast(ok ? t('ph.recv.copied') : t('ph.recv.selectCopy'))
       }
     } else {
       li.innerHTML = `
         <div class="qhead"><div class="qicon">↓</div><div class="qname"></div><div class="qsize"></div>
-        <button class="qbtn">Ouvrir</button></div>
+        <button class="qbtn">${t('ph.recv.open')}</button></div>
         <div class="qbar hidden"><span></span></div>
         <div class="qstate hidden"></div>`
-      ;(li.querySelector('.qname') as HTMLElement).textContent = item.name ?? 'fichier'
+      ;(li.querySelector('.qname') as HTMLElement).textContent = item.name ?? t('hist.file')
       ;(li.querySelector('.qsize') as HTMLElement).textContent = fmtSize(item.size ?? 0)
       ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = () => downloadItem(item, li)
     }
@@ -509,14 +522,14 @@ async function downloadItem(item: OutboxItem, li: HTMLLIElement) {
   const state = li.querySelector('.qstate') as HTMLElement
   bar.classList.remove('hidden')
   state.classList.remove('hidden')
-  state.textContent = 'Téléchargement…'
+  state.textContent = t('ph.recv.downloading')
   try {
     const r = await fetch(`/api/phone/outbox/${item.id}/download`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-wd-device': pair!.id },
       body: envelope('download', { itemId: item.id }),
     })
-    if (!r.ok || !r.body) throw new Error('téléchargement impossible')
+    if (!r.ok || !r.body) throw new Error(t('ph.recv.dlFailed'))
     const reader = r.body.getReader()
     // file de morceaux réseau : on ne recopie JAMAIS tout l'accumulateur (l'ancien
     // code était en O(n²) et ramait sur les gros fichiers). peek/take sont en O(n).
@@ -583,12 +596,12 @@ async function downloadItem(item: OutboxItem, li: HTMLLIElement) {
       }
       if (done) break
     }
-    if (total > 0 && received !== total) throw new Error('transfert incomplet, réessaie')
+    if (total > 0 && received !== total) throw new Error(t('ph.recv.incomplete'))
     const blob = new Blob(parts as BlobPart[], { type: item.mime || 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     downloadedIds.add(item.id)
     li.classList.add('done')
-    state.textContent = 'Reçu ✓'
+    state.textContent = t('ph.recv.done')
     if ((item.mime ?? '').startsWith('image/')) {
       const img = $('imgPreview') as HTMLImageElement
       img.src = url
@@ -596,14 +609,14 @@ async function downloadItem(item: OutboxItem, li: HTMLLIElement) {
     } else {
       const a = document.createElement('a')
       a.href = url
-      a.download = item.name ?? 'fichier'
+      a.download = item.name ?? t('hist.file')
       document.body.appendChild(a)
       a.click()
       a.remove()
-      toast('Fichier téléchargé ✓')
+      toast(t('ph.recv.fileDone'))
     }
   } catch (e) {
-    state.textContent = (e as Error).message || 'Échec du téléchargement'
+    state.textContent = (e as Error).message || t('ph.recv.dlFailed')
     li.classList.add('err')
   }
 }
@@ -638,14 +651,6 @@ interface ClipEntry {
 
 let clipTimer: number | null = null
 
-function timeAgo(iso: string): string {
-  const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000)
-  if (s < 60) return 'à l’instant'
-  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`
-  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`
-  return `il y a ${Math.floor(s / 86400)} j`
-}
-
 function renderClipHistory(items: ClipEntry[], enabled: boolean) {
   const list = $('clipList')
   $('clipDisabled').classList.toggle('hidden', enabled)
@@ -660,11 +665,11 @@ function renderClipHistory(items: ClipEntry[], enabled: boolean) {
         <div class="qhead">
           <img class="clip-thumb-img" alt="">
           <div class="qname"></div>
-          <button class="qbtn">Recevoir</button>
+          <button class="qbtn">${t('ph.clip.receive')}</button>
         </div>`
       const thumb = li.querySelector('.clip-thumb-img') as HTMLImageElement
       thumb.src = e.image.thumb
-      ;(li.querySelector('.qname') as HTMLElement).textContent = `${e.text} · ${timeAgo(e.ts)}`
+      ;(li.querySelector('.qname') as HTMLElement).textContent = `${e.text} · ${rtf(lang, e.ts)}`
       thumb.onclick = () => {
         const img = $('imgPreview') as HTMLImageElement
         img.src = e.image!.thumb
@@ -673,21 +678,21 @@ function renderClipHistory(items: ClipEntry[], enabled: boolean) {
       ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = async () => {
         try {
           await post(`/api/phone/cliphistory/${e.id}/tophone`, 'clip-tophone', { entryId: e.id })
-          toast('Disponible dans « Recevoir » ✓')
+          toast(t('ph.clip.imgAvailable'))
         } catch {
-          toast('Impossible de récupérer l’image')
+          toast(t('ph.clip.imgFailed'))
         }
       }
     } else {
       li.innerHTML = `
         <div class="qhead"><div class="qicon">≡</div><div class="qname"></div>
-        <button class="qbtn">Copier</button></div>
+        <button class="qbtn">${t('ph.clip.copy')}</button></div>
         <div class="rtext"></div>`
-      ;(li.querySelector('.qname') as HTMLElement).textContent = `${e.source === 'pc' ? 'Copié sur le PC' : 'Reçu de ' + e.source} · ${timeAgo(e.ts)}`
+      ;(li.querySelector('.qname') as HTMLElement).textContent = `${e.source === 'pc' ? t('ph.clip.copiedPc') : t('ph.clip.receivedFrom', { name: e.source })} · ${rtf(lang, e.ts)}`
       ;(li.querySelector('.rtext') as HTMLElement).textContent = e.text
       ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = () => {
         const ok = copyText(e.text)
-        toast(ok ? 'Copié dans ton presse-papiers ✓' : 'Sélectionne le texte pour le copier')
+        toast(ok ? t('ph.recv.copied') : t('ph.recv.selectCopy'))
       }
     }
     list.appendChild(li)
@@ -745,29 +750,30 @@ function initUI() {
   }
 
   const txt = $('txtInput') as unknown as HTMLTextAreaElement
-  txt.oninput = () => {
-    const n = txt.value.length
-    $('txtCount').textContent = n === 0 ? '0 caractère' : n === 1 ? '1 caractère' : `${n} caractères`
+  const updateTxtCount = () => {
+    $('txtCount').textContent = tp(lang, 'ph.text.count', txt.value.length)
   }
+  txt.oninput = updateTxtCount
+  updateTxtCount()
   $('btnSendText').onclick = async () => {
     const value = txt.value.trim()
     if (!value) return
     const btn = $('btnSendText') as unknown as HTMLButtonElement
     btn.disabled = true
-    btn.textContent = 'Envoi…'
+    btn.textContent = t('ph.text.sending')
     try {
       await post('/api/phone/text', 'text', { text: value, mode: 'clip' })
-      btn.textContent = 'Dans le presse-papiers du PC ✓'
+      btn.textContent = t('ph.text.done')
       txt.value = ''
-      txt.dispatchEvent(new Event('input'))
+      updateTxtCount()
       setTimeout(() => {
-        btn.textContent = 'Envoyer sur le PC'
+        btn.textContent = t('ph.text.btn')
         btn.disabled = false
       }, 2200)
     } catch (e) {
-      btn.textContent = 'Envoyer sur le PC'
+      btn.textContent = t('ph.text.btn')
       btn.disabled = false
-      toast((e as Error).message || 'Échec de l’envoi')
+      toast(errText(e))
     }
   }
 
@@ -784,9 +790,7 @@ function initUI() {
     $('installBanner')?.classList.add('hidden')
     const { platform } = platformLabel()
     $('installSteps').textContent =
-      platform === 'iphone' || platform === 'ipad'
-        ? 'Dans Safari : bouton Partager (le carré avec une flèche), puis « Sur l’écran d’accueil ». L’icône Flitdrop apparaît comme une app, connectée à ton PC, sans re-scanner le QR code.'
-        : 'Dans Chrome : menu ⋮ en haut à droite, puis « Ajouter à l’écran d’accueil ». L’icône Flitdrop apparaît comme une app, connectée à ton PC, sans re-scanner le QR code.'
+      platform === 'iphone' || platform === 'ipad' ? t('ph.installSheet.ios') : t('ph.installSheet.android')
     $('installSheet').classList.remove('hidden')
   }
   $('btnInstall').onclick = openInstallSheet
@@ -814,6 +818,17 @@ function initUI() {
     else localStorage.setItem(THEME_KEY, themeSel.value)
     applyPhoneTheme()
   }
+  // langue : Auto / Français / English, bascule en direct
+  const langSel = $('setPhoneLang') as unknown as HTMLSelectElement
+  langSel.value = localStorage.getItem(LANG_KEY) || 'auto'
+  langSel.onchange = () => {
+    if (langSel.value === 'auto') localStorage.removeItem(LANG_KEY)
+    else localStorage.setItem(LANG_KEY, langSel.value)
+    lang = resolveLang(localStorage.getItem(LANG_KEY) || undefined, langFrom(navigator.language))
+    applyI18n(lang)
+    updateTxtCount()
+    if (hello) $('menuInfo').textContent = t('ph.menuInfo', { name: hello.desktopName })
+  }
 
   // collage manuel d'un lien d'appairage : secours si on est bloqué dans la PWA
   // (écran d'accueil) sans pouvoir scanner de QR code.
@@ -821,7 +836,7 @@ function initUI() {
     const raw = ($('pastePairInput') as unknown as HTMLInputElement).value
     const p = parseToken(raw)
     if (!p) {
-      toast('Lien d’appairage invalide')
+      toast(t('ph.paste.invalid'))
       return
     }
     pair = p
@@ -844,6 +859,7 @@ function initUI() {
 
 // ---------- démarrage ----------
 
+applyI18n(lang)
 applyOsSkin()
 applyPhoneTheme()
 initUI()

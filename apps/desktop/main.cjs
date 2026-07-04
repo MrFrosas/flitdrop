@@ -8,6 +8,14 @@ let core = null
 let quitting = false
 let clipImageTimer = null
 
+// i18n : fonctions du bundle coeur, chargées au démarrage. `tr` traduit selon le
+// réglage de langue du PC, sinon la locale du système d'exploitation.
+let _t = null
+let _resolveLang = null
+let _langFrom = null
+const tr = (key, params) =>
+  _t ? _t(_resolveLang(core && core.cfg ? core.cfg.lang : 'auto', _langFrom(app.getLocale())), key, params) : key
+
 // Surveille les IMAGES du presse-papiers (ce que la page web ne peut pas lire).
 // Electron donne la vraie image copiée : on en fait une miniature et on la
 // confie au coeur pour l'historique. `lastSig` évite les doublons.
@@ -58,8 +66,8 @@ async function shareFiles(paths) {
   if (n > 0) {
     try {
       new Notification({
-        title: n === 1 ? 'Prêt pour le téléphone' : `${n} fichiers prêts pour le téléphone`,
-        body: 'À récupérer dans Flitdrop, onglet « Recevoir ».',
+        title: n === 1 ? tr('notif.filesReady.one') : tr('notif.filesReady.other', { n }),
+        body: tr('notif.filesReadyBody'),
       }).show()
     } catch {
       // les notifications ne sont pas critiques
@@ -73,11 +81,11 @@ function isAutoStart() {
 
 function buildTrayMenu() {
   return Menu.buildFromTemplate([
-    { label: 'Ouvrir Flitdrop', click: () => { win.show(); win.focus() } },
-    { label: 'Ouvrir le dossier de réception', click: () => shell.openPath(core.cfg.downloadDir) },
+    { label: tr('tray.open'), click: () => { win.show(); win.focus() } },
+    { label: tr('tray.openFolder'), click: () => shell.openPath(core.cfg.downloadDir) },
     { type: 'separator' },
     {
-      label: 'Lancer au démarrage de la session',
+      label: tr('tray.autostart'),
       type: 'checkbox',
       checked: isAutoStart(),
       click: (item) => {
@@ -86,7 +94,7 @@ function buildTrayMenu() {
       },
     },
     { type: 'separator' },
-    { label: 'Quitter', click: () => { quitting = true; app.quit() } },
+    { label: tr('tray.quit'), click: () => { quitting = true; app.quit() } },
   ])
 }
 
@@ -105,7 +113,11 @@ if (!gotLock) {
   })
 
   app.whenReady().then(async () => {
-    const { startServer } = require(path.join(__dirname, 'core', 'flitdrop.cjs'))
+    const bundle = require(path.join(__dirname, 'core', 'flitdrop.cjs'))
+    const { startServer } = bundle
+    _t = bundle.t
+    _resolveLang = bundle.resolveLang
+    _langFrom = bundle.langFrom
     core = await startServer({
       quiet: true,
       // recopie d'une image de l'historique dans le presse-papiers système
@@ -173,7 +185,7 @@ if (!gotLock) {
 
     try {
       tray = new Tray(path.join(__dirname, 'build', 'tray.png'))
-      tray.setToolTip('Flitdrop : prêt à recevoir')
+      tray.setToolTip(tr('tray.tip'))
       tray.setContextMenu(buildTrayMenu())
       tray.on('double-click', () => { win.show(); win.focus() })
     } catch {
@@ -186,7 +198,7 @@ if (!gotLock) {
     app.on('activate', () => { if (win) win.show() })
   }).catch((err) => {
     const { dialog } = require('electron')
-    dialog.showErrorBox('Flitdrop', 'Flitdrop n\'a pas pu démarrer : ' + (err && err.message ? err.message : err))
+    dialog.showErrorBox('Flitdrop', tr('dialog.startFailed', { msg: err && err.message ? err.message : String(err) }))
     quitting = true
     app.quit()
   })
