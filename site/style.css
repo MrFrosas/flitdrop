@@ -569,6 +569,11 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
 .cf-field input:focus, .cf-field textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.14); }
 .contact-form .btn { margin-top: 4px; align-self: flex-start; }
 .cf-note { font-size: 13px; color: var(--muted-2); }
+.cf-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.cf-status { font-size: 13.5px; font-weight: 600; margin: 0; }
+.cf-status.is-ok { color: var(--signal, #1a8f3c); }
+.cf-status.is-err { color: #d0021b; }
+.contact-form .btn[disabled] { opacity: 0.6; cursor: default; }
 @media (max-width: 760px) { .support-grid { grid-template-columns: 1fr; } .cf-row { grid-template-columns: 1fr; } }
 
 /* ---------- responsive ---------- */

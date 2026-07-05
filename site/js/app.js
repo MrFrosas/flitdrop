@@ -192,20 +192,57 @@
     });
   }
 
-  /* ----- contact form: no backend needed, opens the mail client with the message ready ----- */
+  /* ----- contact form: posts to the Cloudflare Function /api/contact (Resend) ----- */
   function setupContact() {
     var f = document.getElementById('contactForm');
     if (!f) return;
+    var status = document.getElementById('contactStatus');
+    var btn = f.querySelector('button[type="submit"]');
+    function t(key, fallback) {
+      if (window.FDI18N && typeof window.FDI18N.t === 'function') {
+        var v = window.FDI18N.t(key);
+        if (v && v !== key) return v;
+      }
+      return fallback;
+    }
+    function say(msg, kind) {
+      if (!status) return;
+      status.textContent = msg;
+      status.hidden = false;
+      status.classList.remove('is-ok', 'is-err');
+      if (kind) status.classList.add(kind === 'ok' ? 'is-ok' : 'is-err');
+    }
     f.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!f.checkValidity()) { f.reportValidity(); return; }
       var el = f.elements;
-      var nm = (el['name'].value || '').trim();
-      var em = (el['email'].value || '').trim();
-      var msg = (el['message'].value || '').trim();
-      var subject = encodeURIComponent('Flitdrop — ' + nm);
-      var body = encodeURIComponent(msg + '\n\n— ' + nm + ' (' + em + ')');
-      window.location.href = 'mailto:contact@flitdrop.com?subject=' + subject + '&body=' + body;
+      var payload = {
+        name: (el['name'].value || '').trim(),
+        email: (el['email'].value || '').trim(),
+        message: (el['message'].value || '').trim(),
+        company: (el['company'] && el['company'].value) || '' // honeypot
+      };
+      btn.disabled = true;
+      say(t('support.sending', 'Sending…'), null);
+      fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+        .then(function (r) { return r.json().catch(function () { return { ok: false }; }); })
+        .then(function (data) {
+          if (data && data.ok) {
+            f.reset();
+            say(t('support.ok', 'Thanks — your message is on its way. We usually reply within a day.'), 'ok');
+            if (window.posthog) { try { window.posthog.capture('contact_submitted'); } catch (_) {} }
+          } else {
+            say(t('support.err', 'Something went wrong. Please email contact@flitdrop.com directly.'), 'err');
+          }
+        })
+        .catch(function () {
+          say(t('support.err', 'Something went wrong. Please email contact@flitdrop.com directly.'), 'err');
+        })
+        .finally(function () { btn.disabled = false; });
     });
   }
 

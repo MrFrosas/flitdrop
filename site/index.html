@@ -522,8 +522,11 @@
             <label class="cf-field"><span data-i18n="support.email">Email</span><input type="email" name="email" autocomplete="email" required></label>
           </div>
           <label class="cf-field"><span data-i18n="support.message">Message</span><textarea name="message" rows="4" required></textarea></label>
+          <!-- honeypot anti-spam : caché aux humains, souvent rempli par les bots -->
+          <div class="cf-hp" aria-hidden="true"><label>Company<input type="text" name="company" tabindex="-1" autocomplete="off"></label></div>
           <button class="btn btn-primary btn-lg" type="submit" data-i18n="support.send">Send</button>
-          <p class="cf-note" data-i18n="support.note">This opens your mail app with the message ready to send.</p>
+          <p class="cf-note" data-i18n="support.note">We usually reply within a day.</p>
+          <p class="cf-status" id="contactStatus" role="status" aria-live="polite" hidden></p>
         </form>
       </div>
     </section>

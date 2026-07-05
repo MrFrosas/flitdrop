@@ -151,7 +151,10 @@
     'support.blurb': 'The FAQ covers the most common questions. For anything else, write to us and we answer fast.',
     'support.faq': 'Read the FAQ', 'support.bug': 'Report a bug',
     'support.name': 'Name', 'support.email': 'Email', 'support.message': 'Message', 'support.send': 'Send',
-    'support.note': 'This opens your mail app with the message ready to send.',
+    'support.note': 'We usually reply within a day.',
+    'support.sending': 'Sending…',
+    'support.ok': 'Thanks, your message is on its way. We usually reply within a day.',
+    'support.err': 'Something went wrong. Please email contact@flitdrop.com directly.',
 
     'footer.tagline': 'Direct sharing between all your devices, on your Wi-Fi.',
     'footer.lang': 'Language', 'footer.rights': '© 2026 Flitdrop. All rights reserved.',
@@ -307,7 +310,10 @@
     'support.blurb': 'La FAQ répond au plus courant. Pour le reste, écrivez-nous, on répond vite.',
     'support.faq': 'Lire la FAQ', 'support.bug': 'Signaler un bug',
     'support.name': 'Nom', 'support.email': 'E-mail', 'support.message': 'Message', 'support.send': 'Envoyer',
-    'support.note': 'Cela ouvre votre messagerie avec le message prêt à partir.',
+    'support.note': 'On répond en général sous 24 h.',
+    'support.sending': 'Envoi…',
+    'support.ok': 'Merci, votre message part. On répond en général sous 24 h.',
+    'support.err': 'Un souci est survenu. Écrivez-nous directement à contact@flitdrop.com.',
 
     'footer.tagline': 'Le partage direct entre tous vos appareils, sur votre Wi-Fi.',
     'footer.lang': 'Langue', 'footer.rights': '© 2026 Flitdrop. Tous droits réservés.',
