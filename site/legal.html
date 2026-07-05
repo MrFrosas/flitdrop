@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Legal · Flitdrop</title>
+  <meta name="robots" content="index,follow">
+  <link rel="icon" href="/assets/icon.svg">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="bg" aria-hidden="true"><div class="bg-aurora"></div></div>
+  <header class="nav">
+    <a class="brand" href="/"><img src="/assets/icon-mono.svg" alt="" width="30" height="30"><span>Flitdrop</span></a>
+    <div class="nav-right" style="margin-left:auto"><button class="lang-toggle" id="langToggle">FR</button></div>
+  </header>
+
+  <main class="doc">
+    <a class="back" href="/">← <span data-en="Home" data-fr="Accueil">Home</span></a>
+
+    <div class="lang-en">
+      <h1>Legal notice</h1>
+      <h2>Publisher</h2>
+      <p>This website and the Flitdrop application are published by Thomas Bidault, acting as a sole trader (auto-entrepreneur), France. Contact: <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>.</p>
+      <h2>Hosting</h2>
+      <p>This website is hosted by Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, USA.</p>
+      <h2>Software licence</h2>
+      <p>Flitdrop is distributed under the Functional Source License (FSL-1.1-ALv2). The source code is publicly available and free to use, including inside a company, but it may not be resold or used to build a competing product. Two years after each release, that version becomes available under the Apache 2.0 licence. See the LICENSE file in the repository for the full terms.</p>
+      <h2>Trademarks</h2>
+      <p>AirDrop is a trademark of Apple Inc. Quick Share is a trademark of Samsung and Google. Flitdrop is an independent project and is not affiliated with, endorsed by, or sponsored by these companies. These names are used only to describe compatibility and comparison.</p>
+      <h2>Liability</h2>
+      <p>Flitdrop is provided "as is", without warranty of any kind, to the extent permitted by law. You remain responsible for the files you choose to send and the devices you pair with.</p>
+    </div>
+
+    <div class="lang-fr" hidden>
+      <h1>Mentions légales</h1>
+      <h2>Éditeur</h2>
+      <p>Ce site et l’application Flitdrop sont édités par Thomas Bidault, entrepreneur individuel (auto-entrepreneur), France. Contact : <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>.</p>
+      <h2>Hébergement</h2>
+      <p>Ce site est hébergé par Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, États-Unis.</p>
+      <h2>Licence du logiciel</h2>
+      <p>Flitdrop est distribué sous la Functional Source License (FSL-1.1-ALv2). Le code source est public et libre d’utilisation, y compris au sein d’une entreprise, mais il ne peut pas être revendu ni utilisé pour créer un produit concurrent. Deux ans après chaque version, celle-ci devient disponible sous la licence Apache 2.0. Voir le fichier LICENSE du dépôt pour les conditions complètes.</p>
+      <h2>Marques</h2>
+      <p>AirDrop est une marque d’Apple Inc. Quick Share est une marque de Samsung et Google. Flitdrop est un projet indépendant, sans affiliation ni approbation de ces sociétés. Ces noms ne sont utilisés que pour décrire la compatibilité et la comparaison.</p>
+      <h2>Responsabilité</h2>
+      <p>Flitdrop est fourni « en l'état », sans garantie d'aucune sorte, dans les limites permises par la loi. Vous restez responsable des fichiers que vous choisissez d'envoyer et des appareils que vous associez.</p>
+    </div>
+  </main>
+
+  <script src="/js/i18n.js"></script>
+  <script>
+    (function () {
+      function applyDoc() {
+        var l = window.FDI18N ? window.FDI18N.lang : 'en'
+        document.querySelectorAll('.lang-en').forEach(function (e) { e.hidden = l !== 'en' })
+        document.querySelectorAll('.lang-fr').forEach(function (e) { e.hidden = l !== 'fr' })
+        document.querySelectorAll('[data-en]').forEach(function (e) { e.textContent = l === 'fr' ? e.getAttribute('data-fr') : e.getAttribute('data-en') })
+      }
+      document.addEventListener('DOMContentLoaded', applyDoc)
+      window.addEventListener('fd-lang', applyDoc)
+    })()
+  </script>
+</body>
+</html>

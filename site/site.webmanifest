@@ -1,0 +1,16 @@
+{
+  "name": "Flitdrop",
+  "short_name": "Flitdrop",
+  "description": "The AirDrop that works between iPhone, Android, Windows, Mac and Linux. Encrypted, free on your Wi-Fi, nothing to install on the phone.",
+  "lang": "en",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "categories": ["utilities", "productivity"],
+  "icons": [
+    { "src": "/assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

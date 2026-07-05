@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en" data-i18n-meta>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Flitdrop, send files between phone and computer like AirDrop everywhere</title>
+  <meta name="description" content="Flitdrop moves photos, files and clipboard between iPhone, Android, Windows, Mac and Linux in one gesture. End to end encrypted, free on your own Wi-Fi, nothing to install on the phone.">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="author" content="Flitdrop">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <link rel="preload" as="image" href="/assets/hero-bg.jpg" fetchpriority="high">
+  <link rel="manifest" href="/site.webmanifest">
+  <link rel="canonical" href="https://flitdrop.com/">
+  <link rel="alternate" hreflang="en" href="https://flitdrop.com/?lang=en">
+  <link rel="alternate" hreflang="fr" href="https://flitdrop.com/?lang=fr">
+  <link rel="alternate" hreflang="x-default" href="https://flitdrop.com/">
+  <link rel="icon" href="/assets/icon.svg">
+  <link rel="apple-touch-icon" href="/assets/icon-512.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Flitdrop">
+  <meta property="og:title" content="Flitdrop, the AirDrop that works between every device">
+  <meta property="og:description" content="Send photos, files and clipboard between iPhone, Android, Windows, Mac and Linux. Encrypted, free on your Wi-Fi, nothing to install on the phone.">
+  <meta property="og:url" content="https://flitdrop.com/">
+  <meta property="og:image" content="https://flitdrop.com/assets/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Flitdrop, the AirDrop that works between every device">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Flitdrop, the AirDrop that works between every device">
+  <meta name="twitter:description" content="Send photos, files and clipboard between iPhone, Android, Windows, Mac and Linux. Encrypted, free on your Wi-Fi, nothing to install on the phone.">
+  <meta name="twitter:image" content="https://flitdrop.com/assets/og.jpg">
+
+  <link rel="stylesheet" href="/vendor/lenis/lenis.css">
+  <link rel="stylesheet" href="/style.css">
+
+  <script defer src="/vendor/gsap/gsap.min.js"></script>
+  <script defer src="/vendor/gsap/ScrollTrigger.min.js"></script>
+  <script defer src="/vendor/lenis/lenis.min.js"></script>
+  <script defer src="/js/i18n.js"></script>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three/build/three.module.min.js",
+      "three/addons/": "/vendor/three/addons/",
+      "postprocessing": "/vendor/postprocessing/postprocessing.esm.js"
+    }
+  }
+  </script>
+  <script type="module" src="/js/scene.js"></script>
+  <script defer src="/js/app.js"></script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "Flitdrop",
+        "url": "https://flitdrop.com/",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Windows, macOS, Linux",
+        "softwareVersion": "0.5.0",
+        "downloadUrl": "https://github.com/MrFrosas/flitdrop/releases/latest",
+        "screenshot": "https://flitdrop.com/assets/icon-512.png",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "featureList": [
+          "Send files, folders and full quality photos between any devices",
+          "iPhone, Android, Samsung to Windows, Mac and Linux",
+          "End to end encrypted, on your local Wi-Fi",
+          "Two way clipboard sync",
+          "Nothing to install on the phone, scan a QR code once"
+        ],
+        "description": "Send photos, files and clipboard between iPhone, Android, Windows, Mac and Linux. End to end encrypted, free on your own Wi-Fi, nothing to install on the phone.",
+        "publisher": { "@type": "Organization", "name": "Flitdrop", "url": "https://flitdrop.com/" }
+      },
+      {
+        "@type": "WebSite",
+        "name": "Flitdrop",
+        "url": "https://flitdrop.com/",
+        "inLanguage": ["en", "fr"]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Is it really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, on your own Wi-Fi. Transfers go straight from one device to the other, so there is no server cost to cover." } },
+          { "@type": "Question", "name": "Do I need to install anything on the phone?", "acceptedAnswer": { "@type": "Answer", "text": "No. You scan a QR code once and the phone is paired. Flitdrop installs only on the computer." } },
+          { "@type": "Question", "name": "Is it really private?", "acceptedAnswer": { "@type": "Answer", "text": "Everything is end to end encrypted and stays on your local network. The content touches no server: it goes directly from one device to the other." } },
+          { "@type": "Question", "name": "Which devices does it work between?", "acceptedAnswer": { "@type": "Answer", "text": "iPhone, Android, Samsung on one side, Windows, Mac, Linux on the other, in every combination. You just need to be on the same Wi-Fi." } }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="bg-aurora"></div>
+    <div class="bg-grain"></div>
+  </div>
+
+  <header class="nav" id="nav">
+    <a class="brand" href="/" aria-label="Flitdrop">
+      <img src="/assets/icon-mono.svg" alt="" width="30" height="30">
+      <span>Flitdrop</span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#steps" data-i18n="nav.how">How it works</a>
+      <a href="#compare" data-i18n="nav.compare">Comparison</a>
+      <a href="#security" data-i18n="nav.security">Security</a>
+    </nav>
+    <div class="nav-right">
+      <button class="lang-toggle" id="langToggle" type="button">FR</button>
+      <a class="btn btn-primary btn-sm" href="#download" data-i18n="nav.download">Download</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero" id="top">
+      <div class="hero-inner">
+        <h1 class="display reveal" data-i18n="hero.headline">The AirDrop that works across every device</h1>
+        <p class="lead reveal" data-i18n="hero.subhead">iPhone, Android, Windows, Mac, Linux: photos, files and clipboard move from one device to the next in a single gesture.</p>
+        <div class="hero-cta reveal">
+          <a class="btn btn-primary btn-lg" id="ctaDownload" href="#download">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v9.5"/><path d="M8.5 9.5 12 13l3.5-3.5"/><path d="M5 15.5v2.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-2.5"/></svg>
+            <span data-i18n="hero.ctaPrimary">Download Flitdrop</span>
+          </a>
+          <a class="btn btn-ghost btn-lg" href="#film" data-i18n="hero.ctaSecondary">See how it works</a>
+        </div>
+        <p class="hero-callout reveal" data-i18n="hero.trust">Free on your network. End to end encrypted. No account required.</p>
+      </div>
+      <a class="scroll-cue" href="#film" aria-hidden="true" tabindex="-1">
+        <span data-i18n="common.scroll">Scroll to play</span>
+        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 16l-6-6 1.4-1.4L12 13.2l4.6-4.6L18 10z"/></svg>
+      </a>
+    </section>
+
+    <!-- FILM (pinned, scroll-scrubbed 3D) -->
+    <section class="film" id="film">
+      <div class="film-stage" id="film-stage">
+        <div class="film-loading" id="filmLoading" aria-hidden="true"></div>
+        <canvas class="film-canvas" id="film-canvas"></canvas>
+
+        <div class="film-caption-wrap" id="filmCaptionWrap">
+          <p class="film-eyebrow" data-i18n="film.eyebrow">Watch it move</p>
+          <p class="film-caption" id="filmCaption" data-i18n="film.a1">Pick a photo on your phone.</p>
+          <div class="film-progress" aria-hidden="true"><span id="filmProgressBar"></span></div>
+        </div>
+
+        <!-- Fallback for reduced motion / no WebGL: a static three panel storyboard -->
+        <div class="film-fallback" id="filmFallback">
+          <div class="fb-panel">
+            <div class="fb-device fb-phone"><span class="fb-lock">🔒</span></div>
+            <p data-i18n="film.a2">It gets encrypted before it ever leaves the device.</p>
+          </div>
+          <div class="fb-panel">
+            <div class="fb-arc"></div>
+            <p data-i18n="film.a3">It crosses your Wi-Fi, directly, without going through a server.</p>
+          </div>
+          <div class="fb-panel">
+            <div class="fb-device fb-mac"><span class="fb-check">✓</span></div>
+            <p data-i18n="film.a4">And lands in the computer's incoming list.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEPS -->
+    <section class="section" id="steps">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-i18n="steps.eyebrow">Getting started</p>
+        <h2 data-i18n="steps.title">Three moves, nothing more</h2>
+        <p class="section-sub" data-i18n="steps.blurb">Scan the QR code once to pair the phone. After that, drop a file and it goes.</p>
+      </div>
+      <ol class="steps-grid">
+        <li class="step-card reveal">
+          <span class="step-num">1</span>
+          <h3 data-i18n="steps.one.title">Scan once</h3>
+          <p data-i18n="steps.one.body">Open the camera, point at the QR code, the phone is paired.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num">2</span>
+          <h3 data-i18n="steps.two.title">Drop</h3>
+          <p data-i18n="steps.two.body">Pick a photo, a file or a folder, or copy some text.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num">3</span>
+          <h3 data-i18n="steps.three.title">It arrived</h3>
+          <p data-i18n="steps.three.body">The transfer shows up on the other device within a second.</p>
+        </li>
+      </ol>
+    </section>
+
+    <!-- COMPARE -->
+    <section class="section ground" id="compare">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-i18n="compare.eyebrow">How it compares</p>
+        <h2 data-i18n="compare.title">What AirDrop will not do, Flitdrop does</h2>
+        <p class="section-sub" data-i18n="compare.subhead">AirDrop stops at Apple, Nearby Share stops at Android, email shrinks your photos.</p>
+      </div>
+      <div class="cmp2 reveal" data-rival="airdrop">
+        <div class="cmp2-tabs" aria-label="Comparer avec">
+          <span class="cmp2-tabs-lab" data-i18n="cmp.vs">Face à</span>
+          <div class="cmp2-tabs-row">
+            <button class="cmp2-tab is-on" type="button" data-rival="airdrop">AirDrop</button>
+            <button class="cmp2-tab" type="button" data-rival="quickshare">Quick Share</button>
+            <button class="cmp2-tab" type="button" data-rival="localsend">LocalSend</button>
+          </div>
+        </div>
+        <div class="cmp2-grid">
+          <div class="cmp2-cell cmp2-feat cmp2-h"></div>
+          <div class="cmp2-cell cmp2-flit cmp2-h"><span class="cmp2-badge" data-i18n="cmp.reco">Recommended</span><span class="cmp2-brand"><img class="cmp-logo" src="/assets/icon-mono.svg" alt="" width="24" height="24"><b>Flitdrop</b></span></div>
+          <div class="cmp2-cell cmp2-h r-airdrop"><span class="cmp2-brand"><span class="cmp-dot" style="--c:#0a84ff">A</span><b>AirDrop</b></span></div>
+          <div class="cmp2-cell cmp2-h r-quickshare"><span class="cmp2-brand"><span class="cmp-dot" style="--c:#1a73e8">Q</span><b>Quick&nbsp;Share</b></span></div>
+          <div class="cmp2-cell cmp2-h r-localsend"><span class="cmp2-brand"><span class="cmp-dot" style="--c:#0a8f8f">L</span><b>LocalSend</b></span></div>
+
+          <div class="cmp2-cell cmp2-feat"><span data-i18n="cmp.r1">Works on every OS</span></div>
+          <div class="cmp2-cell cmp2-flit"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-airdrop"><i class="mk no"></i></div>
+          <div class="cmp2-cell r-quickshare"><button class="mk partial cmp-ti" type="button" aria-label="Partiel"><span class="cmp-tip" data-i18n="cmp.tip.qsos">.</span></button></div>
+          <div class="cmp2-cell r-localsend"><i class="mk yes"></i></div>
+
+          <div class="cmp2-cell cmp2-feat"><span data-i18n="cmp.r2">iPhone to Windows, Mac or Linux</span></div>
+          <div class="cmp2-cell cmp2-flit"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-airdrop"><i class="mk no"></i></div>
+          <div class="cmp2-cell r-quickshare"><i class="mk no"></i></div>
+          <div class="cmp2-cell r-localsend"><i class="mk yes"></i></div>
+
+          <div class="cmp2-cell cmp2-feat"><span data-i18n="cmp.r3">Nothing to install on the phone</span></div>
+          <div class="cmp2-cell cmp2-flit"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-airdrop"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-quickshare"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-localsend"><i class="mk no"></i></div>
+
+          <div class="cmp2-cell cmp2-feat"><span data-i18n="cmp.r4">No account, no sign in</span></div>
+          <div class="cmp2-cell cmp2-flit"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-airdrop"><button class="mk partial cmp-ti" type="button" aria-label="Partiel"><span class="cmp-tip" data-i18n="cmp.tip.adacct">.</span></button></div>
+          <div class="cmp2-cell r-quickshare"><button class="mk partial cmp-ti" type="button" aria-label="Partiel"><span class="cmp-tip" data-i18n="cmp.tip.qsacct">.</span></button></div>
+          <div class="cmp2-cell r-localsend"><i class="mk yes"></i></div>
+
+          <div class="cmp2-cell cmp2-feat"><span data-i18n="cmp.r5">Encrypted transfer</span><button class="cmp-i" type="button" aria-label="Info"><span class="cmp-tip" data-i18n="cmp.tip.e2e">.</span>i</button></div>
+          <div class="cmp2-cell cmp2-flit"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-airdrop"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-quickshare"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-localsend"><i class="mk yes"></i></div>
+
+          <div class="cmp2-cell cmp2-feat"><span data-i18n="cmp.r6">Nothing goes through a server</span><button class="cmp-i" type="button" aria-label="Info"><span class="cmp-tip" data-i18n="cmp.tip.server">.</span>i</button></div>
+          <div class="cmp2-cell cmp2-flit"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-airdrop"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-quickshare"><i class="mk yes"></i></div>
+          <div class="cmp2-cell r-localsend"><i class="mk yes"></i></div>
+
+          <div class="cmp2-cell cmp2-feat cmp2-last"><span data-i18n="cmp.r7">Sending across the internet, off your Wi-Fi</span><button class="cmp-i" type="button" aria-label="Info"><span class="cmp-tip" data-i18n="cmp.tip.internet">.</span>i</button></div>
+          <div class="cmp2-cell cmp2-flit cmp2-last"><i class="mk no"></i></div>
+          <div class="cmp2-cell cmp2-last r-airdrop"><i class="mk no"></i></div>
+          <div class="cmp2-cell cmp2-last r-quickshare"><i class="mk no"></i></div>
+          <div class="cmp2-cell cmp2-last r-localsend"><i class="mk no"></i></div>
+        </div>
+      </div>
+      <p class="cmp-note reveal" data-i18n="cmp.note">Flitdrop is the only one that needs nothing on your phone, keeps every file on your own network, and still crosses every operating system.</p>
+    </section>
+
+    <!-- SECURITY -->
+    <section class="section security" id="security">
+      <div class="sec-grid">
+        <div class="sec-visual reveal" aria-hidden="true">
+          <div class="sec-stage"><img class="devices-shot" src="/assets/secure-laptop.jpg" alt="" loading="lazy" width="1672" height="941"></div>
+        </div>
+        <div class="sec-body">
+        <div class="sec-copy reveal">
+          <p class="eyebrow" data-i18n="security.eyebrow">Private by design</p>
+          <h2 data-i18n="security.title">Your files stay yours</h2>
+          <p class="section-sub" data-i18n="security.blurb">Everything is end to end encrypted and travels over your local network.</p>
+        </div>
+        <ul class="sec-points">
+          <li class="sec-point reveal">
+            <span class="sec-ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.4"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><path d="M12 14.6v2.4"/></svg>
+            </span>
+            <div><h3 data-i18n="security.point.e2e.title">End to end encryption</h3><p data-i18n="security.point.e2e.body">Only you and the receiving device can read what goes across.</p></div>
+          </li>
+          <li class="sec-point reveal">
+            <span class="sec-ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.5a11 11 0 0 1 15 0"/><path d="M7.5 13a7 7 0 0 1 9 0"/><path d="M10.3 16.3a3 3 0 0 1 3.4 0"/><path d="M12 19.4h.01"/></svg>
+            </span>
+            <div><h3 data-i18n="security.point.local.title">On your Wi-Fi</h3><p data-i18n="security.point.local.body">Files go straight from one device to the other, on your network.</p></div>
+          </li>
+          <li class="sec-point reveal">
+            <span class="sec-ic" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8.2" r="3.4"/><path d="M4 19.5a6 6 0 0 1 10.6-3.8"/><path d="M16.5 15.5l4 4M20.5 15.5l-4 4"/></svg>
+            </span>
+            <div><h3 data-i18n="security.point.noaccount.title">No account</h3><p data-i18n="security.point.noaccount.body">No email to verify, no password to create. You scan, you share.</p></div>
+          </li>
+        </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES (light Apple-style bento) -->
+    <section class="band band-light" id="features">
+      <div class="band-inner">
+        <div class="band-head reveal">
+          <p class="eyebrow eyebrow-blue" data-i18n="features.eyebrow">Everything it moves</p>
+          <h2 data-i18n="features.title">More than photos, across more than two devices</h2>
+          <p class="band-sub" data-i18n="features.blurb">Files, folders, full quality photos and the clipboard, in one gesture, in both directions.</p>
+        </div>
+
+        <div class="bento">
+          <!-- send anything (wide) : fanned transfer cards -->
+          <article class="bento-card b-wide reveal">
+            <div class="bc-copy">
+              <h3 data-i18n="features.send.title">Send anything, not just photos</h3>
+              <p data-i18n="features.send.body">Files of any kind, whole folders, full quality photos. No compression, no size cap on your own network.</p>
+            </div>
+            <div class="bc-visual bv-stack" aria-hidden="true">
+              <div class="tcard tc-b2">
+                <div class="tc-head"><span class="tc-ic i-folder"></span><span class="tc-kind" data-i18n="features.kind.folder">Folder</span><span class="tc-time">now</span></div>
+                <div class="tc-rows"><span></span><span class="s"></span></div>
+              </div>
+              <div class="tcard tc-b1">
+                <div class="tc-head"><span class="tc-ic i-doc"></span><span class="tc-kind" data-i18n="features.kind.doc">Document</span><span class="tc-time">now</span></div>
+                <div class="tc-rows"><span></span><span class="s"></span><span></span></div>
+              </div>
+              <div class="tcard tc-front">
+                <div class="tc-head"><span class="tc-ic i-photo"></span><span class="tc-kind" data-i18n="features.kind.photo">Photo</span><span class="tc-time">now</span></div>
+                <div class="tc-photo"><img src="/assets/grid/p6.jpg" alt="" loading="lazy" width="216" height="150"></div>
+                <div class="tc-foot">
+                  <div class="tc-meta"><span class="tc-name" data-i18n="ui.samplePhoto">beach.jpg</span><span class="tc-dim">4032 × 3024</span></div>
+                  <span class="tc-check"><svg viewBox="0 0 24 24" width="13" height="13"><path fill="#fff" d="M9 16.2 4.8 12l-1.5 1.4L9 19 20.6 7.4l-1.5-1.4z"/></svg></span>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- two-way clipboard (accent) : note travels to phone -->
+          <article class="bento-card b-tint reveal">
+            <div class="bc-visual bv-clip" aria-hidden="true">
+              <div class="note-card">
+                <div class="note-tag"><span class="note-key">C</span><span data-i18n="ui.copied">Copied</span></div>
+                <div class="note-text" data-i18n="ui.noteSample">Meeting 2pm · Monday</div>
+              </div>
+              <svg class="clip-flow" viewBox="0 0 72 48" width="72" height="48"><path d="M14 6v20a12 12 0 0 0 12 12h30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="M50 31l10 7-11 4z" fill="currentColor"/></svg>
+              <div class="paste-tile"><span class="pt-ph"></span><span class="pt-key">V</span><span class="pt-label" data-i18n="features.clip.paste">Pasted here</span></div>
+            </div>
+            <div class="bc-copy">
+              <h3 data-i18n="features.clip.title">Two way clipboard</h3>
+              <p data-i18n="features.clip.body">Copy on one device, paste on the other. Text and links cross instantly, both ways.</p>
+            </div>
+          </article>
+
+          <!-- every device (full width) : receiving window + phone -->
+          <article class="bento-card b-full reveal">
+            <div class="bc-copy">
+              <h3 data-i18n="features.cross.title">Between every device you own</h3>
+              <p data-i18n="features.cross.body">iPhone, Android and Samsung on one side, Windows, Mac and Linux on the other, in every combination.</p>
+              <div class="os-row" aria-hidden="true">
+                <span class="os-badge">iPhone</span><span class="os-badge">Android</span><span class="os-badge">Samsung</span>
+                <span class="os-badge">Windows</span><span class="os-badge">Mac</span><span class="os-badge">Linux</span>
+              </div>
+            </div>
+            <div class="bc-visual bc-img" aria-hidden="true">
+              <img class="devices-shot" src="/assets/cross-devices.jpg" alt="" loading="lazy" width="1672" height="941">
+            </div>
+          </article>
+
+          <!-- pair with one scan : phone showing the QR -->
+          <article class="bento-card reveal">
+            <div class="bc-visual center">
+              <div class="pair-wrap">
+                <div class="qr-tile qr-tile-sm"><img class="qr-img" src="/assets/qr.svg" alt="" width="150" height="150"></div>
+                <span class="pair-badge"><svg viewBox="0 0 24 24" width="12" height="12"><path fill="#fff" d="M9 16.2 4.8 12l-1.5 1.4L9 19 20.6 7.4l-1.5-1.4z"/></svg><span data-i18n="features.pair.badge">Paired</span></span>
+              </div>
+            </div>
+            <div class="bc-copy">
+              <h3 data-i18n="features.pair.title">Pair with one scan</h3>
+              <p data-i18n="features.pair.body">Nothing to install on the phone. Scan the QR code once and you are linked for good.</p>
+            </div>
+          </article>
+
+          <!-- full quality : transfer photo card -->
+          <article class="bento-card reveal">
+            <div class="bc-visual center">
+              <div class="tcard tc-solo">
+                <div class="tc-head"><span class="tc-ic i-photo"></span><span class="tc-kind" data-i18n="features.kind.photo">Photo</span><span class="tc-time" data-i18n="ui.received">Received</span></div>
+                <div class="tc-photo"><img src="/assets/grid/p5.jpg" alt="" loading="lazy" width="240" height="150"></div>
+                <div class="tc-foot">
+                  <div class="tc-meta"><span class="tc-name">sunset.jpg</span><span class="tc-dim">4032 × 3024 · <span data-i18n="features.quality.badge">Full quality</span></span></div>
+                  <span class="tc-check"><svg viewBox="0 0 24 24" width="13" height="13"><path fill="#fff" d="M9 16.2 4.8 12l-1.5 1.4L9 19 20.6 7.4l-1.5-1.4z"/></svg></span>
+                </div>
+              </div>
+            </div>
+            <div class="bc-copy">
+              <h3 data-i18n="features.quality.title">Photos never shrink</h3>
+              <p data-i18n="features.quality.body">Originals arrive at full resolution, exactly as they were shot.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- SHOWCASE (dark band, personas) -->
+    <section class="band band-dark" id="showcase">
+      <div class="band-inner">
+        <div class="band-head reveal">
+          <h2 class="h-light" data-i18n="showcase.title">One drop, and it is on every screen you own</h2>
+          <p class="band-sub band-sub-d" data-i18n="showcase.blurb">A shoot, a build, a note or a link. Flitdrop puts it on the other device in about a second, encrypted, on your own Wi-Fi.</p>
+        </div>
+        <div class="showcase-hero reveal" aria-hidden="true">
+          <img class="showcase-media" src="/assets/showcase-devices.jpg" alt="" loading="lazy" width="1672" height="941">
+        </div>
+        <div class="persona-grid">
+          <div class="persona reveal">
+            <span class="p-ic"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M9 3l-1.2 2H4a2 2 0 00-2 2v11a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2h-3.8L15 3H9zm3 5a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6z"/></svg></span>
+            <h3 data-i18n="showcase.photo.title">Photographers</h3>
+            <p data-i18n="showcase.photo.body">Move a full shoot to the desktop in one gesture, every shot at its original resolution.</p>
+          </div>
+          <div class="persona reveal">
+            <span class="p-ic"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M9.4 7.6L4.8 12l4.6 4.4-1.4 1.5L2 12l6-6 1.4 1.6zm5.2 0L19.2 12l-4.6 4.4 1.4 1.5L22 12l-6-6-1.4 1.6z"/></svg></span>
+            <h3 data-i18n="showcase.dev.title">Developers</h3>
+            <p data-i18n="showcase.dev.body">Push a build, a log or a screenshot between machines with no cable and no cloud.</p>
+          </div>
+          <div class="persona reveal">
+            <span class="p-ic"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 3a9 9 0 000 18c1.7 0 2-1.2 1.2-2-.8-.9-.5-2 .8-2H16a5 5 0 005-5c0-4.4-4-6-9-6zm-4 6a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm3-3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm5 0a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"/></svg></span>
+            <h3 data-i18n="showcase.design.title">Designers</h3>
+            <p data-i18n="showcase.design.body">Send mockups, assets and colors straight to the device you are reviewing on.</p>
+          </div>
+          <div class="persona reveal">
+            <span class="p-ic"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 2l1.9 5.5L19 9l-5.1 1.5L12 16l-1.9-5.5L5 9l5.1-1.5z"/></svg></span>
+            <h3 data-i18n="showcase.everyone.title">Everyone else</h3>
+            <p data-i18n="showcase.everyone.body">Photos to the family laptop, a link to your phone, a note to a friend nearby.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DOWNLOAD -->
+    <section class="section download" id="download">
+      <div class="dl-card reveal">
+        <div class="dl-copy">
+          <h2 data-i18n="download.title">Ready to send your first file?</h2>
+          <p class="section-sub" data-i18n="download.blurb">Install Flitdrop on your computer, keep the phone as it is.</p>
+          <div class="dl-buttons">
+            <a class="btn btn-primary btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-dl="mac"><span data-i18n="download.mac">Download for Mac</span></a>
+            <a class="btn btn-ghost btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-dl="windows"><span data-i18n="download.windows">Download for Windows</span></a>
+          </div>
+          <a class="dl-other" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-i18n="download.other">Other platforms</a>
+        </div>
+        <div class="dl-qr" aria-hidden="true">
+          <div class="qr-tile"><img class="qr-img" src="/assets/qr.svg" alt="" width="132" height="132"></div>
+          <p data-i18n="download.qr">Scan to download on your phone</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section faq ground" id="faq">
+      <div class="section-head reveal">
+        <h2 data-i18n="faq.title">Frequently asked</h2>
+      </div>
+      <div class="faq-list reveal">
+        <details>
+          <summary data-i18n="faq.q1">Is it really free?</summary>
+          <p data-i18n="faq.a1">Yes, on your own Wi-Fi.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.q2">Do I need to install anything on the phone?</summary>
+          <p data-i18n="faq.a2">No. You scan a QR code once and the phone is paired.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.q3">Is it really private?</summary>
+          <p data-i18n="faq.a3">Everything is end to end encrypted and stays on your local network.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.q4">Which devices does it work between?</summary>
+          <p data-i18n="faq.a4">iPhone, Android, Samsung on one side, Windows, Mac, Linux on the other.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.q5">Do both devices need to be on the same Wi-Fi?</summary>
+          <p data-i18n="faq.a5">Yes. Flitdrop goes straight from one device to the other on your local network, so they share the same Wi-Fi. Nothing travels over the internet.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.q6">Is there a size or number limit?</summary>
+          <p data-i18n="faq.a6">No. Since the transfer stays on your network, there is no imposed cap. The only limit is the free space on the receiving device.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.q7">Which computers can I install it on?</summary>
+          <p data-i18n="faq.a7">Windows, macOS and Linux. The phone needs nothing at all, just its browser.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.q8">Are my photos compressed?</summary>
+          <p data-i18n="faq.a8">Never. Photos and files arrive at their original quality, exactly as they were.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- SUPPORT / CONTACT -->
+    <section class="section support" id="support">
+      <div class="support-grid reveal">
+        <div class="support-intro">
+          <p class="eyebrow eyebrow-blue" data-i18n="support.eyebrow">Support</p>
+          <h2 data-i18n="support.title">Need a hand?</h2>
+          <p class="section-sub" data-i18n="support.blurb">The FAQ covers the most common questions. For anything else, write to us and we answer fast.</p>
+          <ul class="support-links">
+            <li><a href="#faq" data-i18n="support.faq">Read the FAQ</a></li>
+            <li><a href="https://github.com/MrFrosas/flitdrop/issues" target="_blank" rel="noopener" data-i18n="support.bug">Report a bug</a></li>
+            <li><a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a></li>
+          </ul>
+        </div>
+        <form class="contact-form" id="contactForm" novalidate>
+          <div class="cf-row">
+            <label class="cf-field"><span data-i18n="support.name">Name</span><input type="text" name="name" autocomplete="name" required></label>
+            <label class="cf-field"><span data-i18n="support.email">Email</span><input type="email" name="email" autocomplete="email" required></label>
+          </div>
+          <label class="cf-field"><span data-i18n="support.message">Message</span><textarea name="message" rows="4" required></textarea></label>
+          <button class="btn btn-primary btn-lg" type="submit" data-i18n="support.send">Send</button>
+          <p class="cf-note" data-i18n="support.note">This opens your mail app with the message ready to send.</p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="brand" href="/"><img src="/assets/icon-mono.svg" alt="" width="26" height="26"><span>Flitdrop</span></a>
+        <p class="footer-tag" data-i18n="footer.tagline">Direct sharing between all your devices, on your Wi-Fi.</p>
+      </div>
+      <nav class="footer-cols" aria-label="Footer">
+        <div class="footer-col">
+          <h4 data-i18n="footer.product">Product</h4>
+          <a href="#features" data-i18n="footer.features">Features</a>
+          <a href="#compare" data-i18n="nav.compare">Comparison</a>
+          <a href="#security" data-i18n="nav.security">Security</a>
+          <a href="#download" data-i18n="nav.download">Download</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="footer.resources">Resources</h4>
+          <a href="#support" data-i18n="support.eyebrow">Support</a>
+          <a href="https://github.com/MrFrosas/flitdrop" target="_blank" rel="noopener">GitHub</a>
+          <a href="/privacy.html" data-i18n="footer.privacy">Privacy</a>
+          <a href="/legal.html" data-i18n="footer.legal">Legal</a>
+        </div>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-rights" data-i18n="footer.rights">© 2026 Flitdrop. All rights reserved.</p>
+      <button class="lang-toggle" data-lang-toggle type="button">FR</button>
+    </div>
+  </footer>
+</body>
+</html>
