@@ -11,15 +11,7 @@
   <link rel="preload" as="image" href="/assets/hero-bg.jpg" fetchpriority="high">
   <link rel="manifest" href="/site.webmanifest">
 
-  <!-- PostHog product analytics: cookieless (memory = zero device storage, no banner needed), no session recording, US-hosted, client IP discarded server-side -->
-  <script>
-    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-    posthog.init('phc_Bex8SoGTP3KQyVriFMzVChHugFgtkF6LYmjgJbYi6min',{api_host:'https://us.i.posthog.com',persistence:'memory',person_profiles:'identified_only',disable_session_recording:true,capture_pageview:true,autocapture:true});
-  </script>
   <link rel="canonical" href="https://flitdrop.com/">
-  <link rel="alternate" hreflang="en" href="https://flitdrop.com/?lang=en">
-  <link rel="alternate" hreflang="fr" href="https://flitdrop.com/?lang=fr">
-  <link rel="alternate" hreflang="x-default" href="https://flitdrop.com/">
   <link rel="icon" href="/assets/icon.svg">
   <link rel="apple-touch-icon" href="/assets/icon-512.png">
 
@@ -32,8 +24,8 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Flitdrop, the AirDrop that works between every device">
-  <meta property="og:locale" content="fr_FR">
-  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="fr_FR">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Flitdrop, the AirDrop that works between every device">
   <meta name="twitter:description" content="Send photos, files and clipboard between iPhone, Android, Windows, Mac and Linux. Encrypted, free on your Wi-Fi, nothing to install on the phone.">
@@ -42,6 +34,11 @@
   <link rel="stylesheet" href="/vendor/lenis/lenis.css">
   <link rel="stylesheet" href="/style.css">
 
+  <!-- PostHog product analytics: cookieless (memory = zero device storage, no banner needed), no session recording, US-hosted, client IP discarded server-side -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_Bex8SoGTP3KQyVriFMzVChHugFgtkF6LYmjgJbYi6min',{api_host:'https://us.i.posthog.com',persistence:'memory',person_profiles:'identified_only',disable_session_recording:true,capture_pageview:true,autocapture:true});
+  </script>
   <script defer src="/vendor/gsap/gsap.min.js"></script>
   <script defer src="/vendor/gsap/ScrollTrigger.min.js"></script>
   <script defer src="/vendor/lenis/lenis.min.js"></script>
@@ -69,7 +66,7 @@
         "url": "https://flitdrop.com/",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Windows, macOS, Linux",
-        "softwareVersion": "0.5.0",
+        "softwareVersion": "0.4.0",
         "downloadUrl": "https://github.com/MrFrosas/flitdrop/releases/latest",
         "screenshot": "https://flitdrop.com/assets/icon-512.png",
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -95,7 +92,12 @@
           { "@type": "Question", "name": "Is it really free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, on your own Wi-Fi. Transfers go straight from one device to the other, so there is no server cost to cover." } },
           { "@type": "Question", "name": "Do I need to install anything on the phone?", "acceptedAnswer": { "@type": "Answer", "text": "No. You scan a QR code once and the phone is paired. Flitdrop installs only on the computer." } },
           { "@type": "Question", "name": "Is it really private?", "acceptedAnswer": { "@type": "Answer", "text": "Everything is end to end encrypted and stays on your local network. The content touches no server: it goes directly from one device to the other." } },
-          { "@type": "Question", "name": "Which devices does it work between?", "acceptedAnswer": { "@type": "Answer", "text": "iPhone, Android, Samsung on one side, Windows, Mac, Linux on the other, in every combination. You just need to be on the same Wi-Fi." } }
+          { "@type": "Question", "name": "Which devices does it work between?", "acceptedAnswer": { "@type": "Answer", "text": "iPhone, Android, Samsung on one side, Windows, Mac, Linux on the other, in every combination. You just need to be on the same Wi-Fi." } },
+          { "@type": "Question", "name": "Do both devices need to be on the same Wi-Fi?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Flitdrop goes straight from one device to the other on your local network, so they share the same Wi-Fi. Nothing travels over the internet." } },
+          { "@type": "Question", "name": "Is there a size or number limit?", "acceptedAnswer": { "@type": "Answer", "text": "No. Since the transfer stays on your network, there is no imposed cap. The only limit is the free space on the receiving device." } },
+          { "@type": "Question", "name": "Which computers can I install it on?", "acceptedAnswer": { "@type": "Answer", "text": "Windows, macOS and Linux. The phone needs nothing at all, just its browser." } },
+          { "@type": "Question", "name": "Are my photos compressed?", "acceptedAnswer": { "@type": "Answer", "text": "Never. Photos and files arrive at their original quality, exactly as they were." } },
+          { "@type": "Question", "name": "Why does my computer warn when I open Flitdrop?", "acceptedAnswer": { "@type": "Answer", "text": "Because Flitdrop is a new, independent app that is not signed yet, macOS and Windows show a one-time caution. It is expected and safe. On Windows, click More info then Run anyway; on Mac, right-click the app and choose Open. You only do this once." } }
         ]
       }
     ]
@@ -129,7 +131,7 @@
     <section class="hero" id="top">
       <div class="hero-inner">
         <h1 class="display reveal" data-i18n="hero.headline">The AirDrop that works across every device</h1>
-        <p class="lead reveal" data-i18n="hero.subhead">iPhone, Android, Windows, Mac, Linux: photos, files and clipboard move from one device to the next in a single gesture.</p>
+        <p class="lead reveal" data-i18n="hero.subhead">Send photos, files and the clipboard from any device to any other, in one gesture.</p>
         <div class="hero-cta reveal">
           <a class="btn btn-primary btn-lg" id="ctaDownload" href="#download">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v9.5"/><path d="M8.5 9.5 12 13l3.5-3.5"/><path d="M5 15.5v2.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-2.5"/></svg>
@@ -196,7 +198,7 @@
         <li class="step-card reveal">
           <span class="step-num">3</span>
           <h3 data-i18n="steps.three.title">It arrived</h3>
-          <p data-i18n="steps.three.body">The transfer shows up on the other device within a second.</p>
+          <p data-i18n="steps.three.body">The transfer shows up on the other device in about a second.</p>
         </li>
       </ol>
     </section>
@@ -453,6 +455,7 @@
             <a class="btn btn-primary btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-dl="mac"><span data-i18n="download.mac">Download for Mac</span></a>
             <a class="btn btn-ghost btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-dl="windows"><span data-i18n="download.windows">Download for Windows</span></a>
           </div>
+          <p class="dl-note" data-i18n="download.note"></p>
           <a class="dl-other" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-i18n="download.other">Other platforms</a>
         </div>
         <div class="dl-qr" aria-hidden="true">
@@ -499,6 +502,10 @@
         <details>
           <summary data-i18n="faq.q8">Are my photos compressed?</summary>
           <p data-i18n="faq.a8">Never. Photos and files arrive at their original quality, exactly as they were.</p>
+        </details>
+        <details>
+          <summary data-i18n="faq.q9">Why does my computer warn when I open Flitdrop?</summary>
+          <p data-i18n="faq.a9">Because Flitdrop is a new, independent app that is not signed yet, macOS and Windows show a one-time caution. It is expected and safe. On Windows, click More info then Run anyway; on Mac, right-click the app and choose Open. You only do this once.</p>
         </details>
       </div>
     </section>

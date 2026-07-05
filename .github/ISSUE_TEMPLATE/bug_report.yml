@@ -1,0 +1,52 @@
+name: Bug report
+description: Something is not working the way it should
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more detail you give, the faster we can help.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug, and what you expected to happen instead.
+      placeholder: I tried to send a photo from my phone and the transfer stopped at 40%.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we make it happen again?
+      placeholder: |
+        1. Open Flitdrop on the computer
+        2. Scan the QR code from the phone
+        3. Pick a photo and tap Send
+        4. See the transfer stall
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: Computer OS and Flitdrop version
+      description: Which operating system, and which version of Flitdrop?
+      placeholder: Windows 11, Flitdrop 0.5.0
+    validations:
+      required: true
+  - type: input
+    id: phone-browser
+    attributes:
+      label: Phone and browser
+      description: For phone-side bugs, which phone and which browser?
+      placeholder: iPhone 14, Safari
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Logs, screenshots, or notes about your network (Wi-Fi, offline mode, VPN) that could help.
+    validations:
+      required: false

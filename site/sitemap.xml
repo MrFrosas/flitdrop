@@ -2,54 +2,36 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://flitdrop.com/</loc>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/?lang=fr"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/"/>
     <lastmod>2026-07-05</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://flitdrop.com/alternative-airdrop</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/alternative-airdrop?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/alternative-airdrop?lang=fr"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/alternative-airdrop"/>
     <lastmod>2026-07-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://flitdrop.com/airdrop-windows</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/airdrop-windows?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/airdrop-windows?lang=fr"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/airdrop-windows"/>
     <lastmod>2026-07-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://flitdrop.com/airdrop-iphone-android</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/airdrop-iphone-android?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/airdrop-iphone-android?lang=fr"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/airdrop-iphone-android"/>
     <lastmod>2026-07-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://flitdrop.com/send-files-iphone-to-pc</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/send-files-iphone-to-pc?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/send-files-iphone-to-pc?lang=fr"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/send-files-iphone-to-pc"/>
     <lastmod>2026-07-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://flitdrop.com/airdrop-linux</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/airdrop-linux?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/airdrop-linux?lang=fr"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/airdrop-linux"/>
     <lastmod>2026-07-05</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

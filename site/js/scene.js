@@ -57,12 +57,18 @@ function fail(reason) {
   readyResolve(window.flitScene);
 }
 
+// Respect the OS "reduce motion" setting: skip the whole WebGL film and use the
+// same static fallback as when WebGL is missing, so nothing heavy ever loads.
+const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 const canvas = document.getElementById('film-canvas');
 if (!canvas) { fail('no-canvas'); }
 
 // WebGL capability probe
 let renderer = null;
-if (canvas) {
+if (prefersReducedMotion) {
+  fail('reduced-motion');
+} else if (canvas) {
   try {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   } catch (e) { fail('no-webgl'); }
@@ -87,21 +93,27 @@ function build() {
   const camera = new THREE.PerspectiveCamera(32, 1, 1, 400);
   camera.position.set(0, 4, 46);
 
-  // reflections from a procedural room (instant, always there as the fallback)
-  try {
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environment = envTex;
-  } catch (e) { /* reflections optional */ }
+  // Skip the environment reflections on coarse-pointer devices (phones): the ~1.5MB HDR and
+  // the PMREM passes are not worth it there. The directional/hemisphere lights below carry the
+  // scene on their own, so phones still render correctly, just without the studio reflections.
+  const isCoarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  if (!isCoarsePointer) {
+    // reflections from a procedural room (instant, always there as the fallback)
+    try {
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environment = envTex;
+    } catch (e) { /* reflections optional */ }
 
-  // upgrade to a real studio HDRI for richer metal/glass reflections once it loads (env only, bg stays navy)
-  try {
-    const hdrPmrem = new THREE.PMREMGenerator(renderer);
-    new HDRLoader().load('/assets/hdri/photo_studio_01_1k.hdr', (hdr) => {
-      try { scene.environment = hdrPmrem.fromEquirectangular(hdr).texture; } catch (e) {}
-      hdr.dispose(); hdrPmrem.dispose();
-    }, undefined, () => { /* keep RoomEnvironment */ });
-  } catch (e) { /* keep RoomEnvironment */ }
+    // upgrade to a real studio HDRI for richer metal/glass reflections once it loads (env only, bg stays navy)
+    try {
+      const hdrPmrem = new THREE.PMREMGenerator(renderer);
+      new HDRLoader().load('/assets/hdri/photo_studio_01_1k.hdr', (hdr) => {
+        try { scene.environment = hdrPmrem.fromEquirectangular(hdr).texture; } catch (e) {}
+        hdr.dispose(); hdrPmrem.dispose();
+      }, undefined, () => { /* keep RoomEnvironment */ });
+    } catch (e) { /* keep RoomEnvironment */ }
+  }
 
   // lights
   const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(12, 20, 14); scene.add(key);
@@ -498,7 +510,7 @@ function drawLaptop(s, o) {
   for (let i = 0; i < 3; i++) { ctx.fillStyle = dots[i]; ctx.beginPath(); ctx.arc(44 + i * 40, 37, 12, 0, 7); ctx.fill(); }
   ctx.fillStyle = '#8fa0c4'; ctx.font = '600 30px ' + FONT; ctx.textBaseline = 'middle';
   ctx.fillText('Flitdrop  ·  ' + T('ui.incoming'), 170, 38);
-  // MacBook notch (the "current MacBook" tell) — black tab centred over the top edge
+  // MacBook notch (the "current MacBook" tell): black tab centred over the top edge
   ctx.fillStyle = '#000'; rr(ctx, W / 2 - 116, -20, 232, 54, 22); ctx.fill();
 
   // left rail: connected phone
@@ -553,7 +565,7 @@ function drawRow(ctx, x, y, w, name, done, prog, isNew, img) {
   ctx.fillStyle = isNew ? 'rgba(30,123,255,0.10)' : 'rgba(255,255,255,0.045)';
   rr(ctx, x, y, w, h, 18); ctx.fill();
   if (isNew) { ctx.strokeStyle = 'rgba(30,123,255,0.45)'; ctx.lineWidth = 2; rr(ctx, x, y, w, h, 18); ctx.stroke(); }
-  // thumb — real photo, or a doc tile
+  // thumb: real photo, or a doc tile
   if (imgReady(img)) {
     drawImgRounded(ctx, img, x + 20, y + 20, 68, 68, 14);
   } else {

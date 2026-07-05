@@ -34,6 +34,8 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; overflow-x: clip; }
+/* anchor jumps land clear of the fixed header, no JS offset needed */
+[id] { scroll-margin-top: 64px; }
 body {
   background: var(--bg);
   color: var(--ink);
@@ -47,6 +49,14 @@ body {
 img { max-width: 100%; display: block; }
 .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 a { color: inherit; text-decoration: none; }
+/* visible keyboard focus ring on every interactive element, including the primary blue button */
+a:focus-visible, button:focus-visible, summary:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--blue); outline-offset: 2px;
+}
+/* the outline hugs the element's own corner radius; buttons keep their pill shape so the ring reads as a pill */
+a:focus-visible, summary:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+  border-radius: inherit;
+}
 h1, h2, h3 { line-height: 1.08; letter-spacing: -0.015em; text-wrap: balance; }
 ::selection { background: rgba(0, 113, 227, 0.18); color: #1d1d1f; }
 
@@ -69,8 +79,8 @@ h1, h2, h3 { line-height: 1.08; letter-spacing: -0.015em; text-wrap: balance; }
 .nav-links a:hover { color: var(--ink); background: rgba(0, 0, 0, 0.05); }
 .nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
-.lang-toggle { background: none; color: var(--muted); border: 0; border-radius: 0;
-  padding: 6px 4px; font: inherit; font-size: 13px; font-weight: 600; letter-spacing: 0.03em; cursor: pointer; transition: color 0.2s ease; }
+.lang-toggle { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; background: none; color: var(--muted); border: 0; border-radius: 0;
+  padding: 11px 10px; font: inherit; font-size: 13px; font-weight: 600; letter-spacing: 0.03em; cursor: pointer; transition: color 0.2s ease; }
 .lang-toggle:hover { color: var(--ink); }
 
 /* ---------- buttons ---------- */
@@ -144,7 +154,7 @@ h1, h2, h3 { line-height: 1.08; letter-spacing: -0.015em; text-wrap: balance; }
     background: radial-gradient(ellipse at center, rgba(245, 245, 247, 0.8) 0%, rgba(245, 245, 247, 0.3) 44%, transparent 66%); }
 }
 .film-eyebrow { font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 13px;
-  background: linear-gradient(90deg, #0071e3, #37b6ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  color: var(--blue-ink); }
 .film-caption { font-size: clamp(20px, 3.1vw, 31px); font-weight: 650; letter-spacing: -0.02em; color: var(--ink);
   min-height: 2.2em; text-shadow: 0 1px 10px rgba(245, 245, 247, 0.9);
   transition: opacity 0.45s ease, transform 0.45s ease; }
@@ -395,11 +405,12 @@ html.anim .reveal.in { opacity: 1; transform: none; transition: opacity 0.7s var
 .dl-buttons { display: flex; gap: 14px; flex-wrap: wrap; margin: 26px 0 16px; }
 .dl-other { color: var(--cyan); font-size: 15px; font-weight: 500; }
 .dl-other:hover { text-decoration: underline; }
-.dl-qr { position: relative; text-align: center; color: var(--muted-2); font-size: 13px; }
+.dl-qr { position: relative; text-align: center; color: var(--muted); font-size: 13px; }
 .qr-tile { display: inline-block; background: #fff; border: 1px solid rgba(12, 16, 26, 0.08); border-radius: 18px; padding: 14px; box-shadow: 0 12px 30px rgba(12, 16, 26, 0.12); }
 .qr-img { display: block; width: 132px; height: 132px; }
 .dl-qr .qr-tile { margin-bottom: 12px; }
 .qr-tile-sm { padding: 12px; border-radius: 16px; }
+.dl-note { font-size: 13px; color: var(--muted); margin-top: 6px; max-width: 46ch; line-height: 1.5; }
 
 /* ---------- faq ---------- */
 .faq-list { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
@@ -532,7 +543,7 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
 .footer-cols { display: contents; }
 .footer-col { display: flex; flex-direction: column; gap: 11px; }
 .footer-col h4 { font-size: 13px; font-weight: 650; color: var(--ink); margin-bottom: 3px; }
-.footer-col a { color: var(--muted); font-size: 14.5px; transition: color 0.2s ease; width: fit-content; }
+.footer-col a { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 0; color: var(--muted); font-size: 14.5px; transition: color 0.2s ease; width: fit-content; }
 .footer-col a:hover { color: var(--blue); }
 .footer-bottom { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 46px; padding-top: 24px; border-top: 1px solid var(--stroke); }
 .footer-rights { color: var(--muted-2); font-size: 13px; }
@@ -574,7 +585,12 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
 .cf-status.is-ok { color: var(--signal, #1a8f3c); }
 .cf-status.is-err { color: #d0021b; }
 .contact-form .btn[disabled] { opacity: 0.6; cursor: default; }
-@media (max-width: 760px) { .support-grid { grid-template-columns: 1fr; } .cf-row { grid-template-columns: 1fr; } }
+@media (max-width: 760px) {
+  .support-grid { grid-template-columns: 1fr; }
+  .cf-row { grid-template-columns: 1fr; }
+  /* 16px keeps iOS Safari from zooming in when a field takes focus */
+  .cf-field input, .cf-field textarea { font-size: 16px; }
+}
 
 /* ---------- responsive ---------- */
 @media (max-width: 900px) {

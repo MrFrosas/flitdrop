@@ -20,6 +20,28 @@ const CORS = {
   'Access-Control-Allow-Headers': 'content-type',
 }
 
+// Seuls ces noms d'évènements sont traités ; tout le reste est ignoré (anti-abus).
+const ALLOWED_EVENTS = new Set([
+  'app_open',
+  'phone_connect',
+  'transfer_ok',
+  'transfer_fail',
+  'worker_deploy_test',
+])
+
+// Hash de chaine simple et deterministe (FNV-1a 32 bits) rendu en hex court.
+// Sert a borner la cardinalite : on n'indexe jamais la valeur brute du client.
+function stableHash(str) {
+  let h = 0x811c9dc5
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i)
+    h = (h + (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24)) >>> 0
+  }
+  return h.toString(16).padStart(8, '0')
+}
+
+const ok = (status = 204) => new Response(null, { status, headers: CORS })
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS })
@@ -37,6 +59,10 @@ export default {
     const iid = typeof e.iid === 'string' ? e.iid.slice(0, 40) : 'anon'
     const version = typeof e.v === 'string' ? e.v.slice(0, 16) : ''
     const event = typeof e.event === 'string' ? e.event.slice(0, 40) : 'unknown'
+    // allowlist : on ignore proprement tout évènement non prévu (renvoie ok)
+    if (!ALLOWED_EVENTS.has(event)) return ok(204)
+    // identifiant borné : hash stable de l'iid (jamais la valeur brute du client)
+    const iidHash = stableHash(iid)
     const props = e.props && typeof e.props === 'object' ? e.props : {}
     const os = String(props.os ?? props.platform ?? '').slice(0, 16)
     const status = String(props.status ?? '').slice(0, 16)
@@ -50,12 +76,13 @@ export default {
       env.FLITDROP_TELEMETRY.writeDataPoint({
         blobs: [event, os, version, status, reason, size, country],
         doubles: [1],
-        indexes: [iid],
+        indexes: [iidHash],
       })
     }
 
-    // 2. Miroir PostHog (tableau de bord unifié avec le site). distinct_id = iid
-    // permet les entonnoirs par installation (installé -> actif -> ...).
+    // 2. Miroir PostHog (tableau de bord unifié avec le site). distinct_id =
+    // hash de l'iid : entonnoirs par installation (installé -> actif -> ...),
+    // cardinalité bornée et funnels stables.
     ctx.waitUntil(
       fetch(POSTHOG_ENDPOINT, {
         method: 'POST',
@@ -63,7 +90,7 @@ export default {
         body: JSON.stringify({
           api_key: POSTHOG_KEY,
           event,
-          distinct_id: iid,
+          distinct_id: iidHash,
           timestamp: new Date(ts).toISOString(),
           properties: {
             source: 'desktop-app',

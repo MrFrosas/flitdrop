@@ -6,6 +6,11 @@
 
 *Français plus bas.*
 
+[![Latest release](https://img.shields.io/github/v/release/MrFrosas/flitdrop)](https://github.com/MrFrosas/flitdrop/releases/latest)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS-blue)
+[![License](https://img.shields.io/badge/license-FSL--1.1--ALv2-green)](LICENSE)
+![Downloads](https://img.shields.io/github/downloads/MrFrosas/flitdrop/total)
+
 ![Flitdrop desktop](docs/screenshots/desktop-dark.png)
 
 [**Download**](https://github.com/MrFrosas/flitdrop/releases/latest) · [How it works](#how-it-works) · [Flitdrop vs AirDrop](#flitdrop-vs-airdrop) · [Français](#flitdrop-en-français)
@@ -98,7 +103,7 @@ npm run dist:mac -w @flitdrop/desktop   # Mac: .dmg
 
 ## License
 
-[MIT](LICENSE). AirDrop is a trademark of Apple Inc. Flitdrop is an independent project and has not been authorized, sponsored, or otherwise approved by Apple Inc.
+[Functional Source License (FSL-1.1-ALv2)](LICENSE): the source is public and free to use, including inside your company. You may not resell it or ship a competing product built from it. Two years after each release, that version automatically becomes Apache-2.0. AirDrop is a trademark of Apple Inc. Flitdrop is an independent project and has not been authorized, sponsored, or otherwise approved by Apple Inc.
 
 ---
 

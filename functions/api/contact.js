@@ -47,8 +47,8 @@ export async function onRequestPost({ request, env }) {
   if (!looksLikeEmail(email)) return json({ ok: false, error: 'bad_email' }, 422)
   if (message.length < 3) return json({ ok: false, error: 'message_too_short' }, 422)
 
-  const subject = oneLine(`Flitdrop — message de ${name}`).slice(0, 180)
-  const text = `${message}\n\n— ${name} <${email}>`
+  const subject = oneLine(`Flitdrop : message de ${name}`).slice(0, 180)
+  const text = `${message}\n\n${name} <${email}>`
   const html =
     `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.6;color:#1d1d1f">` +
     `<p style="white-space:pre-wrap;margin:0 0 18px">${escapeHtml(message)}</p>` +

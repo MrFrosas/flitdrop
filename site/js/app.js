@@ -83,7 +83,7 @@
         if (barEl) barEl.style.width = (proxy.p * 100).toFixed(1) + '%';
       },
       scrollTrigger: {
-        trigger: '#film', start: 'top top', end: isMobile ? '+=240%' : '+=460%',
+        trigger: '#film', start: 'top top', end: isMobile ? '+=120%' : '+=460%',
         pin: '#film-stage', anticipatePin: 0, scrub: 1, invalidateOnRefresh: true, pinSpacing: true,
       },
     });
@@ -130,19 +130,26 @@
   }
 
   /* ----- OS aware download labels ----- */
+  function isPhone() {
+    var p = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '').toLowerCase();
+    return /iphone|ipad|ipod|android/.test(p);
+  }
   function osOf() {
     var p = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '').toLowerCase();
-    if (/android/.test(p)) return null;
-    if (/iphone|ipad|ipod/.test(p)) return 'mac';
     if (/mac/.test(p)) return 'mac';
     if (/win/.test(p)) return 'windows';
-    if (/linux/.test(p)) return 'linux';
     return null;
   }
   function setupOS() {
+    // Phone visitors cannot install Flitdrop: guide them instead of mislabelling the desktop buttons.
+    if (isPhone()) {
+      var note = document.querySelector('.dl-note');
+      if (note) { note.setAttribute('data-i18n', 'download.mobile'); note.textContent = t('download.mobile'); }
+      return;
+    }
     var os = osOf();
     if (!os) return;
-    var map = { mac: 'download.mac', windows: 'download.windows', linux: 'download.linux' };
+    var map = { mac: 'download.mac', windows: 'download.windows' };
     var primary = document.querySelector('.dl-buttons .btn-primary span');
     var secondary = document.querySelector('.dl-buttons .btn-ghost span');
     if (primary) { primary.setAttribute('data-i18n', map[os]); primary.textContent = t(map[os]); }
@@ -233,7 +240,7 @@
         .then(function (data) {
           if (data && data.ok) {
             f.reset();
-            say(t('support.ok', 'Thanks — your message is on its way. We usually reply within a day.'), 'ok');
+            say(t('support.ok', 'Thanks, your message is on its way. We usually reply within a day.'), 'ok');
             if (window.posthog) { try { window.posthog.capture('contact_submitted'); } catch (_) {} }
           } else {
             say(t('support.err', 'Something went wrong. Please email contact@flitdrop.com directly.'), 'err');
