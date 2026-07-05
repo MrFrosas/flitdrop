@@ -1,10 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Flitdrop">
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#42C8FF"/>
-      <stop offset="1" stop-color="#0A5CFF"/>
+    <linearGradient id="fd-g" x1="0.14" y1="0.04" x2="0.86" y2="0.96">
+      <stop offset="0" stop-color="#3AA9FF"/>
+      <stop offset="1" stop-color="#0066E6"/>
+    </linearGradient>
+    <linearGradient id="fd-sheen" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.24"/>
+      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
   </defs>
-  <rect x="0" y="0" width="512" height="512" rx="115" fill="url(#g)"/>
-  <path d="M256 371 V151 M171 238 L256 151 L341 238" fill="none" stroke="#ffffff" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="512" height="512" rx="118" fill="url(#fd-g)"/>
+  <rect width="512" height="512" rx="118" fill="url(#fd-sheen)"/>
+  <path d="M256 366 V150 M166 240 L256 150 L346 240" fill="none" stroke="#ffffff" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

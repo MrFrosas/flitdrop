@@ -155,7 +155,7 @@
 
     'footer.tagline': 'Direct sharing between all your devices, on your Wi-Fi.',
     'footer.lang': 'Language', 'footer.rights': '© 2026 Flitdrop. All rights reserved.',
-    'footer.product': 'Product', 'footer.resources': 'Resources', 'footer.features': 'Features',
+    'footer.product': 'Product', 'footer.resources': 'Resources', 'footer.features': 'Features', 'footer.brand': 'Brand',
     'footer.privacy': 'Privacy', 'footer.legal': 'Legal', 'foot.home': 'Home',
   };
 
@@ -311,7 +311,7 @@
 
     'footer.tagline': 'Le partage direct entre tous vos appareils, sur votre Wi-Fi.',
     'footer.lang': 'Langue', 'footer.rights': '© 2026 Flitdrop. Tous droits réservés.',
-    'footer.product': 'Produit', 'footer.resources': 'Ressources', 'footer.features': 'Fonctionnalités',
+    'footer.product': 'Produit', 'footer.resources': 'Ressources', 'footer.features': 'Fonctionnalités', 'footer.brand': 'Marque',
     'footer.privacy': 'Confidentialité', 'footer.legal': 'Mentions légales', 'foot.home': 'Accueil',
   };
 
