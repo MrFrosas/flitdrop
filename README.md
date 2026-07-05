@@ -11,6 +11,8 @@
 [![License](https://img.shields.io/badge/license-FSL--1.1--ALv2-green)](LICENSE)
 ![Downloads](https://img.shields.io/github/downloads/MrFrosas/flitdrop/total)
 
+![Flitdrop in action: scan once on the phone, send a photo to the computer](docs/demo.gif)
+
 ![Flitdrop desktop](docs/screenshots/desktop-dark.png)
 
 [**Download**](https://github.com/MrFrosas/flitdrop/releases/latest) · [How it works](#how-it-works) · [Flitdrop vs AirDrop](#flitdrop-vs-airdrop) · [Français](#flitdrop-en-français)
@@ -100,6 +102,18 @@ npm run dist:mac -w @flitdrop/desktop   # Mac: .dmg
 - [Native feasibility audit](docs/audit-faisabilite-native.md) · [Native apps roadmap](docs/roadmap-apps-natives.md)
 - [Telemetry (opt-in) and Cloudflare deploy](docs/telemetry.md)
 - [Microsoft Store publishing](docs/microsoft-store.md) · [Business model](docs/business.md)
+
+## Honest limitations
+
+Flitdrop is young and free, and we would rather tell you the rough edges up front than have you find them mid transfer. Here is exactly what it does not do yet, and why.
+
+- On the very first launch, Windows SmartScreen or macOS Gatekeeper will warn you about an "unidentified developer". The app is safe: that warning simply means we have not paid for a code signing certificate yet. Click "More info" then "Run anyway" on Windows, or right click and Open on Mac, and the code is public so you can check it yourself.
+- There is no native app for your phone. Nothing installs on the phone, and that is on purpose: you scan a QR code once and it all happens in your browser. The trade off is that everything runs inside a web page instead of a dedicated app.
+- Devices do not find each other automatically yet, so you scan a QR code to make the first connection. Automatic discovery on the local network is on the roadmap; for now the QR is the one small step that gets you paired.
+- Your phone cannot receive a file while its screen is locked or the browser is in the background. Because the phone side is a web page and not a background app, keep the Flitdrop tab open and the screen awake during a transfer.
+- Both devices have to be on the same Wi-Fi network. Flitdrop sends peer to peer over your local network, not across the internet, which is what keeps it fast and private. If you have no shared Wi-Fi, your computer can host a hotspot so the two still meet.
+- There are only Windows and macOS builds today, so Linux does not have a ready to download version yet. A Linux build is planned, and in the meantime the source is public if you want to build it yourself.
+- Flitdrop is source available under FSL-1.1-ALv2, not classic open source. The code is public and fully auditable, but the license blocks reselling it or building a competing product; each release turns into Apache 2.0 after two years. We would rather state this plainly than let anyone assume MIT.
 
 ## License
 
