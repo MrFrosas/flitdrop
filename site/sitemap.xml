@@ -10,6 +10,51 @@
     <priority>1.0</priority>
   </url>
   <url>
+    <loc>https://flitdrop.com/alternative-airdrop.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/alternative-airdrop.html?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/alternative-airdrop.html?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/alternative-airdrop.html"/>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flitdrop.com/airdrop-windows.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/airdrop-windows.html?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/airdrop-windows.html?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/airdrop-windows.html"/>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flitdrop.com/airdrop-iphone-android.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/airdrop-iphone-android.html?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/airdrop-iphone-android.html?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/airdrop-iphone-android.html"/>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flitdrop.com/send-files-iphone-to-pc.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/send-files-iphone-to-pc.html?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/send-files-iphone-to-pc.html?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/send-files-iphone-to-pc.html"/>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flitdrop.com/airdrop-linux.html</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/airdrop-linux.html?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/airdrop-linux.html?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/airdrop-linux.html"/>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://flitdrop.com/brand.html</loc>
     <lastmod>2026-07-05</lastmod>
     <changefreq>monthly</changefreq>

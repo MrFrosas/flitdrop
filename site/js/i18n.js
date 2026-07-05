@@ -155,6 +155,9 @@
     'support.sending': 'Sending…',
     'support.ok': 'Thanks, your message is on its way. We usually reply within a day.',
     'support.err': 'Something went wrong. Please email contact@flitdrop.com directly.',
+    'guides.title': 'Guides',
+    'guides.alt': 'AirDrop alternative', 'guides.windows': 'AirDrop for Windows',
+    'guides.android': 'iPhone to Android', 'guides.iphonepc': 'iPhone to PC', 'guides.linux': 'AirDrop for Linux',
 
     'footer.tagline': 'Direct sharing between all your devices, on your Wi-Fi.',
     'footer.lang': 'Language', 'footer.rights': '© 2026 Flitdrop. All rights reserved.',
@@ -314,6 +317,9 @@
     'support.sending': 'Envoi…',
     'support.ok': 'Merci, votre message part. On répond en général sous 24 h.',
     'support.err': 'Un souci est survenu. Écrivez-nous directement à contact@flitdrop.com.',
+    'guides.title': 'Guides',
+    'guides.alt': 'Alternative à AirDrop', 'guides.windows': 'AirDrop pour Windows',
+    'guides.android': 'iPhone vers Android', 'guides.iphonepc': 'iPhone vers PC', 'guides.linux': 'AirDrop pour Linux',
 
     'footer.tagline': 'Le partage direct entre tous vos appareils, sur votre Wi-Fi.',
     'footer.lang': 'Langue', 'footer.rights': '© 2026 Flitdrop. Tous droits réservés.',
