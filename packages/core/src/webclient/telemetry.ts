@@ -4,7 +4,7 @@
 //
 // L'endpoint est le Worker Cloudflare de Flitdrop (voir docs/telemetry.md).
 // Tant qu'il n'est pas déployé sur ce domaine, les envois échouent en silence.
-const ENDPOINT = 'https://telemetry.flitdrop.app/e'
+const ENDPOINT = 'https://telemetry.flitdrop.com/e'
 const IID_KEY = 'fd_iid'
 
 let consent = false
