@@ -11,6 +11,7 @@ packages/core/public/desktop/app.js
 # artefacts de packaging Electron générés (gen-icon.mjs / prepare.mjs)
 apps/desktop/core/
 apps/desktop/public/
+apps/desktop/updater.cjs
 apps/desktop/build/*.png
 apps/desktop/build/*.ico
 apps/desktop/build/*.icns

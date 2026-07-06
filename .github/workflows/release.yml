@@ -48,7 +48,11 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: apps/desktop/release/*.exe
+          # .exe + .blockmap + latest.yml : requis par l'auto-update (electron-updater)
+          files: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.blockmap
+            apps/desktop/release/latest.yml
           generate_release_notes: true
           body: |
             Flitdrop. L'AirDrop multi-OS, chiffre de bout en bout.

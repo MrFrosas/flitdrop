@@ -1,6 +1,6 @@
 {
   "name": "@flitdrop/desktop",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Flitdrop pour le bureau : l'AirDrop de Windows, chiffre de bout en bout.",
   "author": "Flitdrop",
@@ -14,7 +14,8 @@
   },
   "devDependencies": {
     "electron": "33.2.1",
-    "electron-builder": "25.1.8"
+    "electron-builder": "25.1.8",
+    "electron-updater": "^6.8.9"
   },
   "optionalDependencies": {
     "appdmg": "^0.6.6"

@@ -1,10 +1,11 @@
-const { app, BrowserWindow, Tray, Menu, Notification, clipboard, nativeImage, shell } = require('electron')
+const { app, BrowserWindow, Tray, Menu, Notification, clipboard, nativeImage, shell, dialog } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 
 let win = null
 let tray = null
 let core = null
+let updater = null
 let quitting = false
 let clipImageTimer = null
 
@@ -93,6 +94,7 @@ function buildTrayMenu() {
         app.setLoginItemSettings({ openAtLogin: item.checked, args: ['--hidden'] })
       },
     },
+    { label: tr('tray.checkUpdates'), click: () => { if (updater) updater.checkNow() } },
     { type: 'separator' },
     { label: tr('tray.quit'), click: () => { quitting = true; app.quit() } },
   ])
@@ -130,6 +132,21 @@ if (!gotLock) {
       },
     })
     watchClipboardImages()
+    // auto-update : vérifie/télécharge la dernière version publiée sur GitHub,
+    // propose de redémarrer. Windows fonctionne tout de suite ; macOS quand signé.
+    try {
+      const { setupAutoUpdate } = require(path.join(__dirname, 'updater.cjs'))
+      updater = setupAutoUpdate({
+        app,
+        dialog,
+        Notification,
+        tr,
+        isEnabled: () => !core || !core.cfg || core.cfg.autoUpdate !== false,
+        getWin: () => win,
+      })
+    } catch {
+      // l'app fonctionne même si l'auto-update échoue à s'initialiser
+    }
     const isMac = process.platform === 'darwin'
     const isWin = process.platform === 'win32'
     const osTag = isMac ? 'mac' : isWin ? 'win' : 'linux'
@@ -184,7 +201,14 @@ if (!gotLock) {
     })
 
     try {
-      tray = new Tray(path.join(__dirname, 'build', 'tray.png'))
+      // macOS : image "template" monochrome (le système la teinte + la dimensionne
+      // comme les icônes natives). Windows/Linux : l'icône couleur.
+      const trayImg =
+        process.platform === 'darwin'
+          ? nativeImage.createFromPath(path.join(__dirname, 'build', 'trayTemplate.png'))
+          : nativeImage.createFromPath(path.join(__dirname, 'build', 'tray.png'))
+      if (process.platform === 'darwin') trayImg.setTemplateImage(true)
+      tray = new Tray(trayImg)
       tray.setToolTip(tr('tray.tip'))
       tray.setContextMenu(buildTrayMenu())
       tray.on('double-click', () => { win.show(); win.focus() })

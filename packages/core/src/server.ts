@@ -675,6 +675,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         skin: cfg.skin,
         lang: cfg.lang,
         shortcutsEnabled: cfg.shortcutsEnabled,
+        autoUpdate: cfg.autoUpdate,
         telemetryConsent: cfg.telemetryConsent,
         port: actualPort,
       },
@@ -892,6 +893,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (body.skin === 'auto' || body.skin === 'apple' || body.skin === 'windows') cfg.skin = body.skin
     if (body.lang === 'auto' || body.lang === 'fr' || body.lang === 'en') cfg.lang = body.lang
     if (typeof body.shortcutsEnabled === 'boolean') cfg.shortcutsEnabled = body.shortcutsEnabled
+    if (typeof body.autoUpdate === 'boolean') cfg.autoUpdate = body.autoUpdate
     if (typeof body.telemetryConsent === 'boolean') cfg.telemetryConsent = body.telemetryConsent
     saveConfig(home, cfg)
     hub.broadcast('settings-changed', {})

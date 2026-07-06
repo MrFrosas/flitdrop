@@ -34,6 +34,9 @@ export interface Config {
   // partage direct via le Raccourci iOS. Pratique mais NON chiffré (jeton en
   // clair sur le réseau) : à désactiver sur un wifi public non fiable.
   shortcutsEnabled: boolean
+  // mises à jour automatiques (téléchargées en arrière-plan, installées sur
+  // proposition). Activé par défaut.
+  autoUpdate: boolean
   // consentement à l'envoi anonyme d'usage et d'erreurs (opt-in, décoché par défaut).
   telemetryConsent: boolean
 }
@@ -75,6 +78,7 @@ export function loadConfig(home: string): Config {
     skin: stored.skin === 'apple' || stored.skin === 'windows' ? stored.skin : 'auto',
     lang: stored.lang === 'fr' || stored.lang === 'en' ? stored.lang : 'auto',
     shortcutsEnabled: stored.shortcutsEnabled !== false,
+    autoUpdate: stored.autoUpdate !== false,
     telemetryConsent: stored.telemetryConsent === true,
   }
   saveConfig(home, cfg)

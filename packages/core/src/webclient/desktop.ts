@@ -62,6 +62,7 @@ interface State {
     skin: 'auto' | 'apple' | 'windows'
     lang: 'auto' | 'fr' | 'en'
     shortcutsEnabled: boolean
+    autoUpdate: boolean
     telemetryConsent: boolean
     port: number
   }
@@ -274,6 +275,7 @@ function renderSettings() {
   ;($('setApproval') as unknown as HTMLInputElement).checked = state.config.requireApproval
   ;($('setClipboard') as unknown as HTMLInputElement).checked = state.config.clipboardAutoPush
   ;($('setShortcuts') as unknown as HTMLInputElement).checked = state.config.shortcutsEnabled
+  ;($('setAutoUpdate') as unknown as HTMLInputElement).checked = state.config.autoUpdate
   ;($('setClipHistory') as unknown as HTMLInputElement).checked = state.config.clipHistoryEnabled
   ;($('setClipMax') as unknown as HTMLSelectElement).value = String(state.config.clipHistoryMaxItems)
   ;($('setClipDays') as unknown as HTMLSelectElement).value = String(state.config.clipHistoryMaxDays)
@@ -794,6 +796,7 @@ function initUI() {
         requireApproval: ($('setApproval') as unknown as HTMLInputElement).checked,
         clipboardAutoPush: ($('setClipboard') as unknown as HTMLInputElement).checked,
         shortcutsEnabled: ($('setShortcuts') as unknown as HTMLInputElement).checked,
+        autoUpdate: ($('setAutoUpdate') as unknown as HTMLInputElement).checked,
         clipHistoryEnabled: ($('setClipHistory') as unknown as HTMLInputElement).checked,
         clipHistoryMaxItems: Number(($('setClipMax') as unknown as HTMLSelectElement).value),
         clipHistoryMaxDays: Number(($('setClipDays') as unknown as HTMLSelectElement).value),
@@ -815,11 +818,17 @@ function initUI() {
   ;($('setSkin') as unknown as HTMLSelectElement).onchange = (e) => {
     applyPlatformSkin((e.target as HTMLSelectElement).value as 'auto' | 'apple' | 'windows')
   }
-  // langue : bascule en direct (ré-applique l'i18n + re-render dynamique)
+  // langue : bascule en direct ET persiste tout de suite (sinon renderAll/refresh
+  // ré-alignent la langue sur state.config.lang et annulent le changement).
   ;($('setLang') as unknown as HTMLSelectElement).onchange = (e) => {
-    lang = resolveLang((e.target as HTMLSelectElement).value, langFrom(navigator.language))
+    const v = (e.target as HTMLSelectElement).value as 'auto' | 'fr' | 'en'
+    lang = resolveLang(v, langFrom(navigator.language))
     applyI18n(lang)
-    if (state) renderAll()
+    if (state) {
+      state.config.lang = v
+      renderAll()
+    }
+    void postJSON('/settings', { lang: v }).catch(() => {})
   }
   $('btnResetPc').onclick = async () => {
     if (!confirm(t('reset.confirm'))) return

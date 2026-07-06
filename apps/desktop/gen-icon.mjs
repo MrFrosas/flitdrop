@@ -138,6 +138,41 @@ function drawIcon(size) {
   return encodePNG(size, rgba)
 }
 
+// Icône de la barre de menu macOS : une "template image". macOS n'utilise QUE le
+// canal alpha (les pixels sont noirs), puis recolore le glyphe selon le thème de la
+// barre (noir en clair, blanc en sombre) et l'aligne à la taille système. Donc pas
+// de tuile ni de couleur ici : juste la flèche d'envoi, avec une marge, comme les
+// icônes natives (Wi-Fi, AirDrop, batterie). C'est ce qui corrige l'aspect
+// "carré bleu surdimensionné" de l'ancienne icône.
+function drawTrayTemplate(size) {
+  const rgba = Buffer.alloc(size * size * 4)
+  const c = size / 2
+  // flèche centrée avec ~15% de marge en haut/bas pour respirer dans la barre
+  const tipY = size * 0.17
+  const tailY = size * 0.83
+  const armDX = size * 0.23
+  const armDY = size * 0.23
+  const stroke = size * 0.1
+  const aa = size * 0.028 + 0.5
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4
+      const dArrow = Math.min(
+        sdSeg(x, y, c, tailY, c, tipY),
+        sdSeg(x, y, c - armDX, tipY + armDY, c, tipY),
+        sdSeg(x, y, c + armDX, tipY + armDY, c, tipY)
+      )
+      const cov = 1 - smooth(stroke - aa, stroke + aa, dArrow)
+      // noir + alpha = coverage : macOS s'occupe de la teinte finale
+      rgba[i] = 0
+      rgba[i + 1] = 0
+      rgba[i + 2] = 0
+      rgba[i + 3] = Math.round(255 * cov)
+    }
+  }
+  return encodePNG(size, rgba)
+}
+
 // Assemble un .ico (Windows) en embarquant des PNG (supporté depuis Vista).
 // Un vrai .ico multi-résolutions donne une icône nette à l'exe et à l'installeur.
 function buildIco(sizes) {
@@ -167,6 +202,13 @@ function buildIco(sizes) {
 
 fs.mkdirSync(path.join(here, 'build'), { recursive: true })
 fs.writeFileSync(path.join(here, 'build', 'icon.png'), drawIcon(512))
+// tray.png reste l'icône COULEUR (Windows/Linux affichent des icônes de zone de
+// notification en couleur).
 fs.writeFileSync(path.join(here, 'build', 'tray.png'), drawIcon(32))
+// trayTemplate*.png : glyphe monochrome pour la barre de menu macOS. @1x = 16 px,
+// @2x = 32 px (macOS choisit selon l'écran). Le suffixe "Template" fait
+// qu'Electron l'active en image template automatiquement.
+fs.writeFileSync(path.join(here, 'build', 'trayTemplate.png'), drawTrayTemplate(16))
+fs.writeFileSync(path.join(here, 'build', 'trayTemplate@2x.png'), drawTrayTemplate(32))
 fs.writeFileSync(path.join(here, 'build', 'icon.ico'), buildIco([16, 24, 32, 48, 64, 128, 256]))
-console.log('icônes générées dans apps/desktop/build/ (png, tray, ico)')
+console.log('icônes générées dans apps/desktop/build/ (png, tray, trayTemplate@1x/@2x, ico)')

@@ -22,6 +22,7 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     skin: 'auto',
     lang: 'auto',
     shortcutsEnabled: true,
+    autoUpdate: true,
     telemetryConsent: false,
   }
 }

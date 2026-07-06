@@ -15,11 +15,18 @@ directories:
   buildResources: build
 files:
   - main.cjs
+  - updater.cjs
   - core/**
   - public/**
   - build/icon.png
   - build/icon.ico
   - build/tray.png
+# serveur de mise a jour = les releases GitHub (electron-updater lit latest.yml).
+# La presence de ce bloc fait generer latest.yml / latest-mac.yml par le build.
+publish:
+  provider: github
+  owner: MrFrosas
+  repo: flitdrop
 # associe l'app à "Envoyer vers" et à "Ouvrir avec" pour tous les fichiers
 fileAssociations:
   - ext: '*'

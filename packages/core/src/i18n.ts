@@ -109,7 +109,9 @@ const en: Dict = {
   'ph.menu.install': 'Add to home screen', 'ph.menu.forget': 'Forget this PC', 'ph.menu.close': 'Close',
   'ph.installSheet.title': 'Flitdrop like an app', 'ph.installSheet.ios': 'In Safari: Share button (the square with an arrow), then « Add to Home Screen ». The Flitdrop icon appears like an app, connected to your PC, no QR re-scan.', 'ph.installSheet.android': 'In Chrome: menu ⋮ top right, then « Add to Home screen ». The Flitdrop icon appears like an app, connected to your PC, no QR re-scan.',
   // ---------- Electron (barre systeme, notifications, dialogue) ----------
-  'tray.open': 'Open Flitdrop', 'tray.openFolder': 'Open download folder', 'tray.autostart': 'Launch at session start', 'tray.quit': 'Quit', 'tray.tip': 'Flitdrop: ready to receive',
+  'tray.open': 'Open Flitdrop', 'tray.openFolder': 'Open download folder', 'tray.autostart': 'Launch at session start', 'tray.checkUpdates': 'Check for updates', 'tray.quit': 'Quit', 'tray.tip': 'Flitdrop: ready to receive',
+  'update.available': 'Flitdrop {v} available', 'update.downloading': 'Downloading in the background…', 'update.readyTitle': 'Update ready', 'update.readyBody': 'Flitdrop {v} is ready to install. Restart to apply it.', 'update.restart': 'Restart now', 'update.later': 'Later',
+  'set.autoUpdate': 'Install updates automatically',
   'notif.filesReady.one': 'Ready for the phone', 'notif.filesReady.other': '{n} files ready for the phone', 'notif.filesReadyBody': 'Pick them up in Flitdrop, « Received » tab.',
   'dialog.startFailed': 'Flitdrop could not start: {msg}',
   // ---------- reponses serveur en clair (Raccourci iOS, garde admin) ----------
@@ -208,7 +210,9 @@ const fr: Dict = {
   'ph.menu.title': 'Ce téléphone', 'ph.menu.style': 'Style', 'ph.menu.theme': 'Thème', 'ph.menu.lang': 'Langue', 'ph.menu.android': 'Android',
   'ph.menu.install': 'Ajouter à l’écran d’accueil', 'ph.menu.forget': 'Oublier ce PC', 'ph.menu.close': 'Fermer',
   'ph.installSheet.title': 'Flitdrop comme une app', 'ph.installSheet.ios': 'Dans Safari : bouton Partager (le carré avec une flèche), puis « Sur l’écran d’accueil ». L’icône Flitdrop apparaît comme une app, connectée à ton PC, sans re-scanner le QR code.', 'ph.installSheet.android': 'Dans Chrome : menu ⋮ en haut à droite, puis « Ajouter à l’écran d’accueil ». L’icône Flitdrop apparaît comme une app, connectée à ton PC, sans re-scanner le QR code.',
-  'tray.open': 'Ouvrir Flitdrop', 'tray.openFolder': 'Ouvrir le dossier de réception', 'tray.autostart': 'Lancer au démarrage de la session', 'tray.quit': 'Quitter', 'tray.tip': 'Flitdrop : prêt à recevoir',
+  'tray.open': 'Ouvrir Flitdrop', 'tray.openFolder': 'Ouvrir le dossier de réception', 'tray.autostart': 'Lancer au démarrage de la session', 'tray.checkUpdates': 'Vérifier les mises à jour', 'tray.quit': 'Quitter', 'tray.tip': 'Flitdrop : prêt à recevoir',
+  'update.available': 'Flitdrop {v} disponible', 'update.downloading': 'Téléchargement en arrière-plan…', 'update.readyTitle': 'Mise à jour prête', 'update.readyBody': 'Flitdrop {v} est prête à installer. Redémarre pour l’appliquer.', 'update.restart': 'Redémarrer maintenant', 'update.later': 'Plus tard',
+  'set.autoUpdate': 'Installer les mises à jour automatiquement',
   'notif.filesReady.one': 'Prêt pour le téléphone', 'notif.filesReady.other': '{n} fichiers prêts pour le téléphone', 'notif.filesReadyBody': 'À récupérer dans Flitdrop, onglet « Recevoir ».',
   'dialog.startFailed': 'Flitdrop n’a pas pu démarrer : {msg}',
   'srv.shortcutOff': 'Le partage par Raccourci est désactivé sur ce PC (réglage « Partage direct iPhone »).',
