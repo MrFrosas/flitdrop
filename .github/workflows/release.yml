@@ -37,6 +37,12 @@ jobs:
 
       - name: Empaqueter l'installeur Windows
         run: npm run dist:win:ci -w @flitdrop/desktop
+        env:
+          # Signature Azure Trusted Signing (voir electron-builder.yml > win.azureSignOptions).
+          # EnvironmentCredential : TENANT_ID + CLIENT_ID requis, CLIENT_SECRET pour le principal.
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
 
       - uses: actions/upload-artifact@v4
         with:
@@ -57,7 +63,7 @@ jobs:
           body: |
             Flitdrop. L'AirDrop multi-OS, chiffre de bout en bout.
 
-            - Windows : telechargez le `.exe`, double-cliquez. (SmartScreen affiche "editeur inconnu" : Informations complementaires > Executer quand meme.)
+            - Windows : telechargez le `.exe`, double-cliquez. Executable signe (editeur verifie : CC's Global). Si SmartScreen s'affiche encore le temps que la reputation se construise : Informations complementaires > Executer quand meme.
             - Mac : telechargez le `.dmg`, glissez Flitdrop dans Applications. Au 1er lancement, si macOS bloque : Reglages Systeme > Confidentialite et securite > Ouvrir quand meme, ou en Terminal `xattr -cr /Applications/Flitdrop.app`.
 
             Au premier lancement, scannez le QR code avec le telephone, et c'est appaire.

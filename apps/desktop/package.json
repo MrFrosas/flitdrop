@@ -1,6 +1,6 @@
 {
   "name": "@flitdrop/desktop",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "description": "Flitdrop pour le bureau : l'AirDrop de Windows, chiffre de bout en bout.",
   "author": "Flitdrop",
