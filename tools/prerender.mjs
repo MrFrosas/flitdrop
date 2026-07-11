@@ -131,7 +131,15 @@ for (const page of PAGES) {
       const mapFile = resolve(TR, lang, page.slug + '.json');
       if (!existsSync(mapFile)) { console.warn('SKIP', lang, page.slug, '(no translation map at', mapFile + ')'); continue; }
       const translations = JSON.parse(readFileSync(mapFile, 'utf8'));
-      applyToRoot(root, translations);   // title, meta, body text, JSON-LD from the map
+      applyToRoot(root, translations);   // title, meta, JSON-LD (and body fallback) from the map
+      // Body copy is already bilingual via hand-written data-en/data-<lang> attributes
+      // and swapped client-side. Bake that same translation into the text so crawlers
+      // (no-JS) see exactly what the runtime shows. Falls back to the map when a page
+      // has no data-<lang> for this language (e.g. future languages).
+      root.querySelectorAll('[data-en]').forEach((e) => {
+        const v = e.getAttribute('data-' + lang);
+        if (v != null) e.set_content(esc(v));
+      });
       localizeDataI18n(root, lang);       // nav/footer etc. from the dictionary
       rewriteInternalLinks(root, lang);
     } else {
