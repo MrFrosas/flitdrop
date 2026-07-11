@@ -891,7 +891,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
     if (body.theme === 'system' || body.theme === 'light' || body.theme === 'dark') cfg.theme = body.theme
     if (body.skin === 'auto' || body.skin === 'apple' || body.skin === 'windows') cfg.skin = body.skin
-    if (body.lang === 'auto' || body.lang === 'fr' || body.lang === 'en') cfg.lang = body.lang
+    if (body.lang === 'auto' || body.lang === 'fr' || body.lang === 'en' || body.lang === 'de') cfg.lang = body.lang
     if (typeof body.shortcutsEnabled === 'boolean') cfg.shortcutsEnabled = body.shortcutsEnabled
     if (typeof body.autoUpdate === 'boolean') cfg.autoUpdate = body.autoUpdate
     if (typeof body.telemetryConsent === 'boolean') cfg.telemetryConsent = body.telemetryConsent

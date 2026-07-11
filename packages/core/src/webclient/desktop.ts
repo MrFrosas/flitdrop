@@ -60,7 +60,7 @@ interface State {
     clipHistoryMaxDays: number
     theme: 'system' | 'light' | 'dark'
     skin: 'auto' | 'apple' | 'windows'
-    lang: 'auto' | 'fr' | 'en'
+    lang: 'auto' | 'fr' | 'en' | 'de'
     shortcutsEnabled: boolean
     autoUpdate: boolean
     telemetryConsent: boolean
@@ -821,7 +821,7 @@ function initUI() {
   // langue : bascule en direct ET persiste tout de suite (sinon renderAll/refresh
   // ré-alignent la langue sur state.config.lang et annulent le changement).
   ;($('setLang') as unknown as HTMLSelectElement).onchange = (e) => {
-    const v = (e.target as HTMLSelectElement).value as 'auto' | 'fr' | 'en'
+    const v = (e.target as HTMLSelectElement).value as 'auto' | 'fr' | 'en' | 'de'
     lang = resolveLang(v, langFrom(navigator.language))
     applyI18n(lang)
     if (state) {

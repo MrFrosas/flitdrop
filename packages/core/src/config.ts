@@ -30,7 +30,7 @@ export interface Config {
   // Windows) ; on peut forcer l'un ou l'autre indépendamment du système.
   skin: 'auto' | 'apple' | 'windows'
   // langue de l'interface : 'auto' suit le système, sinon forcée.
-  lang: 'auto' | 'fr' | 'en'
+  lang: 'auto' | 'fr' | 'en' | 'de'
   // partage direct via le Raccourci iOS. Pratique mais NON chiffré (jeton en
   // clair sur le réseau) : à désactiver sur un wifi public non fiable.
   shortcutsEnabled: boolean
@@ -76,7 +76,7 @@ export function loadConfig(home: string): Config {
     clipHistoryMaxDays: clampInt(stored.clipHistoryMaxDays, 1, 90, 7),
     theme: stored.theme === 'light' || stored.theme === 'dark' ? stored.theme : 'system',
     skin: stored.skin === 'apple' || stored.skin === 'windows' ? stored.skin : 'auto',
-    lang: stored.lang === 'fr' || stored.lang === 'en' ? stored.lang : 'auto',
+    lang: stored.lang === 'fr' || stored.lang === 'en' || stored.lang === 'de' ? stored.lang : 'auto',
     shortcutsEnabled: stored.shortcutsEnabled !== false,
     autoUpdate: stored.autoUpdate !== false,
     telemetryConsent: stored.telemetryConsent === true,

@@ -1,18 +1,27 @@
 import { describe, it, expect } from 'vitest'
-import { messages, t, tp, fmtBytes } from '../src/i18n.js'
+import { messages, LANGS, t, tp, fmtBytes } from '../src/i18n.js'
 
 describe('i18n', () => {
-  it('en et fr ont EXACTEMENT les mêmes clés (aucune traduction manquante)', () => {
-    const missingInFr = Object.keys(messages.en).filter((k) => !(k in messages.fr))
-    const missingInEn = Object.keys(messages.fr).filter((k) => !(k in messages.en))
-    expect(missingInFr).toEqual([])
-    expect(missingInEn).toEqual([])
+  it('toutes les langues ont EXACTEMENT les mêmes clés (aucune traduction manquante)', () => {
+    const enKeys = Object.keys(messages.en).sort()
+    for (const lang of LANGS) {
+      expect(Object.keys(messages[lang]).sort(), `clés ${lang}`).toEqual(enKeys)
+    }
   })
 
-  it('aucune valeur vide', () => {
-    for (const lang of ['en', 'fr'] as const) {
+  it('aucune valeur vide, dans toutes les langues', () => {
+    for (const lang of LANGS) {
       for (const [k, v] of Object.entries(messages[lang])) {
         expect(v, `${lang}.${k}`).toBeTruthy()
+      }
+    }
+  })
+
+  it('les placeholders {…} sont préservés dans chaque langue', () => {
+    const ph = (s: string | undefined) => ((s || '').match(/\{\w+\}/g) || []).sort().join('|')
+    for (const lang of LANGS) {
+      for (const k of Object.keys(messages.en)) {
+        expect(ph(messages[lang][k]), `${lang}.${k}`).toBe(ph(messages.en[k]))
       }
     }
   })
@@ -36,5 +45,13 @@ describe('i18n', () => {
     expect(fmtBytes('en', 2048)).toBe('2 KB')
     expect(fmtBytes('fr', 2048)).toBe('2 Ko')
     expect(fmtBytes('en', 512)).toBe('512 B')
+  })
+
+  it('allemand disponible et cohérent', () => {
+    expect(LANGS).toContain('de')
+    expect(t('de', 'nav.settings')).toBe('Einstellungen')
+    expect(t('de', 'set.langDe')).toBe('Deutsch')
+    expect(fmtBytes('de', 2048)).toBe('2 KB')
+    expect(tp('de', 'ph.text.count', 2)).toContain('2')
   })
 })
