@@ -43,6 +43,14 @@ const PAGES = [
   { slug: 'alternative-airdrop', src: 'alternative-airdrop.html', mapped: true },
   { slug: 'snapdrop-alternative', src: 'snapdrop-alternative.html', mapped: true },
   { slug: 'localsend-alternative', src: 'localsend-alternative.html', mapped: true },
+  { slug: 'best-airdrop-alternatives', src: 'best-airdrop-alternatives.html', mapped: true },
+  { slug: 'transfer-photos-iphone-to-pc-without-losing-quality', src: 'transfer-photos-iphone-to-pc-without-losing-quality.html', mapped: true },
+  { slug: 'send-files-android-to-mac', src: 'send-files-android-to-mac.html', mapped: true },
+  { slug: 'copy-paste-phone-to-pc', src: 'copy-paste-phone-to-pc.html', mapped: true },
+  { slug: 'xender-alternative', src: 'xender-alternative.html', mapped: true },
+  { slug: 'send-anywhere-alternative', src: 'send-anywhere-alternative.html', mapped: true },
+  { slug: 'send-files-without-app', src: 'send-files-without-app.html', mapped: true },
+  { slug: 'pairdrop-alternative', src: 'pairdrop-alternative.html', mapped: true },
 ];
 const LOCALIZED_SLUGS = new Set(PAGES.map((p) => p.slug)); // for internal link rewriting
 

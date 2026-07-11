@@ -65,7 +65,7 @@
   }
 
   // slugs that have a prerendered counterpart under /<lang>/ ('' = home)
-  var LOCALIZED = ['', 'airdrop-windows', 'airdrop-linux', 'airdrop-iphone-android', 'send-files-iphone-to-pc', 'alternative-airdrop', 'snapdrop-alternative', 'localsend-alternative'];
+  var LOCALIZED = ['', 'airdrop-windows', 'airdrop-linux', 'airdrop-iphone-android', 'send-files-iphone-to-pc', 'alternative-airdrop', 'snapdrop-alternative', 'localsend-alternative', 'best-airdrop-alternatives', 'transfer-photos-iphone-to-pc-without-losing-quality', 'send-files-android-to-mac', 'copy-paste-phone-to-pc', 'xender-alternative', 'send-anywhere-alternative', 'send-files-without-app', 'pairdrop-alternative'];
 
   // URL of the prerendered counterpart for `next` language, or null if none exists
   function staticAltUrl(next) {

@@ -203,7 +203,16 @@
     "download.copylink": "Copy the site link",
     "download.copied": "Link copied",
     "guides.snapdrop": "Snapdrop alternative",
-    "guides.localsend": "LocalSend alternative"
+    "guides.localsend": "LocalSend alternative",
+    "footer.comparisons": "Comparisons",
+    "guides.best": "Best AirDrop alternatives",
+    "guides.photos": "iPhone photos to PC",
+    "guides.androidmac": "Android to Mac",
+    "guides.clipboard": "Phone to PC clipboard",
+    "guides.noapp": "Send without an app",
+    "guides.xender": "Xender alternative",
+    "guides.sendanywhere": "Send Anywhere alternative",
+    "guides.pairdrop": "PairDrop alternative"
   },
   "fr": {
     "meta.title": "Flitdrop, envoyez vos fichiers entre téléphone et ordinateur comme un AirDrop universel",
@@ -400,7 +409,16 @@
     "download.copylink": "Copier le lien du site",
     "download.copied": "Lien copié",
     "guides.snapdrop": "Alternative à Snapdrop",
-    "guides.localsend": "Alternative à LocalSend"
+    "guides.localsend": "Alternative à LocalSend",
+    "footer.comparisons": "Comparatifs",
+    "guides.best": "Meilleures alternatives à AirDrop",
+    "guides.photos": "Photos iPhone vers PC",
+    "guides.androidmac": "Android vers Mac",
+    "guides.clipboard": "Presse-papiers téléphone-PC",
+    "guides.noapp": "Envoyer sans application",
+    "guides.xender": "Alternative à Xender",
+    "guides.sendanywhere": "Alternative à Send Anywhere",
+    "guides.pairdrop": "Alternative à PairDrop"
   }
 };
 });
