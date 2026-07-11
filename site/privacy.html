@@ -74,7 +74,7 @@
         var l = window.FDI18N ? window.FDI18N.lang : 'en'
         document.querySelectorAll('.lang-en').forEach(function (e) { e.hidden = l !== 'en' })
         document.querySelectorAll('.lang-fr').forEach(function (e) { e.hidden = l !== 'fr' })
-        document.querySelectorAll('[data-en]').forEach(function (e) { e.textContent = l === 'fr' ? e.getAttribute('data-fr') : e.getAttribute('data-en') })
+        document.querySelectorAll('[data-en]').forEach(function (e) { var v = e.getAttribute('data-' + l); if (v != null) e.textContent = v })
       }
       document.addEventListener('DOMContentLoaded', applyDoc)
       window.addEventListener('fd-lang', applyDoc)

@@ -18,6 +18,7 @@
   <link rel="canonical" href="https://flitdrop.com/fr/quick-share-to-iphone-not-working">
   <link rel="alternate" hreflang="en" href="https://flitdrop.com/quick-share-to-iphone-not-working">
   <link rel="alternate" hreflang="fr" href="https://flitdrop.com/fr/quick-share-to-iphone-not-working">
+  <link rel="alternate" hreflang="de" href="https://flitdrop.com/de/quick-share-to-iphone-not-working">
   <link rel="alternate" hreflang="x-default" href="https://flitdrop.com/quick-share-to-iphone-not-working">
 
   <link rel="icon" href="/assets/icon.svg">
@@ -408,7 +409,7 @@
     (function () {
       function apply() {
         var l = window.FDI18N ? window.FDI18N.lang : 'en'
-        document.querySelectorAll('[data-en]').forEach(function (e) { e.textContent = l === 'fr' ? e.getAttribute('data-fr') : e.getAttribute('data-en') })
+        document.querySelectorAll('[data-en]').forEach(function (e) { var v = e.getAttribute('data-' + l); if (v != null) e.textContent = v })
       }
       document.addEventListener('DOMContentLoaded', apply)
       window.addEventListener('fd-lang', apply)

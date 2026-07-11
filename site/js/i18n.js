@@ -8,14 +8,16 @@
 
   var DICT = (typeof window !== 'undefined' && window.FD_I18N_DATA) || { en: {}, fr: {} };
   var EN = DICT.en || {};
-  var SUPPORTED = { en: 1, fr: 1 };
+  // display + cycle order; add new languages here (must have a /<lang>/ prerender + dict)
+  var LANGS = ['en', 'fr', 'de'];
+  var NAMES = { en: 'EN', fr: 'FR', de: 'DE', es: 'ES' };
+  var SUPPORTED = {}; LANGS.forEach(function (l) { SUPPORTED[l] = 1; });
   var LS = 'flitdrop_lang';
 
   // which prerendered language page you are literally on, if any
   function langFromPath() {
-    var p = location.pathname || '/';
-    if (p === '/fr' || p.indexOf('/fr/') === 0) return 'fr';
-    return null;
+    var m = (location.pathname || '/').match(/^\/(fr|de|es)(\/|$)/);
+    return (m && SUPPORTED[m[1]]) ? m[1] : null;
   }
 
   function detect() {
@@ -29,8 +31,8 @@
     try { saved = localStorage.getItem(LS); } catch (e) {}
     if (SUPPORTED[saved]) return saved;
     // 4) browser language
-    var nav = (navigator.language || 'en').toLowerCase();
-    return nav.indexOf('fr') === 0 ? 'fr' : 'en';
+    var nav = (navigator.language || 'en').toLowerCase().slice(0, 2);
+    return SUPPORTED[nav] ? nav : 'en';
   }
 
   var lang = detect();
@@ -58,9 +60,10 @@
       document.title = t('meta.title');
       var md = document.querySelector('meta[name="description"]'); if (md) md.setAttribute('content', t('meta.desc'));
     }
+    var nextLang = LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length];
     document.querySelectorAll('[data-lang-toggle], #langToggle').forEach(function (b) {
-      b.textContent = lang === 'fr' ? 'EN' : 'FR';
-      b.setAttribute('aria-label', lang === 'fr' ? 'Switch to English' : 'Passer en français');
+      b.textContent = NAMES[nextLang] || nextLang.toUpperCase();
+      b.setAttribute('aria-label', 'Change language, next: ' + (NAMES[nextLang] || nextLang));
     });
   }
 
@@ -70,14 +73,12 @@
   // URL of the prerendered counterpart for `next` language, or null if none exists
   function staticAltUrl(next) {
     var p = location.pathname || '/';
-    var underFr = (p === '/fr' || p.indexOf('/fr/') === 0);
-    var slug = underFr ? p.replace(/^\/fr/, '') : p;
-    slug = slug.replace(/\/index\.html?$/, '/').replace(/\.html$/, '');
-    var bare = (slug === '/' || slug === '') ? '' : slug.replace(/^\//, '');
-    if (LOCALIZED.indexOf(bare) === -1) return null; // no counterpart -> client swap
-    if (next === 'fr' && !underFr) return '/fr/' + bare;
-    if (next === 'en' && underFr) return '/' + bare;
-    return null;
+    var m = p.match(/^\/(fr|de|es)(\/|$)/);
+    var rest = m ? p.slice(('/' + m[1]).length) : p;
+    rest = rest.replace(/\/index\.html?$/, '/').replace(/\.html$/, '');
+    var bare = (rest === '/' || rest === '') ? '' : rest.replace(/^\//, '');
+    if (LOCALIZED.indexOf(bare) === -1) return null; // page has no localized variants
+    return next === 'en' ? '/' + bare : '/' + next + '/' + bare;
   }
 
   function set(next) {
@@ -93,7 +94,7 @@
     window.dispatchEvent(new CustomEvent('langchange', { detail: { lang: lang } }));
   }
 
-  function toggle() { set(lang === 'fr' ? 'en' : 'fr'); }
+  function toggle() { var i = LANGS.indexOf(lang); set(LANGS[(i + 1) % LANGS.length]); }
 
   // public API (keeps window.FDI18N.lang readable and stable across pages)
   window.FDI18N = {

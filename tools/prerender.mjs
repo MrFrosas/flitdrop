@@ -30,7 +30,7 @@ const TR = resolve(ROOT, 'tools', 'i18n');
 const ORIGIN = 'https://flitdrop.com';
 const DICT = require(resolve(SITE, 'js', 'i18n-data.js'));
 
-const LANGS = ['fr'];
+const LANGS = ['fr', 'de'];
 const OG_LOCALE = { en: 'en_US', fr: 'fr_FR', de: 'de_DE', es: 'es_ES' };
 
 // slug '' = home. Article pages carry a translation map; home does not.

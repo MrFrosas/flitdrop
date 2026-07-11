@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dateien von Linux ans iPhone senden (keine App auf dem Handy, kostenlos) | Flitdrop</title>
+  <meta name="description" content="Linux hat kein AirDrop und Warpinator unterstützt iOS nicht wirklich. Flitdrop sendet Dateien, Fotos und Ordner von Linux ans iPhone über das lokale WLAN, Ende-zu-Ende-verschlüsselt, ganz ohne etwas auf dem Handy zu installieren.">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="author" content="Flitdrop">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+
+  <!-- PostHog product analytics: cookieless (memory = zero device storage, no banner needed), no session recording, US-hosted, client IP discarded server-side -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_Bex8SoGTP3KQyVriFMzVChHugFgtkF6LYmjgJbYi6min',{api_host:'https://us.i.posthog.com',persistence:'memory',person_profiles:'identified_only',disable_session_recording:true,capture_pageview:true,autocapture:true});
+  </script>
+
+  <link rel="canonical" href="https://flitdrop.com/de/send-files-linux-to-iphone">
+  <link rel="alternate" hreflang="en" href="https://flitdrop.com/send-files-linux-to-iphone">
+  <link rel="alternate" hreflang="fr" href="https://flitdrop.com/fr/send-files-linux-to-iphone">
+  <link rel="alternate" hreflang="de" href="https://flitdrop.com/de/send-files-linux-to-iphone">
+  <link rel="alternate" hreflang="x-default" href="https://flitdrop.com/send-files-linux-to-iphone">
+
+  <link rel="icon" href="/assets/icon.svg">
+  <link rel="apple-touch-icon" href="/assets/icon-512.png">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Flitdrop">
+  <meta property="og:title" content="Dateien von Linux ans iPhone senden (keine App auf dem Handy, kostenlos)">
+  <meta property="og:description" content="Linux hat kein AirDrop und Warpinator unterstützt iOS nicht wirklich. Flitdrop sendet Dateien, Fotos und Ordner von Linux ans iPhone über das lokale WLAN, Ende-zu-Ende-verschlüsselt, ganz ohne etwas auf dem Handy zu installieren.">
+  <meta property="og:url" content="https://flitdrop.com/de/send-files-linux-to-iphone">
+  <meta property="og:image" content="https://flitdrop.com/assets/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Dateien mit Flitdrop von Linux ans iPhone senden">
+  <meta property="og:locale" content="de_DE">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Dateien von Linux ans iPhone senden (keine App auf dem Handy, kostenlos)">
+  <meta name="twitter:description" content="Linux hat kein AirDrop und Warpinator unterstützt iOS nicht wirklich. Flitdrop sendet Dateien, Fotos und Ordner von Linux ans iPhone über das lokale WLAN, Ende-zu-Ende-verschlüsselt, ganz ohne etwas auf dem Handy zu installieren.">
+  <meta name="twitter:image" content="https://flitdrop.com/assets/og.jpg">
+
+  <link rel="stylesheet" href="/style.css">
+
+  <script async src="/js/analytics.js"></script>
+  <script defer src="/js/i18n-data.js"></script>
+  <script defer src="/js/i18n.js"></script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "TechArticle",
+        "headline": "Dateien von Linux ans iPhone senden (keine App auf dem Handy, kostenlos)",
+        "description": "Linux hat kein AirDrop und Warpinator unterstützt iOS nicht wirklich. Flitdrop sendet Dateien, Fotos und Ordner von Linux ans iPhone über das lokale WLAN, Ende-zu-Ende-verschlüsselt, ganz ohne etwas auf dem Handy zu installieren.",
+        "inLanguage": "en",
+        "url": "https://flitdrop.com/send-files-linux-to-iphone",
+        "mainEntityOfPage": "https://flitdrop.com/send-files-linux-to-iphone",
+        "image": "https://flitdrop.com/assets/og.jpg",
+        "author": {
+          "@type": "Organization",
+          "name": "Flitdrop",
+          "url": "https://flitdrop.com/"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Flitdrop",
+          "url": "https://flitdrop.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://flitdrop.com/assets/icon-512.png"
+          }
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Wie sende ich Dateien von Linux an ein iPhone?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Installiere die Flitdrop-App auf deinem Linux-Computer, öffne sie und scanne den QR-Code einmal mit deiner iPhone-Kamera zum Koppeln. Das iPhone öffnet eine leichte Web-App im Browser, und dann sendest du Dateien, Fotos und ganze Ordner von Linux ans iPhone über dein lokales WLAN, Ende-zu-Ende-verschlüsselt und in voller Qualität."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Funktioniert Warpinator mit iOS?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Nicht wirklich. Warpinator ist ausgezeichnet für Linux zu Linux und Linux zu Android, und es gibt eine offizielle Android-App, aber es gibt keine offizielle Warpinator-App für iPhone oder iPad, also ist es kein verlässlicher Weg, ein iOS-Gerät zu erreichen. Flitdrop schließt diese Lücke, weil auf dem iPhone nichts installiert werden muss außer einem QR-Scan im Browser."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Gibt es ein AirDrop für Linux und iPhone?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "AirDrop gibt es nur bei Apple und kam nie zu Linux, und die üblichen Linux-Tools wie Warpinator und KDE Connect zielen eher auf Linux und Android als auf iOS. Flitdrop kommt einem AirDrop am nächsten, das Linux und iPhone verbindet: eine native Linux-App auf der einen Seite, der iPhone-Browser auf der anderen, alles lokal und Ende-zu-Ende-verschlüsselt."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Installiere ich etwas auf dem iPhone?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Nein. Nur der Linux-Computer installiert die Flitdrop-App, die sich automatisch aktualisiert. Das iPhone installiert nichts aus dem App Store: Es nutzt einfach seinen Browser als leichte Web-App nach einem einmaligen QR-Scan, es gibt also nichts anzumelden und nichts auf dem Handy aktuell zu halten."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Ist es kostenlos und privat?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Ja. Flitdrop ist kostenlos für lokale Übertragungen in deinem eigenen Netzwerk, ohne Konto und ohne Abo. Dateien wandern direkt zwischen deinem Linux-Computer und dem iPhone über dein lokales WLAN, alles ist Ende-zu-Ende-verschlüsselt, und nichts wird auf einen Server oder in die Cloud hochgeladen, es gibt also keinen Umweg über iCloud oder E-Mail."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Bleibt die volle Qualität erhalten?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Ja. Flitdrop sendet Fotos, Videos und Dateien in voller Qualität, ohne das erneute Komprimieren oder Verkleinern, das passiert, wenn du dir Fotos selbst mailst oder sie über einen Cloud-Dienst schickst. Was auf dem iPhone oder auf Linux landet, ist die Originaldatei, Byte für Byte."
+            }
+          }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Startseite",
+            "item": "https://flitdrop.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Dateien von Linux ans iPhone senden",
+            "item": "https://flitdrop.com/send-files-linux-to-iphone"
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="bg-aurora"></div>
+    <div class="bg-grain"></div>
+  </div>
+
+  <header class="nav" id="nav">
+    <a class="brand" href="/de/" aria-label="Flitdrop">
+      <img src="/assets/icon.svg" alt="" width="30" height="30">
+      <span>Flitdrop</span>
+    </a>
+    <nav class="nav-links" aria-label="Abschnitte">
+      <a href="/#steps" data-i18n="nav.how">So funktioniert es</a>
+      <a href="/#compare" data-i18n="nav.compare">Vergleich</a>
+      <a href="/#security" data-i18n="nav.security">Sicherheit</a>
+    </nav>
+    <div class="nav-right">
+      <button class="lang-toggle" id="langToggle" type="button">FR</button>
+      <a class="btn btn-primary btn-sm" href="/#download" data-i18n="nav.download">Herunterladen</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="section" id="top" style="padding-top:132px">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="Linux to iPhone" data-fr="Linux vers iPhone">Linux ans iPhone</p>
+        <h1 class="display" data-en="Send Files From Linux to iPhone (No App on the Phone, Free)" data-fr="Envoyer des fichiers de Linux vers iPhone (rien à installer sur le téléphone, gratuit)">Dateien von Linux ans iPhone senden (keine App auf dem Handy, kostenlos)</h1>
+        <p class="lead" data-en="Linux never got AirDrop, and Warpinator, the usual Linux tool, has no real iPhone support. Flitdrop gives Linux a native app and the iPhone needs nothing beyond a browser and a one time QR scan. Send files, photos and folders over your local Wi-Fi, end to end encrypted, at full quality." data-fr="Linux n'a jamais eu AirDrop, et Warpinator, l'outil Linux habituel, ne prend pas vraiment en charge l'iPhone. Flitdrop offre à Linux une vraie application, et l'iPhone n'a besoin de rien d'autre qu'un navigateur et d'un scan de QR code unique. Envoyez fichiers, photos et dossiers sur votre Wi-Fi local, chiffrés de bout en bout, en pleine qualité.">Linux hat nie AirDrop bekommen, und Warpinator, das übliche Linux-Tool, unterstützt das iPhone nicht wirklich. Flitdrop gibt Linux eine native App, und das iPhone braucht nichts weiter als einen Browser und einen einmaligen QR-Scan. Sende Dateien, Fotos und Ordner über dein lokales WLAN, Ende-zu-Ende-verschlüsselt und in voller Qualität.</p>
+        <div class="hero-cta reveal" style="justify-content:center;margin-top:26px">
+          <a class="btn btn-primary btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v9.5"></path><path d="M8.5 9.5 12 13l3.5-3.5"></path><path d="M5 15.5v2.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-2.5"></path></svg>
+            <span data-en="Download Flitdrop" data-fr="Télécharger Flitdrop">Flitdrop herunterladen</span>
+          </a>
+          <a class="btn btn-ghost btn-lg" href="/de/" data-en="See how it works" data-fr="Voir comment ça marche">So funktioniert's</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- INTRO: direct answer -->
+    <section class="section" id="answer" style="padding-top:0">
+      <div class="section-head reveal">
+        <p class="section-sub" data-en="To send files from Linux to an iPhone, install the Flitdrop app on your Linux computer, scan its QR code once with the iPhone camera, and send. The iPhone uses its browser, so nothing is installed on the phone. Files, photos and whole folders move directly over your local Wi-Fi, end to end encrypted, at full quality, with no account and no cloud round trip. It works because Linux has no AirDrop, and the common Linux tools like Warpinator and KDE Connect are built for Linux and Android, not iOS." data-fr="Pour envoyer des fichiers de Linux vers un iPhone, installez l'application Flitdrop sur votre ordinateur Linux, scannez son QR code une fois avec l'appareil photo de l'iPhone, puis envoyez. L'iPhone utilise son navigateur, donc rien n'est installé sur le téléphone. Fichiers, photos et dossiers entiers passent directement par votre Wi-Fi local, chiffrés de bout en bout, en pleine qualité, sans compte et sans détour par le cloud. Cela fonctionne parce que Linux n'a pas d'AirDrop, et parce que les outils Linux courants comme Warpinator et KDE Connect sont pensés pour Linux et Android, pas pour iOS.">Um Dateien von Linux an ein iPhone zu senden, installierst du die Flitdrop-App auf deinem Linux-Computer, scannst ihren QR-Code einmal mit der iPhone-Kamera und schickst los. Das iPhone nutzt seinen Browser, es wird also nichts auf dem Handy installiert. Dateien, Fotos und ganze Ordner wandern direkt über dein lokales WLAN, Ende-zu-Ende-verschlüsselt, in voller Qualität, ohne Konto und ohne Umweg über die Cloud. Das klappt, weil Linux kein AirDrop hat und die üblichen Linux-Tools wie Warpinator und KDE Connect für Linux und Android gebaut sind, nicht für iOS.</p>
+      </div>
+    </section>
+
+    <!-- WHY: the Linux to iPhone gap -->
+    <section class="section ground" id="why">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="The gap" data-fr="Le manque">Die Lücke</p>
+        <h2 data-en="Why Linux and iPhone Are So Hard to Bridge" data-fr="Pourquoi relier Linux et iPhone est si difficile">Warum Linux und iPhone so schwer zu verbinden sind</h2>
+        <p class="section-sub" data-en="AirDrop is Apple only, and the good Linux tools aim at Android, so getting a file from Linux onto an iPhone usually means a clunky detour. Here is the honest picture." data-fr="AirDrop est réservé à Apple, et les bons outils Linux visent Android ; faire passer un fichier de Linux vers un iPhone impose donc souvent un détour laborieux. Voici la situation, sans détour.">AirDrop gibt es nur bei Apple, und die guten Linux-Tools zielen auf Android, also bedeutet eine Datei von Linux aufs iPhone zu bringen meist einen umständlichen Umweg. Hier das ehrliche Bild.</p>
+      </div>
+      <ul class="steps-grid">
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">1</span>
+          <h3 data-en="No AirDrop on Linux" data-fr="Pas d'AirDrop sur Linux">Kein AirDrop auf Linux</h3>
+          <p data-en="AirDrop only works between Apple devices and never came to Linux, so there is no built in one gesture way to send a file from a Linux desktop to an iPhone." data-fr="AirDrop ne fonctionne qu'entre appareils Apple et n'est jamais arrivé sur Linux ; il n'existe donc aucun moyen intégré, en un geste, d'envoyer un fichier d'un bureau Linux vers un iPhone.">AirDrop funktioniert nur zwischen Apple-Geräten und kam nie zu Linux, es gibt also keinen eingebauten Weg, mit einer Geste eine Datei vom Linux-Desktop ans iPhone zu senden.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">2</span>
+          <h3 data-en="Warpinator skips iOS" data-fr="Warpinator laisse iOS de côté">Warpinator lässt iOS aus</h3>
+          <p data-en="Warpinator is great for Linux to Linux and Linux to Android and has an official Android app, but there is no official iPhone or iPad app, so it does not reach iOS." data-fr="Warpinator est excellent pour Linux vers Linux et Linux vers Android et dispose d'une appli Android officielle, mais il n'a pas d'appli iPhone ou iPad officielle : il n'atteint donc pas iOS.">Warpinator ist super für Linux zu Linux und Linux zu Android und hat eine offizielle Android-App, aber es gibt keine offizielle App für iPhone oder iPad, also erreicht es iOS nicht.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">3</span>
+          <h3 data-en="KDE Connect is Android first" data-fr="KDE Connect vise Android d'abord">KDE Connect ist auf Android ausgerichtet</h3>
+          <p data-en="KDE Connect pairs Linux with Android very well, but its iOS support is limited by what Apple allows, so it is not a reliable Linux to iPhone file path." data-fr="KDE Connect relie très bien Linux et Android, mais sa prise en charge d'iOS est limitée par ce qu'Apple autorise ; ce n'est donc pas un chemin de fichiers Linux vers iPhone fiable.">KDE Connect koppelt Linux sehr gut mit Android, aber die iOS-Unterstützung ist durch das begrenzt, was Apple erlaubt, also ist es kein zuverlässiger Weg für Dateien von Linux ans iPhone.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">4</span>
+          <h3 data-en="Cloud detours are clunky" data-fr="Les détours par le cloud sont laborieux">Cloud-Umwege sind umständlich</h3>
+          <p data-en="Emailing photos to yourself or bouncing files through a cloud service is slow, needs the internet, and often shrinks or recompresses your photos along the way." data-fr="S'envoyer des photos par e-mail ou faire transiter des fichiers par un service cloud est lent, exige internet, et réduit ou recompresse souvent vos photos au passage.">Fotos an dich selbst zu mailen oder Dateien über einen Cloud-Dienst zu schicken ist langsam, braucht Internet und verkleinert oder komprimiert deine Fotos unterwegs oft neu.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- HOW IT WORKS: 3 steps -->
+    <section class="section" id="steps">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="Getting started" data-fr="Pour commencer">Los geht's</p>
+        <h2 data-en="How to Send From Linux to iPhone" data-fr="Comment envoyer de Linux vers iPhone">So sendest du von Linux ans iPhone</h2>
+        <p class="section-sub" data-en="Install the app on your Linux computer once, pair your iPhone with a single scan, then send over your Wi-Fi." data-fr="Installez l'appli une fois sur votre ordinateur Linux, appairez votre iPhone d'un seul scan, puis envoyez via votre Wi-Fi.">Installiere die App einmal auf deinem Linux-Computer, koppelst dein iPhone mit einem einzigen Scan und sendest dann über dein WLAN.</p>
+      </div>
+      <ol class="steps-grid">
+        <li class="step-card reveal">
+          <span class="step-num">1</span>
+          <h3 data-en="Install on Linux" data-fr="Installez sur Linux">Auf Linux installieren</h3>
+          <p data-en="Install the lightweight Flitdrop app once on your Linux computer; it auto updates and there is nothing to install on the iPhone." data-fr="Installez l'appli légère Flitdrop une fois sur votre ordinateur Linux ; elle se met à jour toute seule et il n'y a rien à installer sur l'iPhone.">Installiere die leichte Flitdrop-App einmal auf deinem Linux-Computer; sie aktualisiert sich automatisch, und auf dem iPhone ist nichts zu installieren.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num">2</span>
+          <h3 data-en="Scan once to pair" data-fr="Scannez une fois pour appairer">Einmal scannen zum Koppeln</h3>
+          <p data-en="Scan the QR code one time with the iPhone camera to pair; the iPhone simply uses its browser as a lightweight web app, with nothing from the App Store." data-fr="Scannez le QR code une seule fois avec l'appareil photo de l'iPhone pour appairer ; l'iPhone utilise simplement son navigateur comme une appli web légère, sans rien depuis l'App Store.">Scanne den QR-Code einmal mit der iPhone-Kamera zum Koppeln; das iPhone nutzt einfach seinen Browser als leichte Web-App, ganz ohne etwas aus dem App Store.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num">3</span>
+          <h3 data-en="Send over your Wi-Fi" data-fr="Envoyez via votre Wi-Fi">Über dein WLAN senden</h3>
+          <p data-en="Both devices stay on the same local Wi-Fi and transfer peer to peer, so files and folders move fast, at full quality, and stay off the cloud." data-fr="Les deux appareils restent sur le même Wi-Fi local et le transfert se fait en direct, donc fichiers et dossiers partent vite, en pleine qualité, et ne passent pas par le cloud.">Beide Geräte bleiben im selben lokalen WLAN und übertragen von Gerät zu Gerät, so wandern Dateien und Ordner schnell, in voller Qualität und bleiben aus der Cloud heraus.</p>
+        </li>
+      </ol>
+      <p class="cmp-note reveal" data-en="Everything is end to end encrypted, with no account to create and privacy first by design." data-fr="Tout est chiffré de bout en bout, sans compte à créer et avec le respect de la vie privée par conception.">Alles ist Ende-zu-Ende-verschlüsselt, kein Konto anzulegen und von Grund auf mit Fokus auf Privatsphäre gebaut.</p>
+    </section>
+
+    <!-- WHEN TO USE EACH: fair comparison -->
+    <section class="section ground" id="compare">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="When to use each" data-fr="Quand utiliser quoi">Wann du was nutzt</p>
+        <h2 data-en="Warpinator, KDE Connect and Flitdrop" data-fr="Warpinator, KDE Connect et Flitdrop">Warpinator, KDE Connect und Flitdrop</h2>
+        <p class="section-sub" data-en="Warpinator and KDE Connect are genuinely good tools; they just were not built for the iPhone. Here is when each one is the right choice." data-fr="Warpinator et KDE Connect sont de vrais bons outils ; ils n'ont simplement pas été conçus pour l'iPhone. Voici quand chacun est le bon choix.">Warpinator und KDE Connect sind wirklich gute Tools; sie wurden nur nicht fürs iPhone gebaut. Hier siehst du, wann welches die richtige Wahl ist.</p>
+      </div>
+      <ul class="steps-grid">
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">1</span>
+          <h3 data-en="Use Warpinator for Linux and Android" data-fr="Warpinator pour Linux et Android">Warpinator für Linux und Android nutzen</h3>
+          <p data-en="Warpinator is open source, local and free, and it shines for Linux to Linux and Linux to Android transfers with its official Android app. If no iPhone is involved, it is a fine pick." data-fr="Warpinator est open source, local et gratuit, et il brille pour les transferts Linux vers Linux et Linux vers Android grâce à son appli Android officielle. Si aucun iPhone n'est concerné, c'est un très bon choix.">Warpinator ist quelloffen, lokal und kostenlos und glänzt bei Übertragungen von Linux zu Linux und Linux zu Android mit seiner offiziellen Android-App. Wenn kein iPhone im Spiel ist, ist es eine gute Wahl.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">2</span>
+          <h3 data-en="Use KDE Connect for Linux and Android" data-fr="KDE Connect pour Linux et Android">KDE Connect für Linux und Android nutzen</h3>
+          <p data-en="KDE Connect does far more than files between Linux and Android: notifications, clipboard, remote control. For a Linux plus Android household it is excellent, but its iOS side is limited." data-fr="KDE Connect fait bien plus que des fichiers entre Linux et Android : notifications, presse-papiers, télécommande. Pour un foyer Linux plus Android il est excellent, mais son côté iOS est limité.">KDE Connect kann weit mehr als nur Dateien zwischen Linux und Android: Benachrichtigungen, Zwischenablage, Fernsteuerung. Für einen Haushalt mit Linux und Android ist es hervorragend, aber die iOS-Seite ist begrenzt.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">3</span>
+          <h3 data-en="Use Flitdrop for Linux and iPhone" data-fr="Flitdrop pour Linux et iPhone">Flitdrop für Linux und iPhone nutzen</h3>
+          <p data-en="When an iPhone is on one end, Flitdrop is the natural pick: a native Linux app, the iPhone browser with nothing to install, local and end to end encrypted, folders and clipboard too." data-fr="Quand un iPhone est d'un côté, Flitdrop est le choix naturel : une vraie appli Linux, le navigateur de l'iPhone sans rien à installer, local et chiffré de bout en bout, dossiers et presse-papiers compris.">Wenn an einem Ende ein iPhone steht, ist Flitdrop die natürliche Wahl: eine native Linux-App, der iPhone-Browser ganz ohne Installation, lokal und Ende-zu-Ende-verschlüsselt, auch Ordner und Zwischenablage.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">4</span>
+          <h3 data-en="One tool for every device" data-fr="Un seul outil pour tous vos appareils">Ein Tool für jedes Gerät</h3>
+          <p data-en="Flitdrop also covers iPhone, Android and Samsung on the phone side and Windows, Mac and Linux on the computer side, so it doubles as the Android bridge if you want a single tool." data-fr="Flitdrop couvre aussi iPhone, Android et Samsung côté téléphone et Windows, Mac et Linux côté ordinateur ; il fait donc aussi le pont vers Android si vous voulez un outil unique.">Flitdrop deckt auf der Handyseite auch iPhone, Android und Samsung ab und auf der Computerseite Windows, Mac und Linux, es dient also gleich als Android-Brücke, wenn du ein einziges Tool willst.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- TRUST NOTE -->
+    <section class="section" id="security">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="Private by design" data-fr="Privé par conception">Von Grund auf privat</p>
+        <h2 data-en="Your Files Stay on Your Wi-Fi" data-fr="Vos fichiers restent sur votre Wi-Fi">Deine Dateien bleiben in deinem WLAN</h2>
+        <p class="section-sub" data-en="Flitdrop is not an internet or cloud service. Transfers go directly from your Linux computer to the iPhone over your local Wi-Fi, everything is end to end encrypted, and there is no account, so nothing is ever uploaded to a server or bounced through iCloud." data-fr="Flitdrop n'est ni un service internet ni un service cloud. Les transferts vont directement de votre ordinateur Linux vers l'iPhone sur votre Wi-Fi local, tout est chiffré de bout en bout, et il n'y a pas de compte : rien n'est jamais envoyé vers un serveur ni passé par iCloud.">Flitdrop ist kein Internet- oder Cloud-Dienst. Übertragungen gehen direkt von deinem Linux-Computer ans iPhone über dein lokales WLAN, alles ist Ende-zu-Ende-verschlüsselt, und es gibt kein Konto, es wird also nie etwas auf einen Server hochgeladen oder über iCloud geschickt.</p>
+      </div>
+      <p class="cmp-note reveal" data-en="Flitdrop is source available, so anyone can inspect how the sharing works, and it stays free for local transfers on your own network." data-fr="Flitdrop est source-available : chacun peut vérifier comment le partage fonctionne, et il reste gratuit pour les transferts locaux sur votre propre réseau.">Flitdrop ist quelloffen-ähnlich, jede und jeder kann also nachsehen, wie das Teilen funktioniert, und es bleibt für lokale Übertragungen in deinem eigenen Netzwerk kostenlos.</p>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section faq ground" id="faq">
+      <div class="section-head reveal">
+        <h2 data-en="Frequently asked" data-fr="Questions fréquentes">Häufig gefragt</h2>
+      </div>
+      <div class="faq-list reveal">
+        <details>
+          <summary data-en="How do I send files from Linux to an iPhone?" data-fr="Comment envoyer des fichiers de Linux vers un iPhone ?">Wie sende ich Dateien von Linux an ein iPhone?</summary>
+          <p data-en="Install the Flitdrop app on your Linux computer, open it, and scan the QR code once with your iPhone camera to pair. The iPhone opens a lightweight web app in its browser, and then you send files, photos and whole folders from Linux to the iPhone over your local Wi-Fi, end to end encrypted and at full quality." data-fr="Installez l'application Flitdrop sur votre ordinateur Linux, ouvrez-la, et scannez le QR code une fois avec l'appareil photo de votre iPhone pour appairer. L'iPhone ouvre une appli web légère dans son navigateur, puis vous envoyez fichiers, photos et dossiers entiers de Linux vers l'iPhone sur votre Wi-Fi local, chiffrés de bout en bout et en pleine qualité.">Installiere die Flitdrop-App auf deinem Linux-Computer, öffne sie und scanne den QR-Code einmal mit deiner iPhone-Kamera zum Koppeln. Das iPhone öffnet eine leichte Web-App im Browser, und dann sendest du Dateien, Fotos und ganze Ordner von Linux ans iPhone über dein lokales WLAN, Ende-zu-Ende-verschlüsselt und in voller Qualität.</p>
+        </details>
+        <details>
+          <summary data-en="Does Warpinator work with iOS?" data-fr="Warpinator fonctionne-t-il avec iOS ?">Funktioniert Warpinator mit iOS?</summary>
+          <p data-en="Not really. Warpinator is excellent for Linux to Linux and Linux to Android, and there is an official Android app, but there is no official Warpinator app for iPhone or iPad, so it is not a dependable way to reach an iOS device. Flitdrop fills that gap because the iPhone needs nothing installed beyond scanning a QR code in its browser." data-fr="Pas vraiment. Warpinator est excellent pour Linux vers Linux et Linux vers Android, et il existe une appli Android officielle, mais il n'y a pas d'appli Warpinator officielle pour iPhone ou iPad ; ce n'est donc pas un moyen fiable d'atteindre un appareil iOS. Flitdrop comble ce manque, car l'iPhone n'a rien à installer au-delà du scan d'un QR code dans son navigateur.">Nicht wirklich. Warpinator ist ausgezeichnet für Linux zu Linux und Linux zu Android, und es gibt eine offizielle Android-App, aber es gibt keine offizielle Warpinator-App für iPhone oder iPad, also ist es kein verlässlicher Weg, ein iOS-Gerät zu erreichen. Flitdrop schließt diese Lücke, weil auf dem iPhone nichts installiert werden muss außer einem QR-Scan im Browser.</p>
+        </details>
+        <details>
+          <summary data-en="Is there an AirDrop for Linux and iPhone?" data-fr="Existe-t-il un AirDrop pour Linux et iPhone ?">Gibt es ein AirDrop für Linux und iPhone?</summary>
+          <p data-en="AirDrop is Apple only and never came to Linux, and the usual Linux tools like Warpinator and KDE Connect are aimed at Linux and Android rather than iOS. Flitdrop is the closest thing to an AirDrop that bridges Linux and iPhone: a native Linux app on one side, the iPhone browser on the other, everything local and end to end encrypted." data-fr="AirDrop est réservé à Apple et n'est jamais arrivé sur Linux, et les outils Linux habituels comme Warpinator et KDE Connect visent Linux et Android plutôt qu'iOS. Flitdrop est ce qui se rapproche le plus d'un AirDrop reliant Linux et iPhone : une vraie appli Linux d'un côté, le navigateur de l'iPhone de l'autre, le tout local et chiffré de bout en bout.">AirDrop gibt es nur bei Apple und kam nie zu Linux, und die üblichen Linux-Tools wie Warpinator und KDE Connect zielen eher auf Linux und Android als auf iOS. Flitdrop kommt einem AirDrop am nächsten, das Linux und iPhone verbindet: eine native Linux-App auf der einen Seite, der iPhone-Browser auf der anderen, alles lokal und Ende-zu-Ende-verschlüsselt.</p>
+        </details>
+        <details>
+          <summary data-en="Do I install anything on the iPhone?" data-fr="Dois-je installer quelque chose sur l'iPhone ?">Installiere ich etwas auf dem iPhone?</summary>
+          <p data-en="No. Only the Linux computer installs the Flitdrop app, which auto updates. The iPhone installs nothing from the App Store: it just uses its browser as a lightweight web app after a one time QR scan, so there is nothing to sign in to and nothing to keep updated on the phone." data-fr="Non. Seul l'ordinateur Linux installe l'appli Flitdrop, qui se met à jour toute seule. L'iPhone n'installe rien depuis l'App Store : il utilise simplement son navigateur comme une appli web légère après un unique scan de QR code, donc il n'y a rien à connecter ni à maintenir à jour sur le téléphone.">Nein. Nur der Linux-Computer installiert die Flitdrop-App, die sich automatisch aktualisiert. Das iPhone installiert nichts aus dem App Store: Es nutzt einfach seinen Browser als leichte Web-App nach einem einmaligen QR-Scan, es gibt also nichts anzumelden und nichts auf dem Handy aktuell zu halten.</p>
+        </details>
+        <details>
+          <summary data-en="Is it free and private?" data-fr="Est-ce gratuit et privé ?">Ist es kostenlos und privat?</summary>
+          <p data-en="Yes. Flitdrop is free for local transfers on your own network, with no account and no subscription. Files move directly between your Linux computer and the iPhone over your local Wi-Fi, everything is end to end encrypted, and nothing is uploaded to a server or the cloud, so there is no round trip through iCloud or email." data-fr="Oui. Flitdrop est gratuit pour les transferts locaux sur votre propre réseau, sans compte ni abonnement. Les fichiers passent directement entre votre ordinateur Linux et l'iPhone sur votre Wi-Fi local, tout est chiffré de bout en bout, et rien n'est envoyé vers un serveur ni le cloud : il n'y a donc pas de détour par iCloud ni par e-mail.">Ja. Flitdrop ist kostenlos für lokale Übertragungen in deinem eigenen Netzwerk, ohne Konto und ohne Abo. Dateien wandern direkt zwischen deinem Linux-Computer und dem iPhone über dein lokales WLAN, alles ist Ende-zu-Ende-verschlüsselt, und nichts wird auf einen Server oder in die Cloud hochgeladen, es gibt also keinen Umweg über iCloud oder E-Mail.</p>
+        </details>
+        <details>
+          <summary data-en="Does it keep full quality?" data-fr="Garde-t-il la pleine qualité ?">Bleibt die volle Qualität erhalten?</summary>
+          <p data-en="Yes. Flitdrop sends photos, videos and files at full quality, without the recompression or shrinking that happens when you email photos to yourself or bounce them through a cloud service. What lands on the iPhone or on Linux is the original file, byte for byte." data-fr="Oui. Flitdrop envoie photos, vidéos et fichiers en pleine qualité, sans la recompression ni la réduction qui surviennent quand vous vous envoyez des photos par e-mail ou que vous les faites transiter par un service cloud. Ce qui arrive sur l'iPhone ou sur Linux est le fichier d'origine, à l'octet près.">Ja. Flitdrop sendet Fotos, Videos und Dateien in voller Qualität, ohne das erneute Komprimieren oder Verkleinern, das passiert, wenn du dir Fotos selbst mailst oder sie über einen Cloud-Dienst schickst. Was auf dem iPhone oder auf Linux landet, ist die Originaldatei, Byte für Byte.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- RELATED -->
+    <section class="section" id="related">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="Keep reading" data-fr="À lire ensuite">Weiterlesen</p>
+        <h2 data-en="Related guides" data-fr="Guides liés">Verwandte Anleitungen</h2>
+      </div>
+      <ul class="steps-grid reveal">
+        <li class="step-card">
+          <h3><a href="/de/airdrop-linux" data-en="AirDrop for Linux" data-fr="AirDrop pour Linux">AirDrop für Linux</a></h3>
+          <p data-en="Give your Linux desktop the same one gesture sharing with any phone or computer over your Wi-Fi." data-fr="Offrez à votre bureau Linux le même partage en un geste avec n'importe quel téléphone ou ordinateur via votre Wi-Fi.">Gib deinem Linux-Desktop dasselbe Teilen mit einer Geste, mit jedem Handy oder Computer über dein WLAN.</p>
+        </li>
+        <li class="step-card">
+          <h3><a href="/de/send-files-iphone-to-pc" data-en="Send files from iPhone to PC" data-fr="Envoyer des fichiers de l'iPhone au PC">Dateien vom iPhone an den PC senden</a></h3>
+          <p data-en="Move full quality photos and files from any iPhone to a computer over your local Wi-Fi." data-fr="Déplacez photos et fichiers en pleine qualité de n'importe quel iPhone vers un ordinateur via votre Wi-Fi local.">Bewege Fotos und Dateien in voller Qualität von jedem iPhone an einen Computer über dein lokales WLAN.</p>
+        </li>
+        <li class="step-card">
+          <h3><a href="/de/alternative-airdrop" data-en="The best AirDrop alternative" data-fr="La meilleure alternative à AirDrop">Die beste AirDrop-Alternative</a></h3>
+          <p data-en="One free tool that sends between iPhone, Android, Windows, Mac and Linux, in every direction." data-fr="Un outil gratuit qui envoie entre iPhone, Android, Windows, Mac et Linux, dans tous les sens.">Ein kostenloses Tool, das zwischen iPhone, Android, Windows, Mac und Linux sendet, in jede Richtung.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- DOWNLOAD CTA -->
+    <section class="section download" id="download">
+      <div class="dl-card reveal">
+        <div class="dl-copy">
+          <h2 data-en="Ready to send from Linux to your iPhone?" data-fr="Prêt à envoyer de Linux vers votre iPhone ?">Bereit, von Linux an dein iPhone zu senden?</h2>
+          <p class="section-sub" data-en="Install Flitdrop on your Linux computer, keep your iPhone exactly as it is." data-fr="Installez Flitdrop sur votre ordinateur Linux, gardez votre iPhone tel qu'il est.">Installiere Flitdrop auf deinem Linux-Computer und lass dein iPhone genau so, wie es ist.</p>
+          <div class="dl-buttons">
+            <a class="btn btn-primary btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener"><span data-en="Download Flitdrop" data-fr="Télécharger Flitdrop">Flitdrop herunterladen</span></a>
+            <a class="btn btn-ghost btn-lg" href="/de/" data-en="See how it works" data-fr="Voir comment ça marche">So funktioniert's</a>
+          </div>
+          <a class="dl-other" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-en="Windows, Mac and Linux" data-fr="Windows, Mac et Linux">Windows, Mac und Linux</a>
+        </div>
+        <div class="dl-qr" aria-hidden="true">
+          <div class="qr-tile"><img class="qr-img" src="/assets/qr.svg" alt="" width="132" height="132"></div>
+          <p data-en="Scan to download on your phone" data-fr="Scannez pour télécharger sur votre téléphone">Zum Herunterladen mit dem Handy scannen</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="brand" href="/de/"><img src="/assets/icon.svg" alt="" width="26" height="26"><span>Flitdrop</span></a>
+        <p class="footer-tag" data-i18n="footer.tagline">Direktes Teilen zwischen all deinen Geräten, in deinem WLAN.</p>
+      </div>
+      <nav class="footer-cols" aria-label="Fußzeile">
+        <div class="footer-col">
+          <h4 data-i18n="footer.product">Produkt</h4>
+          <a href="/#features" data-i18n="footer.features">Funktionen</a>
+          <a href="/#compare" data-i18n="nav.compare">Vergleich</a>
+          <a href="/#security" data-i18n="nav.security">Sicherheit</a>
+          <a href="/#download" data-i18n="nav.download">Herunterladen</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="footer.resources">Ressourcen</h4>
+          <a href="/#support" data-i18n="support.eyebrow">Support</a>
+          <a href="https://github.com/MrFrosas/flitdrop" target="_blank" rel="noopener">GitHub</a>
+          <a href="/brand.html" data-i18n="footer.brand">Marke</a>
+          <a href="/privacy.html" data-i18n="footer.privacy">Datenschutz</a>
+          <a href="/legal.html" data-i18n="footer.legal">Impressum</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="guides.title">Anleitungen</h4>
+          <a href="/de/alternative-airdrop" data-i18n="guides.alt">AirDrop-Alternative</a>
+          <a href="/de/airdrop-windows" data-i18n="guides.windows">AirDrop für Windows</a>
+          <a href="/de/airdrop-iphone-android" data-i18n="guides.android">iPhone zu Android</a>
+          <a href="/de/send-files-iphone-to-pc" data-i18n="guides.iphonepc">iPhone zu PC</a>
+          <a href="/de/airdrop-linux" data-i18n="guides.linux">AirDrop für Linux</a>
+        </div>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-rights" data-i18n="footer.rights">© 2026 Flitdrop. Alle Rechte vorbehalten.</p>
+      <button class="lang-toggle" data-lang-toggle type="button">FR</button>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      function apply() {
+        var l = window.FDI18N ? window.FDI18N.lang : 'en'
+        document.querySelectorAll('[data-en]').forEach(function (e) { var v = e.getAttribute('data-' + l); if (v != null) e.textContent = v })
+      }
+      document.addEventListener('DOMContentLoaded', apply)
+      window.addEventListener('fd-lang', apply)
+    })()
+  </script>
+</body>
+</html>
