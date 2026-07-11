@@ -141,10 +141,37 @@
     return null;
   }
   function setupOS() {
-    // Phone visitors cannot install Flitdrop: guide them instead of mislabelling the desktop buttons.
+    // Phone visitors cannot install Flitdrop: turn the dead desktop buttons into a
+    // useful handoff (copy the site link, open it on a computer) rather than a dead end.
     if (isPhone()) {
       var note = document.querySelector('.dl-note');
       if (note) { note.setAttribute('data-i18n', 'download.mobile'); note.textContent = t('download.mobile'); }
+      var buttons = document.querySelector('.dl-buttons');
+      if (buttons) {
+        buttons.innerHTML = '';
+        var copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'btn btn-primary btn-lg';
+        copy.setAttribute('data-i18n', 'download.copylink');
+        copy.textContent = t('download.copylink');
+        copy.addEventListener('click', function () {
+          var url = location.origin + '/';
+          function done() {
+            copy.removeAttribute('data-i18n');
+            copy.textContent = t('download.copied');
+            setTimeout(function () { copy.setAttribute('data-i18n', 'download.copylink'); copy.textContent = t('download.copylink'); }, 2200);
+          }
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, done);
+            else done();
+          } catch (_) { done(); }
+          if (window.gtag) { try { window.gtag('event', 'mobile_copy_link'); } catch (_) {} }
+          if (window.posthog) { try { window.posthog.capture('mobile_copy_link'); } catch (_) {} }
+        });
+        buttons.appendChild(copy);
+        // keep the button label correct across a language switch
+        window.addEventListener('langchange', function () { if (copy.hasAttribute('data-i18n')) copy.textContent = t('download.copylink'); });
+      }
       return;
     }
     var os = osOf();

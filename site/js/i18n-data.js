@@ -199,7 +199,9 @@
     "nf.title": "This page took a wrong turn",
     "nf.body": "The link is broken or the page has moved. Everything Flitdrop does is one tap away from the home page.",
     "nf.home": "Back to home",
-    "nf.download": "Download Flitdrop"
+    "nf.download": "Download Flitdrop",
+    "download.copylink": "Copy the site link",
+    "download.copied": "Link copied"
   },
   "fr": {
     "meta.title": "Flitdrop, envoyez vos fichiers entre téléphone et ordinateur comme un AirDrop universel",
@@ -392,7 +394,9 @@
     "nf.title": "Cette page a pris un mauvais virage",
     "nf.body": "Le lien est cassé ou la page a été déplacée. Tout ce que fait Flitdrop est à un geste de la page d'accueil.",
     "nf.home": "Retour à l'accueil",
-    "nf.download": "Télécharger Flitdrop"
+    "nf.download": "Télécharger Flitdrop",
+    "download.copylink": "Copier le lien du site",
+    "download.copied": "Lien copié"
   }
 };
 });
