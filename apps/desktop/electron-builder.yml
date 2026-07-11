@@ -83,6 +83,11 @@ appx:
     - fr-FR
     - en-US
 nsis:
+  # nom SANS espace : electron-builder ne met pas de guillemets autour du chemin
+  # passe a Invoke-TrustedSigning, donc un espace dans le nom de l'installeur
+  # casse la signature Azure (le nom est coupe au 1er espace -> "File not found").
+  # (defaut = "Flitdrop Setup ${version}.exe", qui contenait un espace.)
+  artifactName: ${productName}-Setup-${version}.${ext}
   oneClick: true
   perMachine: false
   deleteAppDataOnUninstall: false

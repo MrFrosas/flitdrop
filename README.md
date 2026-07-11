@@ -50,7 +50,7 @@ And it works in **every direction, between every brand**: Windows or Mac on one 
 
 **Download from the [releases page](https://github.com/MrFrosas/flitdrop/releases/latest).**
 
-- **Windows**: run the `.exe`, done. Installing also adds **Send to → Flitdrop** to the right-click menu in Explorer. (Windows SmartScreen shows an "unknown publisher" prompt at first, since the build is not code-signed yet; that goes away with the Microsoft Store version.)
+- **Windows**: run the `.exe`, done. Installing also adds **Send to → Flitdrop** to the right-click menu in Explorer. The installer is code-signed (verified publisher: CC's Global); if SmartScreen still shows a prompt while the download reputation builds up, click **More info → Run anyway**.
 - **Mac**: open the `.dmg`, drag Flitdrop into Applications. The build is ad-hoc signed but not yet notarized by Apple, so on first open macOS may block it. Two ways through: **System Settings → Privacy & Security → Open Anyway**, or, if it says "damaged", run this once in Terminal: `xattr -cr /Applications/Flitdrop.app`. (Both go away with the notarized Mac App Store version.)
 
 On first launch, a short walkthrough, then a QR code. Scan it with the phone once, and it stays paired, even after the computer restarts. No re-scanning.
