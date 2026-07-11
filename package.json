@@ -16,5 +16,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "node-html-parser": "^9.0.0"
   }
 }

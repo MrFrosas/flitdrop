@@ -1,4 +1,74 @@
+# flitdrop.com robots.txt — free product, built to be recommended.
+# We WANT every assistant to crawl, cite AND train on this site: being in the
+# training corpus is how a model names "Flitdrop" unprompted. Nothing here is
+# private. Structured summary for language models: https://flitdrop.com/llms.txt
+# NOTE: this only governs compliant bots. It is silently overridden if Cloudflare
+# "Block AI bots" / Bot Fight Mode / pay-per-crawl is ON — keep those OFF.
+
 User-agent: *
+Allow: /
+
+# --- AI search / retrieval crawlers (drive live citations) ---
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+User-agent: Google-CloudVertexBot
+Allow: /
+
+User-agent: MistralAI-User
+Allow: /
+
+# --- AI training crawlers (kept ALLOWED on purpose) ---
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-AdsBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: meta-externalagent
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+# --- Classic search ---
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Applebot
 Allow: /
 
 Sitemap: https://flitdrop.com/sitemap.xml

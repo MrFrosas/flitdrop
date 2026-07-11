@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Page not found | Flitdrop</title>
+  <meta name="description" content="This page does not exist. Head back to Flitdrop, the AirDrop that works between every device.">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="robots" content="noindex, follow">
+  <link rel="canonical" href="https://flitdrop.com/">
+  <link rel="icon" href="/assets/icon.svg">
+  <link rel="apple-touch-icon" href="/assets/icon-512.png">
+  <link rel="stylesheet" href="/style.css">
+  <script async src="/js/analytics.js"></script>
+  <script defer src="/js/i18n-data.js"></script>
+  <script defer src="/js/i18n.js"></script>
+  <style>
+    .nf { min-height: 100svh; display: grid; place-items: center; text-align: center; padding: 6vh 24px; }
+    .nf-inner { max-width: 560px; }
+    .nf-code { font-size: clamp(72px, 16vw, 148px); font-weight: 800; line-height: 1; letter-spacing: -.04em; margin: 0; }
+    .nf h1 { font-size: clamp(22px, 4vw, 30px); margin: 18px 0 10px; }
+    .nf p { color: var(--muted, #5c6780); font-size: 17px; line-height: 1.5; margin: 0 auto 28px; max-width: 42ch; }
+    .nf-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .nf-links { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: center; font-size: 14px; }
+    .nf-links a { color: var(--muted, #5c6780); text-decoration: none; }
+    .nf-links a:hover { color: var(--ink, #1d1d1f); text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="bg-aurora"></div>
+    <div class="bg-grain"></div>
+  </div>
+
+  <header class="nav" id="nav">
+    <a class="brand" href="/" aria-label="Flitdrop">
+      <img src="/assets/icon.svg" alt="" width="30" height="30">
+      <span>Flitdrop</span>
+    </a>
+  </header>
+
+  <main class="nf">
+    <div class="nf-inner">
+      <p class="nf-code">404</p>
+      <h1 data-i18n="nf.title">This page took a wrong turn</h1>
+      <p data-i18n="nf.body">The link is broken or the page has moved. Everything Flitdrop does is one tap away from the home page.</p>
+      <div class="nf-actions">
+        <a class="btn btn-primary" href="/" data-i18n="nf.home">Back to home</a>
+        <a class="btn btn-ghost" href="/#download" data-i18n="nf.download">Download Flitdrop</a>
+      </div>
+      <nav class="nf-links" aria-label="Popular pages">
+        <a href="/airdrop-windows" data-i18n="guides.windows">AirDrop for Windows</a>
+        <a href="/airdrop-iphone-android" data-i18n="guides.android">iPhone to Android</a>
+        <a href="/send-files-iphone-to-pc" data-i18n="guides.iphonepc">iPhone to PC</a>
+        <a href="/airdrop-linux" data-i18n="guides.linux">AirDrop for Linux</a>
+        <a href="/alternative-airdrop" data-i18n="guides.alt">AirDrop alternative</a>
+      </nav>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,349 +1,34 @@
-/* Flitdrop landing i18n. Flat dotted keys, FR + EN. Every visible string lives here,
-   including the text painted on the 3D screens. No em dash characters anywhere. */
+/* Flitdrop landing i18n. Translations live in i18n-data.js (the single source of
+   truth), which must load before this file. This module wires the language toggle,
+   applies the strings, and is aware of the prerendered per-language URLs (e.g. /fr/):
+   the toggle navigates to the real localized page when one exists, and otherwise
+   swaps the text in place. No em dash characters anywhere. */
 (function () {
   'use strict';
 
-  var EN = {
-    'meta.title': 'Flitdrop, send files between phone and computer like AirDrop everywhere',
-    'meta.desc': 'Flitdrop moves photos, files and clipboard between iPhone, Android, Windows, Mac and Linux in one gesture. End to end encrypted, free on your own Wi-Fi, nothing to install on the phone.',
-
-    'nav.how': 'How it works', 'nav.compare': 'Comparison', 'nav.security': 'Security', 'nav.download': 'Download',
-    'common.scroll': 'Scroll to play',
-
-    'hero.eyebrow': 'Friction free sharing, across all your devices',
-    'hero.headline': 'The AirDrop that works across every device',
-    'hero.platforms': 'Available for macOS, Windows and Linux',
-    'hero.subhead': 'Send photos, files and the clipboard from any device to any other, in one gesture.',
-    'hero.ctaPrimary': 'Download Flitdrop',
-    'hero.ctaSecondary': 'See how it works',
-    'hero.trust': 'Free on your network. End to end encrypted. No account required.',
-
-    'film.eyebrow': 'Watch it move',
-    'film.a1': 'Pick a photo on your phone.',
-    'film.a2': 'It gets encrypted before it ever leaves the device.',
-    'film.a3': 'It crosses your Wi-Fi, directly, without going through a server.',
-    'film.a4': "And lands in the computer's incoming list.",
-    'film.b1': 'On the computer, copy some text with Ctrl+C.',
-    'film.bproc': 'It encrypts the copied text before it leaves.',
-    'film.b2': 'The clipboard flies back, encrypted, the other way.',
-    'film.b3': 'It reaches the phone in about a second.',
-    'film.b4': 'Paste it anywhere you like. Sharing goes both ways.',
-
-    'ui.send': 'Send', 'ui.received': 'Received', 'ui.textReceived': 'Text received, paste anywhere',
-    'ui.linked': 'linked', 'ui.incoming': 'Incoming', 'ui.copied': 'Copied', 'ui.sending': 'Sending',
-    'ui.samplePhoto': 'beach.jpg', 'ui.noteSample': 'Meeting 2pm · Monday', 'ui.fileSize': '2.4 MB',
-    'ui.encrypting': 'Encrypting…', 'ui.copying': 'Copying clipboard…',
-
-    'steps.eyebrow': 'Getting started',
-    'steps.title': 'Three moves, nothing more',
-    'steps.blurb': 'Scan the QR code once to pair the phone. After that, drop a file and it goes. As simple as a gesture on a single device.',
-    'steps.one.title': 'Scan once',
-    'steps.one.body': 'Open the camera, point at the QR code, the phone is paired. No app to install.',
-    'steps.two.title': 'Drop',
-    'steps.two.body': 'Pick a photo, a file or a folder, or copy some text. One gesture is enough.',
-    'steps.three.title': 'It arrived',
-    'steps.three.body': 'The transfer shows up on the other device within a second, ready to open or paste.',
-
-    'compare.eyebrow': 'How it compares',
-    'compare.title': 'What AirDrop will not do, Flitdrop does',
-    'compare.subhead': "AirDrop stops at Apple, Quick Share stops at Android, LocalSend needs an app on every device. Flitdrop connects them all, from the phone's browser.",
-    'compare.col.flitdrop': 'Flitdrop', 'compare.col.airdrop': 'AirDrop', 'compare.col.nearby': 'Quick Share', 'compare.col.localsend': 'LocalSend', 'compare.col.cloud': 'Email / WeTransfer',
-    'compare.val.yes': 'Yes', 'compare.val.no': 'No',
-    'compare.row.crossplatform': 'Every operating system',
-    'compare.row.e2e': 'End to end encrypted',
-    'compare.row.noaccount': 'No account, no sign in',
-    'compare.row.nocloud': 'Direct, nothing through a server',
-    'compare.row.free': 'Free',
-    'compare.row.offline': 'On your local network',
-    'compare.row.noinstallphone': 'Nothing to install on the phone',
-    'compare.stat.os': 'platforms', 'compare.stat.acct': 'accounts', 'compare.stat.gesture': 'gesture',
-    'cmp.r1': 'Works on every OS (iPhone, Android, Windows, Mac, Linux)',
-    'cmp.r2': 'iPhone to Windows, Mac or Linux',
-    'cmp.r3': 'Nothing to install on the phone',
-    'cmp.r4': 'No account, no sign in',
-    'cmp.r5': 'Encrypted transfer',
-    'cmp.r6': 'Nothing goes through a server',
-    'cmp.r7': 'Sending across the internet, off your Wi-Fi',
-    'cmp.tip.e2e': 'Only the two devices can read what is sent. No one in between, not even us.',
-    'cmp.tip.server': 'The file goes straight from one device to the other over your Wi-Fi. It never lands on a server.',
-    'cmp.tip.internet': 'These four all work on the same Wi-Fi. To send across the world you need a tool that relays through its own servers, like Send Anywhere, at the cost of privacy.',
-    'cmp.tip.qsos': 'No official Mac or Linux app, and iPhone only through some recent Android phones.',
-    'cmp.tip.adacct': 'An Apple ID / iCloud sign in is needed for the default Contacts mode.',
-    'cmp.tip.qsacct': 'A Google account is needed for your devices and contacts.',
-    'cmp.reco': 'Recommended', 'cmp.vs': 'Compared with',
-    'cmp.note': 'Flitdrop is the only one here that needs nothing on your phone, keeps every file on your own network, and still crosses every operating system. Honest trade off: like AirDrop, Quick Share and LocalSend, it works on the same Wi-Fi, not across the internet.',
-
-    'security.eyebrow': 'Private by design',
-    'security.title': 'Your files stay yours',
-    'security.blurb': 'Everything is end to end encrypted and travels over your local network. Nothing is stored on our servers, because there is no server in the middle.',
-    'security.point.e2e.title': 'End to end encryption',
-    'security.point.e2e.body': 'Only you and the receiving device can read what goes across. No one else, ever.',
-    'security.point.local.title': 'On your Wi-Fi',
-    'security.point.local.body': 'Files go straight from one device to the other, on your network, with no detour through the cloud.',
-    'security.point.noaccount.title': 'No account',
-    'security.point.noaccount.body': 'No email to verify, no password to create. You scan, you share.',
-
-    'platforms.eyebrow': 'Compatibility',
-    'platforms.title': 'All your devices finally speak the same language',
-    'platforms.blurb': 'iPhone to Windows, Android to Mac, Samsung to Linux: the pairs that failed everywhere else just work here, with no cable and no app to install on the phone.',
-
-    'content.eyebrow': 'Beyond photos',
-    'content.title': 'Not just photos',
-    'content.blurb': 'Send files, whole folders, full quality photos, text and links through the clipboard. What you copy on one side pastes on the other.',
-    'content.item.files': 'Files of any kind',
-    'content.item.folders': 'Whole folders',
-    'content.item.photos': 'Full quality photos',
-    'content.item.clipboard': 'Clipboard text and links',
-
-    'features.eyebrow': 'Everything it moves',
-    'features.title': 'More than photos, across more than two devices',
-    'features.blurb': 'Files, folders, full quality photos and the clipboard, in one gesture, in both directions.',
-    'features.send.title': 'Send anything, not just photos',
-    'features.send.body': 'Files of any kind, whole folders, full quality photos. No compression, no size cap on your own network.',
-    'features.file.folder': 'Project',
-    'features.clip.title': 'Two way clipboard',
-    'features.clip.body': 'Copy on one device, paste on the other. Text and links cross instantly, both ways.',
-    'features.clip.paste': 'Pasted here',
-    'features.cross.title': 'Between every device you own',
-    'features.cross.body': 'iPhone, Android and Samsung on one side, Windows, Mac and Linux on the other, in every combination.',
-    'features.pair.title': 'Pair with one scan',
-    'features.pair.body': 'Nothing to install on the phone. Scan the QR code once and you are linked for good.',
-    'features.quality.title': 'Photos never shrink',
-    'features.quality.body': 'Originals arrive at full resolution, exactly as they were shot.',
-    'features.quality.badge': 'Full quality',
-    'features.kind.folder': 'Folder', 'features.kind.doc': 'Document', 'features.kind.photo': 'Photo',
-    'features.pair.badge': 'Paired',
-
-    'showcase.title': 'One drop, and it is on every screen you own',
-    'showcase.blurb': 'A shoot, a build, a note or a link. Flitdrop puts it on the other device in about a second, encrypted, on your own Wi-Fi.',
-    'showcase.photo.title': 'Photographers',
-    'showcase.photo.body': 'Move a full shoot to the desktop in one gesture, every shot at its original resolution.',
-    'showcase.dev.title': 'Developers',
-    'showcase.dev.body': 'Push a build, a log or a screenshot between machines with no cable and no cloud.',
-    'showcase.design.title': 'Designers',
-    'showcase.design.body': 'Send mockups, assets and colors straight to the device you are reviewing on.',
-    'showcase.everyone.title': 'Everyone else',
-    'showcase.everyone.body': 'Photos to the family laptop, a link to your phone, a note to a friend nearby.',
-
-    'download.title': 'Ready to send your first file?',
-    'download.blurb': 'Install Flitdrop on your computer, keep the phone as it is. You will be sharing within the minute.',
-    'download.mac': 'Download for Mac', 'download.windows': 'Download for Windows', 'download.linux': 'Download for Linux',
-    'download.other': 'Other platforms', 'download.qr': 'Scan to download on your phone',
-    'download.note': 'First time you open it, your computer may show a caution because the app is new and not signed yet. That is expected.',
-    'download.mobile': 'Flitdrop installs on your computer, not your phone. Open this page on your Mac, Windows or Linux computer to download it, then scan the QR from your phone.',
-
-    'faq.title': 'Frequently asked',
-    'faq.q1': 'Is it really free?',
-    'faq.a1': 'Yes, on your own Wi-Fi. Transfers go straight from one device to the other, so there is no server cost to cover.',
-    'faq.q2': 'Do I need to install anything on the phone?',
-    'faq.a2': 'No. You scan a QR code once and the phone is paired. Flitdrop installs only on the computer.',
-    'faq.q3': 'Is it really private?',
-    'faq.a3': 'Everything is end to end encrypted and stays on your local network. The content touches no server: it goes directly from one device to the other.',
-    'faq.q4': 'Which devices does it work between?',
-    'faq.a4': 'iPhone, Android, Samsung on one side, Windows, Mac, Linux on the other, in every combination. You just need to be on the same Wi-Fi.',
-    'faq.q5': 'Do both devices need to be on the same Wi-Fi?',
-    'faq.a5': 'Yes. Flitdrop goes straight from one device to the other on your local network, so they share the same Wi-Fi. Nothing travels over the internet.',
-    'faq.q6': 'Is there a size or number limit?',
-    'faq.a6': 'No. Since the transfer stays on your network, there is no imposed cap. The only limit is the free space on the receiving device.',
-    'faq.q7': 'Which computers can I install it on?',
-    'faq.a7': 'Windows, macOS and Linux. The phone needs nothing at all, just its browser.',
-    'faq.q8': 'Are my photos compressed?',
-    'faq.a8': 'Never. Photos and files arrive at their original quality, exactly as they were.',
-    'faq.q9': 'Why does my computer warn when I open Flitdrop?',
-    'faq.a9': 'Because Flitdrop is a new, independent app that is not signed yet, macOS and Windows show a one-time caution. It is expected and safe. On Windows, click More info then Run anyway; on Mac, right-click the app and choose Open. You only do this once.',
-    'support.eyebrow': 'Support', 'support.title': 'Need a hand?',
-    'support.blurb': 'The FAQ covers the most common questions. For anything else, write to us and we answer fast.',
-    'support.faq': 'Read the FAQ', 'support.bug': 'Report a bug',
-    'support.name': 'Name', 'support.email': 'Email', 'support.message': 'Message', 'support.send': 'Send',
-    'support.note': 'We usually reply within a day.',
-    'support.sending': 'Sending…',
-    'support.ok': 'Thanks, your message is on its way. We usually reply within a day.',
-    'support.err': 'Something went wrong. Please email contact@flitdrop.com directly.',
-    'guides.title': 'Guides',
-    'guides.alt': 'AirDrop alternative', 'guides.windows': 'AirDrop for Windows',
-    'guides.android': 'iPhone to Android', 'guides.iphonepc': 'iPhone to PC', 'guides.linux': 'AirDrop for Linux',
-
-    'footer.tagline': 'Direct sharing between all your devices, on your Wi-Fi.',
-    'footer.lang': 'Language', 'footer.rights': '© 2026 Flitdrop. All rights reserved.',
-    'footer.product': 'Product', 'footer.resources': 'Resources', 'footer.features': 'Features', 'footer.brand': 'Brand',
-    'footer.privacy': 'Privacy', 'footer.legal': 'Legal', 'foot.home': 'Home',
-  };
-
-  var FR = {
-    'meta.title': 'Flitdrop, envoyez vos fichiers entre téléphone et ordinateur comme un AirDrop universel',
-    'meta.desc': "Flitdrop fait passer photos, fichiers et presse-papiers entre iPhone, Android, Windows, Mac et Linux en un geste. Chiffré de bout en bout, gratuit sur votre Wi-Fi, rien à installer sur le téléphone.",
-
-    'nav.how': 'Comment ça marche', 'nav.compare': 'Comparatif', 'nav.security': 'Sécurité', 'nav.download': 'Télécharger',
-    'common.scroll': 'Défilez pour lancer',
-
-    'hero.eyebrow': 'Le partage sans friction, sur tous vos appareils',
-    'hero.headline': "L'AirDrop qui marche entre tous vos appareils",
-    'hero.platforms': 'Disponible sur macOS, Windows et Linux',
-    'hero.subhead': "Envoyez photos, fichiers et presse-papiers d'un appareil à l'autre, en un geste.",
-    'hero.ctaPrimary': 'Télécharger Flitdrop',
-    'hero.ctaSecondary': 'Voir comment ça marche',
-    'hero.trust': 'Gratuit sur votre réseau. Chiffré de bout en bout. Aucun compte requis.',
-
-    'film.eyebrow': 'Regardez-le voyager',
-    'film.a1': 'Choisissez une photo sur votre téléphone.',
-    'film.a2': "Elle est chiffrée avant de quitter l'appareil.",
-    'film.a3': 'Elle traverse votre Wi-Fi, directement, sans passer par un serveur.',
-    'film.a4': "Et atterrit dans la liste de réception de l'ordinateur.",
-    'film.b1': "Sur l'ordinateur, copiez un texte avec Ctrl+C.",
-    'film.bproc': 'Le texte copié est chiffré avant de partir.',
-    'film.b2': 'Le presse-papiers repart, chiffré, dans l\'autre sens.',
-    'film.b3': 'Il arrive sur le téléphone en une seconde.',
-    'film.b4': 'Collez-le où vous voulez. Le partage va dans les deux sens.',
-
-    'ui.send': 'Envoyer', 'ui.received': 'Reçu', 'ui.textReceived': 'Texte reçu, collez partout',
-    'ui.linked': 'lié', 'ui.incoming': 'Réception', 'ui.copied': 'Copié', 'ui.sending': 'Envoi',
-    'ui.samplePhoto': 'photo-plage.jpg', 'ui.noteSample': 'Rendez-vous 14h · lundi', 'ui.fileSize': '2,4 Mo',
-    'ui.encrypting': 'Chiffrement…', 'ui.copying': 'Copie du presse-papiers…',
-
-    'steps.eyebrow': 'Prise en main',
-    'steps.title': 'Trois gestes, rien de plus',
-    'steps.blurb': "Scannez le QR code une fois pour lier le téléphone. Ensuite, glissez un fichier, il part. C'est aussi simple qu'un geste sur un même appareil.",
-    'steps.one.title': 'Scannez une fois',
-    'steps.one.body': "Ouvrez l'appareil photo, visez le QR code, le téléphone est lié. Aucune application à installer.",
-    'steps.two.title': 'Glissez',
-    'steps.two.body': 'Choisissez une photo, un fichier ou un dossier, ou copiez un texte. Un geste suffit.',
-    'steps.three.title': "C'est arrivé",
-    'steps.three.body': "Le transfert apparaît sur l'autre appareil dans la seconde, prêt à ouvrir ou à coller.",
-
-    'compare.eyebrow': 'Le comparatif',
-    'compare.title': "Ce qu'AirDrop ne fait pas, Flitdrop le fait",
-    'compare.subhead': "AirDrop s'arrête à Apple, Quick Share à Android, LocalSend exige une application sur chaque appareil. Flitdrop les relie tous, depuis le navigateur du téléphone.",
-    'compare.col.flitdrop': 'Flitdrop', 'compare.col.airdrop': 'AirDrop', 'compare.col.nearby': 'Quick Share', 'compare.col.localsend': 'LocalSend', 'compare.col.cloud': 'Mail / WeTransfer',
-    'compare.val.yes': 'Oui', 'compare.val.no': 'Non',
-    'compare.row.crossplatform': 'Tous les systèmes',
-    'compare.row.e2e': 'Chiffré de bout en bout',
-    'compare.row.noaccount': 'Sans compte, sans connexion',
-    'compare.row.nocloud': 'Direct, sans passer par un serveur',
-    'compare.row.free': 'Gratuit',
-    'compare.row.offline': 'Sur votre réseau local',
-    'compare.row.noinstallphone': 'Rien à installer sur le téléphone',
-    'compare.stat.os': 'plateformes', 'compare.stat.acct': 'compte', 'compare.stat.gesture': 'geste',
-    'cmp.r1': 'Fonctionne sur tous les OS (iPhone, Android, Windows, Mac, Linux)',
-    'cmp.r2': 'iPhone vers Windows, Mac ou Linux',
-    'cmp.r3': 'Rien à installer sur le téléphone',
-    'cmp.r4': 'Sans compte, sans connexion',
-    'cmp.r5': 'Transfert chiffré',
-    'cmp.r6': 'Rien ne passe par un serveur',
-    'cmp.r7': 'Envoi à distance, hors de votre Wi-Fi',
-    'cmp.tip.e2e': 'Seuls les deux appareils lisent le contenu. Personne au milieu, pas même nous.',
-    'cmp.tip.server': "Le fichier va directement d'un appareil à l'autre sur votre Wi-Fi. Il n'atterrit sur aucun serveur.",
-    'cmp.tip.internet': "Ces quatre-là marchent sur le même Wi-Fi. Pour envoyer à l'autre bout du monde, il faut un outil qui passe par ses propres serveurs, comme Send Anywhere, au prix de la confidentialité.",
-    'cmp.tip.qsos': "Pas d'app officielle Mac ou Linux, et l'iPhone seulement via certains Android récents.",
-    'cmp.tip.adacct': "Un identifiant Apple / iCloud est requis pour le mode Contacts par défaut.",
-    'cmp.tip.qsacct': 'Un compte Google est requis pour vos appareils et vos contacts.',
-    'cmp.reco': 'Recommandé', 'cmp.vs': 'Face à',
-    'cmp.note': "Flitdrop est le seul ici à ne rien installer sur votre téléphone, à garder chaque fichier sur votre réseau, et à relier quand même tous les systèmes. En toute honnêteté : comme AirDrop, Quick Share et LocalSend, il marche sur le même Wi-Fi, pas à distance.",
-
-    'security.eyebrow': 'La confidentialité par conception',
-    'security.title': 'Vos fichiers restent chez vous',
-    'security.blurb': "Tout est chiffré de bout en bout et voyage sur votre réseau local. Rien n'est stocké sur nos serveurs, parce qu'il n'y a pas de serveur au milieu.",
-    'security.point.e2e.title': 'Chiffrement de bout en bout',
-    'security.point.e2e.body': "Seuls vous et l'appareil qui reçoit pouvez lire ce qui passe. Personne d'autre, jamais.",
-    'security.point.local.title': 'Sur votre Wi-Fi',
-    'security.point.local.body': "Les fichiers vont directement d'un appareil à l'autre, sur votre réseau, sans détour par le cloud.",
-    'security.point.noaccount.title': 'Aucun compte',
-    'security.point.noaccount.body': "Pas d'email à vérifier, pas de mot de passe à créer. Vous scannez, vous partagez.",
-
-    'platforms.eyebrow': 'Compatibilité',
-    'platforms.title': 'Tous vos appareils parlent enfin la même langue',
-    'platforms.blurb': "iPhone vers Windows, Android vers Mac, Samsung vers Linux : les combinaisons qui échouaient partout ailleurs marchent ici, sans câble et sans application sur le téléphone.",
-
-    'content.eyebrow': 'Au-delà des photos',
-    'content.title': 'Pas seulement des photos',
-    'content.blurb': "Envoyez des fichiers, des dossiers entiers, des photos en pleine qualité, du texte et des liens par le presse-papiers. Ce que vous copiez d'un côté se colle de l'autre.",
-    'content.item.files': 'Fichiers de tout type',
-    'content.item.folders': 'Dossiers entiers',
-    'content.item.photos': 'Photos en pleine qualité',
-    'content.item.clipboard': 'Texte et liens du presse-papiers',
-
-    'features.eyebrow': 'Tout ce qui voyage',
-    'features.title': 'Plus que des photos, entre plus que deux appareils',
-    'features.blurb': 'Fichiers, dossiers, photos en pleine qualité et presse-papiers, en un geste, dans les deux sens.',
-    'features.send.title': 'Envoyez tout, pas seulement des photos',
-    'features.send.body': 'Fichiers de tout type, dossiers entiers, photos en pleine qualité. Sans compression ni limite de taille sur votre réseau.',
-    'features.file.folder': 'Projet',
-    'features.clip.title': 'Presse-papiers bidirectionnel',
-    'features.clip.body': "Copiez sur un appareil, collez sur l'autre. Texte et liens traversent aussitôt, dans les deux sens.",
-    'features.clip.paste': 'Collé ici',
-    'features.cross.title': 'Entre tous vos appareils',
-    'features.cross.body': "iPhone, Android et Samsung d'un côté, Windows, Mac et Linux de l'autre, dans toutes les combinaisons.",
-    'features.pair.title': 'Liez en un scan',
-    'features.pair.body': 'Rien à installer sur le téléphone. Scannez le QR code une fois, et le lien est fait pour de bon.',
-    'features.quality.title': 'Les photos ne rétrécissent jamais',
-    'features.quality.body': 'Les originaux arrivent en pleine résolution, exactement comme vous les avez pris.',
-    'features.quality.badge': 'Pleine qualité',
-    'features.kind.folder': 'Dossier', 'features.kind.doc': 'Document', 'features.kind.photo': 'Photo',
-    'features.pair.badge': 'Lié',
-
-    'showcase.title': "Un geste, et c'est sur tous vos écrans",
-    'showcase.blurb': "Un shooting, un build, une note ou un lien. Flitdrop le pose sur l'autre appareil en une seconde, chiffré, sur votre Wi-Fi.",
-    'showcase.photo.title': 'Photographes',
-    'showcase.photo.body': 'Envoyez un shooting entier vers le bureau en un geste, chaque photo en résolution originale.',
-    'showcase.dev.title': 'Développeurs',
-    'showcase.dev.body': 'Faites passer un build, un log ou une capture entre machines, sans câble ni cloud.',
-    'showcase.design.title': 'Designers',
-    'showcase.design.body': "Envoyez maquettes, assets et couleurs directement sur l'appareil où vous relisez.",
-    'showcase.everyone.title': 'Et tout le monde',
-    'showcase.everyone.body': "Des photos vers le portable familial, un lien vers votre téléphone, une note à un ami à côté.",
-
-    'download.title': 'Prêt à envoyer votre premier fichier ?',
-    'download.blurb': 'Installez Flitdrop sur votre ordinateur, gardez le téléphone tel quel. Vous partagez dans la minute qui suit.',
-    'download.mac': 'Télécharger pour Mac', 'download.windows': 'Télécharger pour Windows', 'download.linux': 'Télécharger pour Linux',
-    'download.other': 'Autres plateformes', 'download.qr': 'Scannez pour télécharger sur votre téléphone',
-    'download.note': "À la première ouverture, votre ordinateur peut afficher une mise en garde car l'app est récente et pas encore signée. C'est normal.",
-    'download.mobile': "Flitdrop s'installe sur votre ordinateur, pas sur votre téléphone. Ouvrez cette page sur votre Mac, PC Windows ou Linux pour le télécharger, puis scannez le QR depuis votre téléphone.",
-
-    'faq.title': 'Questions fréquentes',
-    'faq.q1': 'Est-ce vraiment gratuit ?',
-    'faq.a1': "Oui, sur votre propre Wi-Fi. Les transferts passent directement d'un appareil à l'autre, il n'y a pas de coût de serveur à couvrir.",
-    'faq.q2': 'Faut-il installer quelque chose sur le téléphone ?',
-    'faq.a2': "Non. Vous scannez un QR code une fois, et le téléphone est lié. Flitdrop s'installe seulement sur l'ordinateur.",
-    'faq.q3': 'Est-ce vraiment privé ?',
-    'faq.a3': "Tout est chiffré de bout en bout et reste sur votre réseau local. Le contenu ne touche aucun serveur : il va directement d'un appareil à l'autre.",
-    'faq.q4': 'Ça marche entre quels appareils ?',
-    'faq.a4': "iPhone, Android, Samsung d'un côté, Windows, Mac, Linux de l'autre, dans toutes les combinaisons. Il suffit d'être sur le même Wi-Fi.",
-    'faq.q5': 'Les deux appareils doivent-ils être sur le même Wi-Fi ?',
-    'faq.a5': "Oui. Flitdrop va directement d'un appareil à l'autre sur votre réseau local, donc les deux partagent le même Wi-Fi. Rien ne passe par internet.",
-    'faq.q6': 'Y a-t-il une limite de taille ou de nombre ?',
-    'faq.a6': "Non. Comme le transfert reste sur votre réseau, aucun plafond n'est imposé. La seule limite est l'espace libre sur l'appareil qui reçoit.",
-    'faq.q7': 'Sur quels ordinateurs puis-je l\'installer ?',
-    'faq.a7': "Windows, macOS et Linux. Le téléphone, lui, n'a besoin de rien, juste de son navigateur.",
-    'faq.q8': 'Mes photos sont-elles compressées ?',
-    'faq.a8': "Jamais. Les photos et fichiers arrivent en qualité d'origine, exactement comme ils étaient.",
-    'faq.q9': "Pourquoi mon ordinateur affiche un avertissement à l'ouverture de Flitdrop ?",
-    'faq.a9': "Parce que Flitdrop est une application récente et indépendante, pas encore signée, macOS et Windows affichent une mise en garde une seule fois. C'est normal et sans danger. Sur Windows, cliquez sur Informations complémentaires puis Exécuter quand même ; sur Mac, faites un clic droit sur l'app puis Ouvrir. Vous ne le faites qu'une fois.",
-    'support.eyebrow': 'Support', 'support.title': "Besoin d'un coup de main ?",
-    'support.blurb': 'La FAQ répond au plus courant. Pour le reste, écrivez-nous, on répond vite.',
-    'support.faq': 'Lire la FAQ', 'support.bug': 'Signaler un bug',
-    'support.name': 'Nom', 'support.email': 'E-mail', 'support.message': 'Message', 'support.send': 'Envoyer',
-    'support.note': 'On répond en général sous 24 h.',
-    'support.sending': 'Envoi…',
-    'support.ok': 'Merci, votre message part. On répond en général sous 24 h.',
-    'support.err': 'Un souci est survenu. Écrivez-nous directement à contact@flitdrop.com.',
-    'guides.title': 'Guides',
-    'guides.alt': 'Alternative à AirDrop', 'guides.windows': 'AirDrop pour Windows',
-    'guides.android': 'iPhone vers Android', 'guides.iphonepc': 'iPhone vers PC', 'guides.linux': 'AirDrop pour Linux',
-
-    'footer.tagline': 'Le partage direct entre tous vos appareils, sur votre Wi-Fi.',
-    'footer.lang': 'Langue', 'footer.rights': '© 2026 Flitdrop. Tous droits réservés.',
-    'footer.product': 'Produit', 'footer.resources': 'Ressources', 'footer.features': 'Fonctionnalités', 'footer.brand': 'Marque',
-    'footer.privacy': 'Confidentialité', 'footer.legal': 'Mentions légales', 'foot.home': 'Accueil',
-  };
-
-  var DICT = { en: EN, fr: FR };
+  var DICT = (typeof window !== 'undefined' && window.FD_I18N_DATA) || { en: {}, fr: {} };
+  var EN = DICT.en || {};
+  var SUPPORTED = { en: 1, fr: 1 };
   var LS = 'flitdrop_lang';
 
+  // which prerendered language page you are literally on, if any
+  function langFromPath() {
+    var p = location.pathname || '/';
+    if (p === '/fr' || p.indexOf('/fr/') === 0) return 'fr';
+    return null;
+  }
+
   function detect() {
-    // explicit ?lang= wins (per-language URLs for SEO + shareable links)
-    try { var q = new URLSearchParams(location.search).get('lang'); if (q === 'fr' || q === 'en') return q; } catch (e) {}
+    // 1) the prerendered localized page you are on wins
+    var fromPath = langFromPath();
+    if (fromPath) return fromPath;
+    // 2) explicit ?lang= (shareable links, client-swap pages)
+    try { var q = new URLSearchParams(location.search).get('lang'); if (SUPPORTED[q]) return q; } catch (e) {}
+    // 3) saved choice
     var saved = null;
     try { saved = localStorage.getItem(LS); } catch (e) {}
-    if (saved === 'fr' || saved === 'en') return saved;
+    if (SUPPORTED[saved]) return saved;
+    // 4) browser language
     var nav = (navigator.language || 'en').toLowerCase();
     return nav.indexOf('fr') === 0 ? 'fr' : 'en';
   }
@@ -368,7 +53,7 @@
     });
     // reflect language on the document + toggle buttons
     document.documentElement.setAttribute('lang', lang);
-    // only the landing page opts into localizing its <title>/description; sub-pages keep their own
+    // only pages that opt in localize their <title>/description; sub-pages keep their own
     if (document.documentElement.hasAttribute('data-i18n-meta')) {
       document.title = t('meta.title');
       var md = document.querySelector('meta[name="description"]'); if (md) md.setAttribute('content', t('meta.desc'));
@@ -379,10 +64,23 @@
     });
   }
 
+  // URL of the prerendered counterpart for `next` language, or null if none exists yet
+  function staticAltUrl(next) {
+    var p = location.pathname || '/';
+    var isHome = (p === '/' || p === '/index.html');
+    var isFrHome = (p === '/fr' || p === '/fr/' || p === '/fr/index.html');
+    if (next === 'fr' && isHome) return '/fr/';
+    if (next === 'en' && isFrHome) return '/';
+    return null;
+  }
+
   function set(next) {
-    if (next !== 'fr' && next !== 'en') return;
+    if (!SUPPORTED[next]) return;
+    try { localStorage.setItem(LS, next); } catch (e) {}
+    var alt = staticAltUrl(next);
+    if (alt) { location.href = alt; return; } // navigate to the real localized page
+    // otherwise swap in place (pages that do not have a prerendered counterpart yet)
     lang = next;
-    try { localStorage.setItem(LS, lang); } catch (e) {}
     try { var u = new URL(location.href); u.searchParams.set('lang', lang); history.replaceState(null, '', u); } catch (e) {}
     apply(document);
     window.dispatchEvent(new CustomEvent('fd-lang', { detail: { lang: lang } }));
