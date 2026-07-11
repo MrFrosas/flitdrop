@@ -109,6 +109,42 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://flitdrop.com/snapdrop-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/snapdrop-alternative"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/fr/snapdrop-alternative"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/snapdrop-alternative"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flitdrop.com/fr/snapdrop-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/snapdrop-alternative"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/fr/snapdrop-alternative"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/snapdrop-alternative"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://flitdrop.com/localsend-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/localsend-alternative"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/fr/localsend-alternative"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/localsend-alternative"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://flitdrop.com/fr/localsend-alternative</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://flitdrop.com/localsend-alternative"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://flitdrop.com/fr/localsend-alternative"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://flitdrop.com/localsend-alternative"/>
+    <lastmod>2026-07-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://flitdrop.com/brand</loc>
     <lastmod>2026-07-11</lastmod>
     <changefreq>monthly</changefreq>

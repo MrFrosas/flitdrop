@@ -65,7 +65,7 @@
   }
 
   // slugs that have a prerendered counterpart under /<lang>/ ('' = home)
-  var LOCALIZED = ['', 'airdrop-windows', 'airdrop-linux', 'airdrop-iphone-android', 'send-files-iphone-to-pc', 'alternative-airdrop'];
+  var LOCALIZED = ['', 'airdrop-windows', 'airdrop-linux', 'airdrop-iphone-android', 'send-files-iphone-to-pc', 'alternative-airdrop', 'snapdrop-alternative', 'localsend-alternative'];
 
   // URL of the prerendered counterpart for `next` language, or null if none exists
   function staticAltUrl(next) {

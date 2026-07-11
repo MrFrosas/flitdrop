@@ -201,7 +201,9 @@
     "nf.home": "Back to home",
     "nf.download": "Download Flitdrop",
     "download.copylink": "Copy the site link",
-    "download.copied": "Link copied"
+    "download.copied": "Link copied",
+    "guides.snapdrop": "Snapdrop alternative",
+    "guides.localsend": "LocalSend alternative"
   },
   "fr": {
     "meta.title": "Flitdrop, envoyez vos fichiers entre téléphone et ordinateur comme un AirDrop universel",
@@ -396,7 +398,9 @@
     "nf.home": "Retour à l'accueil",
     "nf.download": "Télécharger Flitdrop",
     "download.copylink": "Copier le lien du site",
-    "download.copied": "Lien copié"
+    "download.copied": "Lien copié",
+    "guides.snapdrop": "Alternative à Snapdrop",
+    "guides.localsend": "Alternative à LocalSend"
   }
 };
 });

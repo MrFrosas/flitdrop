@@ -41,6 +41,8 @@ const PAGES = [
   { slug: 'airdrop-iphone-android', src: 'airdrop-iphone-android.html', mapped: true },
   { slug: 'send-files-iphone-to-pc', src: 'send-files-iphone-to-pc.html', mapped: true },
   { slug: 'alternative-airdrop', src: 'alternative-airdrop.html', mapped: true },
+  { slug: 'snapdrop-alternative', src: 'snapdrop-alternative.html', mapped: true },
+  { slug: 'localsend-alternative', src: 'localsend-alternative.html', mapped: true },
 ];
 const LOCALIZED_SLUGS = new Set(PAGES.map((p) => p.slug)); // for internal link rewriting
 
@@ -103,7 +105,11 @@ function rewriteInternalLinks(root, lang) {
   });
 }
 
-function ensureDoctype(html) { return /^\s*<!doctype/i.test(html) ? html : '<!doctype html>\n' + html; }
+// collapse runs of blank lines (hreflang re-injection can leave whitespace behind) + keep the doctype
+function finalize(html) {
+  html = html.replace(/(?:[ \t]*\n){3,}/g, '\n\n');
+  return /^\s*<!doctype/i.test(html) ? html : '<!doctype html>\n' + html;
+}
 
 let generated = 0;
 for (const page of PAGES) {
@@ -113,7 +119,7 @@ for (const page of PAGES) {
   {
     const root = parse(srcHtml, { comment: true });
     setHreflang(root, page.slug);
-    writeFileSync(resolve(SITE, page.src), ensureDoctype(root.toString()));
+    writeFileSync(resolve(SITE, page.src), finalize(root.toString()));
   }
 
   for (const lang of LANGS) {
@@ -157,7 +163,7 @@ for (const page of PAGES) {
 
     const out = outPath(lang, page.slug);
     mkdirSync(dirname(out), { recursive: true });
-    writeFileSync(out, ensureDoctype(root.toString()));
+    writeFileSync(out, finalize(root.toString()));
     generated++;
     console.log('generated', out.replace(SITE + '/', ''), '[' + lang + ']');
   }
