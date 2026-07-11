@@ -65,13 +65,18 @@ win:
   # identité verifiee CC's Global). electron-builder signe le .exe PENDANT le
   # pack, donc avant le calcul du blockmap/latest.yml : l'auto-update reste
   # integre. Auth via les variables d'env AZURE_TENANT_ID / AZURE_CLIENT_ID /
-  # AZURE_CLIENT_SECRET (fournies par les secrets GitHub dans release.yml). Le
-  # timestamp ACS et FileDigest SHA256 sont appliques par defaut : indispensable
-  # car les certificats Trusted Signing sont a duree de vie tres courte.
+  # AZURE_CLIENT_SECRET (fournies par les secrets GitHub dans release.yml).
+  # timestampRfc3161/Digest : INDISPENSABLES. Invoke-TrustedSigning n'horodate
+  # PAS par defaut (verifie : signtool appele sans /tr), or les certificats
+  # Trusted Signing durent ~3 jours -> sans horodatage la signature devient
+  # invalide a leur expiration. Le serveur d'horodatage ACS ancre la signature
+  # dans le temps : elle reste valide bien apres l'expiration du certificat.
   azureSignOptions:
     endpoint: https://eus.codesigning.azure.net/
     codeSigningAccountName: flitdrop-signing
     certificateProfileName: flitdrop
+    TimestampRfc3161: http://timestamp.acs.microsoft.com
+    TimestampDigest: SHA256
 appx:
   # identityName et publisher sont remplacés par les valeurs du Partner Center
   # (Microsoft Store > Gestion des produits > Identité du package)
