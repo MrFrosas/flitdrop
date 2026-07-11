@@ -64,13 +64,19 @@
     });
   }
 
-  // URL of the prerendered counterpart for `next` language, or null if none exists yet
+  // slugs that have a prerendered counterpart under /<lang>/ ('' = home)
+  var LOCALIZED = ['', 'airdrop-windows', 'airdrop-linux', 'airdrop-iphone-android', 'send-files-iphone-to-pc', 'alternative-airdrop'];
+
+  // URL of the prerendered counterpart for `next` language, or null if none exists
   function staticAltUrl(next) {
     var p = location.pathname || '/';
-    var isHome = (p === '/' || p === '/index.html');
-    var isFrHome = (p === '/fr' || p === '/fr/' || p === '/fr/index.html');
-    if (next === 'fr' && isHome) return '/fr/';
-    if (next === 'en' && isFrHome) return '/';
+    var underFr = (p === '/fr' || p.indexOf('/fr/') === 0);
+    var slug = underFr ? p.replace(/^\/fr/, '') : p;
+    slug = slug.replace(/\/index\.html?$/, '/').replace(/\.html$/, '');
+    var bare = (slug === '/' || slug === '') ? '' : slug.replace(/^\//, '');
+    if (LOCALIZED.indexOf(bare) === -1) return null; // no counterpart -> client swap
+    if (next === 'fr' && !underFr) return '/fr/' + bare;
+    if (next === 'en' && underFr) return '/' + bare;
     return null;
   }
 

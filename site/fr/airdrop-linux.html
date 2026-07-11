@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>AirDrop pour Linux : l'alternative gratuite et chiffrée (Flitdrop)</title>
+  <meta name="description" content="AirDrop est réservé à Apple, donc Linux est mis de côté. Flitdrop est une alternative à AirDrop, gratuite et chiffrée, qui envoie photos, fichiers et dossiers entre Linux, téléphones, Mac et Windows sur votre Wi-Fi.">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="author" content="Flitdrop">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+
+  <!-- PostHog product analytics: cookieless (memory = zero device storage, no banner needed), no session recording, US-hosted, client IP discarded server-side -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_Bex8SoGTP3KQyVriFMzVChHugFgtkF6LYmjgJbYi6min',{api_host:'https://us.i.posthog.com',persistence:'memory',person_profiles:'identified_only',disable_session_recording:true,capture_pageview:true,autocapture:true});
+  </script>
+
+  <link rel="canonical" href="https://flitdrop.com/fr/airdrop-linux">
+  <link rel="alternate" hreflang="en" href="https://flitdrop.com/airdrop-linux">
+  <link rel="alternate" hreflang="fr" href="https://flitdrop.com/fr/airdrop-linux">
+  <link rel="alternate" hreflang="x-default" href="https://flitdrop.com/airdrop-linux">
+  <link rel="icon" href="/assets/icon.svg">
+  <link rel="apple-touch-icon" href="/assets/icon-512.png">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Flitdrop">
+  <meta property="og:title" content="AirDrop pour Linux : l'alternative gratuite et chiffrée (Flitdrop)">
+  <meta property="og:description" content="AirDrop est réservé à Apple, donc Linux est mis de côté. Flitdrop est une alternative à AirDrop, gratuite et chiffrée, qui envoie photos, fichiers et dossiers entre Linux, téléphones, Mac et Windows sur votre Wi-Fi.">
+  <meta property="og:url" content="https://flitdrop.com/fr/airdrop-linux">
+  <meta property="og:image" content="https://flitdrop.com/assets/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="AirDrop pour Linux, l'alternative gratuite et chiffrée Flitdrop">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AirDrop pour Linux : l'alternative gratuite et chiffrée (Flitdrop)">
+  <meta name="twitter:description" content="AirDrop est réservé à Apple, donc Linux est mis de côté. Flitdrop est une alternative à AirDrop, gratuite et chiffrée, entre Linux, téléphones, Mac et Windows sur votre Wi-Fi.">
+  <meta name="twitter:image" content="https://flitdrop.com/assets/og.jpg">
+
+  <link rel="stylesheet" href="/style.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://flitdrop.com/airdrop-linux#webpage",
+        "url": "https://flitdrop.com/airdrop-linux",
+        "name": "AirDrop pour Linux : l'alternative gratuite et chiffrée (Flitdrop)",
+        "description": "AirDrop est réservé à Apple, donc Linux est mis de côté. Flitdrop est une alternative à AirDrop, gratuite et chiffrée, qui envoie photos, fichiers et dossiers entre Linux, téléphones, Mac et Windows sur votre Wi-Fi.",
+        "inLanguage": "en",
+        "isPartOf": {
+          "@type": "WebSite",
+          "name": "Flitdrop",
+          "url": "https://flitdrop.com/"
+        },
+        "about": {
+          "@type": "SoftwareApplication",
+          "name": "Flitdrop",
+          "applicationCategory": "UtilitiesApplication",
+          "operatingSystem": "Linux, Windows, macOS",
+          "downloadUrl": "https://github.com/MrFrosas/flitdrop/releases/latest",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          }
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "AirDrop fonctionne-t-il sur Linux ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Non. AirDrop est une fonction fermée d'Apple qui ne fonctionne qu'entre appareils Apple, il n'existe donc pas de version native pour Linux. Flitdrop est une alternative gratuite qui fait la même chose entre Linux, téléphones, Mac et Windows sur votre Wi-Fi."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Puis-je faire un AirDrop de mon iPhone vers un ordinateur Linux ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Pas avec l'AirDrop d'Apple, qui ignore les appareils non Apple. Avec Flitdrop, c'est possible : installez l'application sur Linux, scannez un QR code une fois avec votre iPhone, et envoyez photos et fichiers directement sur votre Wi-Fi local."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Dois-je installer quoi que ce soit sur mon téléphone ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Non. Rien à installer sur le téléphone. Vous scannez un QR code une fois pour appairer, puis le téléphone utilise simplement son navigateur comme une application web légère. L'application s'installe uniquement sur votre ordinateur Linux, Windows ou Mac."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Flitdrop utilise-t-il Internet ou le cloud ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Non. Les transferts se font directement d'un appareil à l'autre sur votre Wi-Fi local, en pair à pair, et ne passent jamais par un serveur ni par le cloud. Ce n'est pas un service Internet, c'est pourquoi cela reste privé et gratuit sur votre propre réseau."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Flitdrop est-il vraiment gratuit sur Linux ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Oui. Flitdrop est gratuit pour les transferts sur votre propre réseau. Il n'y a pas de coût de serveur ni d'abonnement pour les transferts locaux, et vous n'avez pas besoin de créer de compte."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Mes fichiers sont-ils chiffrés ?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Oui. Chaque transfert est chiffré de bout en bout, de sorte que vos photos, fichiers et texte du presse-papiers ne restent lisibles que par vos deux appareils appairés. Il n'y a pas de compte et la confidentialité passe avant tout."
+            }
+          }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Accueil",
+            "item": "https://flitdrop.com/"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "AirDrop pour Linux",
+            "item": "https://flitdrop.com/airdrop-linux"
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <script async src="/js/analytics.js"></script>
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="bg-aurora"></div>
+    <div class="bg-grain"></div>
+  </div>
+
+  <header class="nav" id="nav">
+    <a class="brand" href="/fr/" aria-label="Flitdrop">
+      <img src="/assets/icon.svg" alt="" width="30" height="30">
+      <span>Flitdrop</span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="/#steps" data-i18n="nav.how">Comment ça marche</a>
+      <a href="/#compare" data-i18n="nav.compare">Comparatif</a>
+      <a href="/#security" data-i18n="nav.security">Sécurité</a>
+    </nav>
+    <div class="nav-right">
+      <button class="lang-toggle" id="langToggle" type="button">FR</button>
+      <a class="btn btn-primary btn-sm" href="/#download" data-i18n="nav.download">Télécharger</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero" id="top">
+      <div class="hero-inner">
+        <p class="eyebrow reveal" data-en="AirDrop alternative for Linux" data-fr="Alternative à AirDrop pour Linux">Alternative à AirDrop pour Linux</p>
+        <h1 class="display reveal" data-en="AirDrop for Linux: the free, encrypted way to share files" data-fr="AirDrop pour Linux : le partage de fichiers gratuit et chiffré">AirDrop pour Linux : la façon gratuite et chiffrée de partager vos fichiers</h1>
+        <p class="lead reveal" data-en="AirDrop is Apple only, so Linux is left out. Flitdrop is the free alternative that moves photos, files and folders between your Linux machine and any phone, Mac or Windows PC on your Wi-Fi." data-fr="AirDrop est réservé à Apple, Linux en est donc exclu. Flitdrop est l'alternative gratuite qui envoie photos, fichiers et dossiers entre votre machine Linux et n'importe quel téléphone, Mac ou PC Windows sur votre Wi-Fi.">AirDrop est réservé à Apple, donc Linux est mis de côté. Flitdrop est l'alternative gratuite qui déplace photos, fichiers et dossiers entre votre machine Linux et n'importe quel téléphone, Mac ou PC Windows sur votre Wi-Fi.</p>
+        <div class="hero-cta reveal">
+          <a class="btn btn-primary btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v9.5"></path><path d="M8.5 9.5 12 13l3.5-3.5"></path><path d="M5 15.5v2.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-2.5"></path></svg>
+            <span data-en="Download Flitdrop" data-fr="Télécharger Flitdrop">Télécharger Flitdrop</span>
+          </a>
+          <a class="btn btn-ghost btn-lg" href="/fr/" data-en="See how it works" data-fr="Voir comment ça marche">Voir comment ça marche</a>
+        </div>
+        <p class="hero-callout reveal" data-en="Free on your network. End to end encrypted. No account required." data-fr="Gratuit sur votre réseau. Chiffré de bout en bout. Sans compte.">Gratuit sur votre réseau. Chiffré de bout en bout. Sans compte.</p>
+      </div>
+    </section>
+
+    <!-- INTRO: direct answer -->
+    <section class="section ground">
+      <div class="section-head reveal">
+        <p class="eyebrow eyebrow-blue" data-en="The short answer" data-fr="La réponse courte">La réponse en bref</p>
+        <h2 data-en="There is no AirDrop for Linux, but there is Flitdrop" data-fr="Il n'y a pas d'AirDrop pour Linux, mais il y a Flitdrop">Il n'y a pas d'AirDrop pour Linux, mais il y a Flitdrop</h2>
+        <p class="section-sub" data-en="AirDrop is Apple only, so there is no native version for Linux. Flitdrop is the free alternative that does the same job across every device: it sends full quality photos, files and folders straight between your Linux machine and your iPhone, Android, Mac or Windows PC over your local Wi-Fi. No account, end to end encrypted, and nothing to install on the phone." data-fr="AirDrop est réservé aux appareils Apple, il n'existe donc aucune version native pour Linux. Flitdrop est l'alternative gratuite qui rend le même service entre tous vos appareils : il envoie vos photos en pleine qualité, vos fichiers et vos dossiers directement entre votre machine Linux et votre iPhone, Android, Mac ou PC Windows, via votre Wi-Fi local. Sans compte, chiffré de bout en bout, et rien à installer sur le téléphone.">AirDrop est réservé à Apple, il n'existe donc pas de version native pour Linux. Flitdrop est l'alternative gratuite qui fait le même travail sur tous vos appareils.</p>
+      </div>
+    </section>
+
+    <!-- WHY LINUX HAS NO AIRDROP -->
+    <section class="section">
+      <div class="section-head reveal">
+        <h2 data-en="Why Linux has no AirDrop (and what to use instead)" data-fr="Pourquoi Linux n'a pas AirDrop (et quoi utiliser à la place)">Pourquoi Linux n'a pas d'AirDrop (et quoi utiliser à la place)</h2>
+      </div>
+      <ul class="steps-grid reveal">
+        <li class="step-card">
+          <h3 data-en="Closed to Linux by design" data-fr="Fermé à Linux par conception">Fermé à Linux par conception</h3>
+          <p data-en="AirDrop is a closed Apple feature that only works between Apple devices, so Linux is left out by design." data-fr="AirDrop est une fonction fermée d'Apple qui ne marche qu'entre appareils Apple : Linux en est exclu par conception.">AirDrop est une fonction fermée d'Apple qui ne fonctionne qu'entre appareils Apple, donc Linux est mis de côté par conception.</p>
+        </li>
+        <li class="step-card">
+          <h3 data-en="One app for every device" data-fr="Une appli pour chaque appareil">Une seule application pour tous vos appareils</h3>
+          <p data-en="Flitdrop replaces it with one app that works across Linux, Windows, Mac, iPhone, Android and Samsung, in every direction." data-fr="Flitdrop le remplace par une seule application qui fonctionne entre Linux, Windows, Mac, iPhone, Android et Samsung, dans tous les sens.">Flitdrop le remplace par une seule application qui fonctionne entre Linux, Windows, Mac, iPhone, Android et Samsung, dans tous les sens.</p>
+        </li>
+        <li class="step-card">
+          <h3 data-en="Direct, never through a server" data-fr="Direct, jamais par un serveur">En direct, jamais via un serveur</h3>
+          <p data-en="Unlike cloud services, transfers go directly device to device over your own Wi-Fi, never through a server." data-fr="Contrairement au cloud, les transferts se font directement d'appareil à appareil via votre Wi-Fi, jamais par un serveur.">Contrairement aux services cloud, les transferts se font directement d'appareil à appareil sur votre propre Wi-Fi, jamais via un serveur.</p>
+        </li>
+        <li class="step-card">
+          <h3 data-en="Free on your network" data-fr="Gratuit sur votre réseau">Gratuit sur votre réseau</h3>
+          <p data-en="It is completely free on your own network, with no account and no subscription for local transfers." data-fr="C'est entièrement gratuit sur votre réseau, sans compte et sans abonnement pour les transferts locaux.">C'est entièrement gratuit sur votre propre réseau, sans compte ni abonnement pour les transferts locaux.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- HOW IT WORKS (3 steps) -->
+    <section class="section ground" id="how">
+      <div class="section-head reveal">
+        <p class="eyebrow eyebrow-blue" data-en="Getting started" data-fr="Pour commencer">Pour commencer</p>
+        <h2 data-en="How Flitdrop works on Linux" data-fr="Comment fonctionne Flitdrop sur Linux">Comment Flitdrop fonctionne sur Linux</h2>
+        <p class="section-sub" data-en="Install the app on your Linux computer, pair the phone with a QR code once, then send. Nothing to install on the phone." data-fr="Installez l'appli sur votre ordinateur Linux, appairez le téléphone avec un QR code une fois, puis envoyez. Rien à installer sur le téléphone.">Installez l'application sur votre ordinateur Linux, appairez le téléphone une fois avec un QR code, puis envoyez.</p>
+      </div>
+      <ol class="steps-grid reveal">
+        <li class="step-card">
+          <h3 data-en="Install on Linux" data-fr="Installez sur Linux">Installer sur Linux</h3>
+          <p data-en="Install the lightweight Flitdrop app on your Linux computer; it auto updates and runs on your desktop." data-fr="Installez l'application légère Flitdrop sur votre ordinateur Linux : elle se met à jour toute seule et vit sur votre bureau.">Installez l'application légère Flitdrop sur votre ordinateur Linux ; elle se met à jour automatiquement et s'exécute sur votre bureau.</p>
+        </li>
+        <li class="step-card">
+          <h3 data-en="Scan once to pair" data-fr="Scannez une fois pour appairer">Scannez une fois pour appairer</h3>
+          <p data-en="There is nothing to install on the phone: scan a QR code once to pair, then the phone just uses its browser." data-fr="Rien à installer sur le téléphone : scannez un QR code une fois pour l'appairer, ensuite le téléphone utilise simplement son navigateur.">Rien à installer sur le téléphone : scannez un QR code une fois pour appairer, puis le téléphone utilise simplement son navigateur.</p>
+        </li>
+        <li class="step-card">
+          <h3 data-en="Pick files and send" data-fr="Choisissez et envoyez">Choisissez vos fichiers et envoyez</h3>
+          <p data-en="Make sure both devices are on the same local Wi-Fi, then pick your files and send. Every transfer is end to end encrypted and stays on your network, so nothing touches the internet or the cloud." data-fr="Vérifiez que les deux appareils sont sur le même Wi-Fi local, puis choisissez vos fichiers et envoyez. Chaque transfert est chiffré de bout en bout et reste sur votre réseau : rien ne passe par Internet ni le cloud.">Assurez-vous que les deux appareils sont sur le même Wi-Fi local, puis choisissez vos fichiers et envoyez. Chaque transfert est chiffré de bout en bout et reste sur votre réseau.</p>
+        </li>
+      </ol>
+    </section>
+
+    <!-- WHAT YOU CAN SEND -->
+    <section class="section">
+      <div class="section-head reveal">
+        <h2 data-en="What you can send between Linux and your phone" data-fr="Ce que vous pouvez envoyer entre Linux et votre téléphone">Ce que vous pouvez envoyer entre Linux et votre téléphone</h2>
+      </div>
+      <ul class="steps-grid reveal">
+        <li class="step-card">
+          <h3 data-en="Full quality photos and videos" data-fr="Photos et vidéos en pleine qualité">Photos et vidéos en pleine qualité</h3>
+          <p data-en="Full quality photos and videos, with no compression and no loss of quality." data-fr="Des photos et vidéos en pleine qualité, sans compression ni perte de qualité.">Photos et vidéos en pleine qualité, sans compression ni perte de qualité.</p>
+        </li>
+        <li class="step-card">
+          <h3 data-en="Any file or whole folders" data-fr="Tout fichier ou dossiers entiers">N'importe quel fichier ou des dossiers entiers</h3>
+          <p data-en="Any file type, plus whole folders, in a single transfer." data-fr="N'importe quel type de fichier, ainsi que des dossiers entiers, en un seul transfert.">Tout type de fichier, ainsi que des dossiers entiers, en un seul transfert.</p>
+        </li>
+        <li class="step-card">
+          <h3 data-en="Two way clipboard" data-fr="Presse-papiers bidirectionnel">Presse-papiers dans les deux sens</h3>
+          <p data-en="Clipboard text with two way sync: copy on Linux, paste on your phone, or the reverse." data-fr="Le texte du presse-papiers avec synchro bidirectionnelle : copiez sur Linux, collez sur le téléphone, ou l'inverse.">Texte du presse-papiers avec synchronisation dans les deux sens : copiez sur Linux, collez sur votre téléphone, ou l'inverse.</p>
+        </li>
+        <li class="step-card">
+          <h3 data-en="Both directions" data-fr="Dans les deux sens">Dans les deux sens</h3>
+          <p data-en="Works both ways, from your phone to Linux and from Linux back to your phone." data-fr="Ça marche dans les deux sens, du téléphone vers Linux et de Linux vers le téléphone.">Fonctionne dans les deux sens, de votre téléphone vers Linux et de Linux vers votre téléphone.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- PRIVATE BY DESIGN -->
+    <section class="section ground" id="security">
+      <div class="section-head reveal">
+        <p class="eyebrow eyebrow-blue" data-en="Private and free" data-fr="Privé et gratuit">Privé et gratuit</p>
+        <h2 data-en="Private by design, free by default" data-fr="Privé par conception, gratuit par défaut">Privé par conception, gratuit par défaut</h2>
+      </div>
+      <ul class="steps-grid reveal">
+        <li class="step-card">
+          <h3 data-en="End to end encrypted" data-fr="Chiffré de bout en bout">Chiffré de bout en bout</h3>
+          <p data-en="End to end encryption keeps every transfer readable only by your two devices." data-fr="Le chiffrement de bout en bout fait que chaque transfert n'est lisible que par vos deux appareils.">Le chiffrement de bout en bout fait que chaque transfert n'est lisible que par vos deux appareils.</p>
+        </li>
+        <li class="step-card">
+          <h3 data-en="No account, no sign up" data-fr="Sans compte, sans inscription">Sans compte, sans inscription</h3>
+          <p data-en="No account and no sign up: pair with a QR code and start sending right away." data-fr="Aucun compte ni inscription : appairez avec un QR code et commencez à envoyer tout de suite.">Sans compte ni inscription : appairez avec un QR code et commencez à envoyer tout de suite.</p>
+        </li>
+        <li class="step-card">
+          <h3 data-en="Fast and free" data-fr="Rapide et gratuit">Rapide et gratuit</h3>
+          <p data-en="Because transfers are peer to peer on your Wi-Fi, they are fast and cost nothing." data-fr="Comme les transferts sont pair à pair sur votre Wi-Fi, ils sont rapides et ne coûtent rien.">Comme les transferts sont en pair à pair sur votre Wi-Fi, ils sont rapides et ne coûtent rien.</p>
+        </li>
+        <li class="step-card">
+          <h3 data-en="Not affiliated with Apple" data-fr="Non affilié à Apple">Non affilié à Apple</h3>
+          <p data-en="Flitdrop is not affiliated with Apple; AirDrop is named only for comparison." data-fr="Flitdrop n'est pas affilié à Apple ; AirDrop n'est cité que pour la comparaison.">Flitdrop n'est pas affilié à Apple ; AirDrop n'est cité qu'à titre de comparaison.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section faq" id="faq">
+      <div class="section-head reveal">
+        <h2 data-en="AirDrop for Linux: frequently asked" data-fr="AirDrop pour Linux : questions fréquentes">AirDrop pour Linux : questions fréquentes</h2>
+      </div>
+      <div class="faq-list reveal">
+        <details>
+          <summary data-en="Does AirDrop work on Linux?" data-fr="Est-ce qu'AirDrop fonctionne sur Linux ?">AirDrop fonctionne-t-il sur Linux ?</summary>
+          <p data-en="No. AirDrop is a closed Apple feature that only works between Apple devices, so there is no native version for Linux. Flitdrop is a free alternative that does the same thing between Linux, phones, Mac and Windows over your Wi-Fi." data-fr="Non. AirDrop est une fonction fermée d'Apple qui ne marche qu'entre appareils Apple : il n'existe pas de version native pour Linux. Flitdrop est une alternative gratuite qui fait la même chose entre Linux, téléphones, Mac et Windows via votre Wi-Fi.">Non. AirDrop est une fonction fermée d'Apple qui ne fonctionne qu'entre appareils Apple, il n'existe donc pas de version native pour Linux.</p>
+        </details>
+        <details>
+          <summary data-en="Can I AirDrop from my iPhone to a Linux computer?" data-fr="Puis-je faire un AirDrop de mon iPhone vers un ordinateur Linux ?">Puis-je faire un AirDrop de mon iPhone vers un ordinateur Linux ?</summary>
+          <p data-en="Not with Apple's AirDrop, which ignores non Apple devices. With Flitdrop you can: install the app on Linux, scan a QR code once with your iPhone, and send photos and files directly over your local Wi-Fi." data-fr="Pas avec l'AirDrop d'Apple, qui ignore les appareils non Apple. Avec Flitdrop, oui : installez l'application sur Linux, scannez un QR code une fois avec votre iPhone, et envoyez photos et fichiers directement via votre Wi-Fi local.">Pas avec l'AirDrop d'Apple. Avec Flitdrop, oui, sur votre Wi-Fi local.</p>
+        </details>
+        <details>
+          <summary data-en="Do I need to install anything on my phone?" data-fr="Dois-je installer quelque chose sur mon téléphone ?">Dois-je installer quoi que ce soit sur mon téléphone ?</summary>
+          <p data-en="No. There is nothing to install on the phone. You scan a QR code once to pair, and then the phone just uses its browser as a lightweight web app. The app installs only on your Linux, Windows or Mac computer." data-fr="Non. Il n'y a rien à installer sur le téléphone. Vous scannez un QR code une fois pour l'appairer, puis le téléphone utilise simplement son navigateur comme une application web légère. L'application ne s'installe que sur votre ordinateur Linux, Windows ou Mac.">Non. Rien à installer sur le téléphone ; l'application s'installe uniquement sur votre ordinateur.</p>
+        </details>
+        <details>
+          <summary data-en="Does Flitdrop use the internet or the cloud?" data-fr="Flitdrop utilise-t-il Internet ou le cloud ?">Flitdrop utilise-t-il Internet ou le cloud ?</summary>
+          <p data-en="No. Transfers go directly from one device to the other over your local Wi-Fi, peer to peer, and never pass through a server or the cloud. It is not an internet service, which is why it stays private and free on your own network." data-fr="Non. Les transferts vont directement d'un appareil à l'autre via votre Wi-Fi local, en pair à pair, et ne passent jamais par un serveur ni le cloud. Ce n'est pas un service Internet, c'est pourquoi il reste privé et gratuit sur votre réseau.">Non. Les transferts se font directement d'appareil à appareil sur votre Wi-Fi local, jamais via un serveur ou le cloud.</p>
+        </details>
+        <details>
+          <summary data-en="Is Flitdrop really free on Linux?" data-fr="Flitdrop est-il vraiment gratuit sur Linux ?">Flitdrop est-il vraiment gratuit sur Linux ?</summary>
+          <p data-en="Yes. Flitdrop is free for transfers on your own network. There is no server cost and no subscription for local transfers, and you do not need to create an account." data-fr="Oui. Flitdrop est gratuit pour les transferts sur votre propre réseau. Il n'y a aucun coût de serveur ni abonnement pour les transferts locaux, et vous n'avez pas besoin de créer un compte.">Oui. Flitdrop est gratuit pour les transferts sur votre propre réseau, sans compte.</p>
+        </details>
+        <details>
+          <summary data-en="Are my files encrypted?" data-fr="Mes fichiers sont-ils chiffrés ?">Mes fichiers sont-ils chiffrés ?</summary>
+          <p data-en="Yes. Every transfer is end to end encrypted, so your photos, files and clipboard text stay readable only by your two paired devices. There is no account and privacy comes first." data-fr="Oui. Chaque transfert est chiffré de bout en bout, donc vos photos, fichiers et texte du presse-papiers ne restent lisibles que par vos deux appareils appairés. Aucun compte, la confidentialité d'abord.">Oui. Chaque transfert est chiffré de bout en bout, lisible uniquement par vos deux appareils appairés.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- RELATED PAGES -->
+    <section class="section">
+      <div class="section-head reveal">
+        <p class="eyebrow eyebrow-blue" data-en="Keep reading" data-fr="À lire aussi">À lire aussi</p>
+        <h2 data-en="More ways to share like AirDrop" data-fr="D'autres façons de partager comme AirDrop">D'autres façons de partager comme AirDrop</h2>
+      </div>
+      <ul class="steps-grid reveal">
+        <li class="step-card">
+          <h3><a href="/fr/alternative-airdrop" data-en="The best AirDrop alternative" data-fr="La meilleure alternative à AirDrop">La meilleure alternative à AirDrop</a></h3>
+          <p data-en="One free, encrypted app that connects every operating system, not just Apple." data-fr="Une seule appli gratuite et chiffrée qui relie tous les systèmes, pas seulement Apple.">Une seule application gratuite et chiffrée qui connecte tous les systèmes d'exploitation, pas seulement Apple.</p>
+        </li>
+        <li class="step-card">
+          <h3><a href="/fr/airdrop-iphone-android" data-en="AirDrop between iPhone and Android" data-fr="AirDrop entre iPhone et Android">AirDrop entre iPhone et Android</a></h3>
+          <p data-en="Send photos and files between iPhone and Android over your Wi-Fi, with nothing to install on the phone." data-fr="Envoyez photos et fichiers entre iPhone et Android via votre Wi-Fi, sans rien installer sur le téléphone.">Envoyez photos et fichiers entre iPhone et Android sur votre Wi-Fi.</p>
+        </li>
+        <li class="step-card">
+          <h3><a href="/fr/send-files-iphone-to-pc" data-en="Send files from iPhone to PC" data-fr="Envoyer des fichiers de l'iPhone au PC">Envoyer des fichiers de l'iPhone vers le PC</a></h3>
+          <p data-en="Move photos and files from your iPhone straight to a Windows or Linux computer, in full quality." data-fr="Déplacez photos et fichiers de votre iPhone directement vers un ordinateur Windows ou Linux, en pleine qualité.">Déplacez photos et fichiers de votre iPhone directement vers un ordinateur, en pleine qualité.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- DOWNLOAD CTA -->
+    <section class="section download" id="download">
+      <div class="dl-card reveal">
+        <div class="dl-copy">
+          <h2 data-en="Get AirDrop for Linux with Flitdrop" data-fr="Obtenez AirDrop pour Linux avec Flitdrop">Obtenez AirDrop pour Linux avec Flitdrop</h2>
+          <p class="section-sub" data-en="Install Flitdrop on your Linux computer, keep the phone as it is, and start sending in seconds." data-fr="Installez Flitdrop sur votre ordinateur Linux, gardez le téléphone tel quel, et commencez à envoyer en quelques secondes.">Installez Flitdrop sur votre ordinateur Linux, laissez le téléphone tel quel, et commencez à envoyer en quelques secondes.</p>
+          <div class="dl-buttons">
+            <a class="btn btn-primary btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener"><span data-en="Download Flitdrop" data-fr="Télécharger Flitdrop">Télécharger Flitdrop</span></a>
+            <a class="btn btn-ghost btn-lg" href="/fr/" data-en="See how it works" data-fr="Voir comment ça marche">Voir comment ça marche</a>
+          </div>
+          <a class="dl-other" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-en="Linux, Windows and Mac builds" data-fr="Versions Linux, Windows et Mac">Versions Linux, Windows et Mac</a>
+        </div>
+        <div class="dl-qr" aria-hidden="true">
+          <div class="qr-tile"><img class="qr-img" src="/assets/qr.svg" alt="" width="132" height="132"></div>
+          <p data-en="Scan to open on your phone" data-fr="Scannez pour ouvrir sur le téléphone">Scannez pour ouvrir sur votre téléphone</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="brand" href="/fr/"><img src="/assets/icon.svg" alt="" width="26" height="26"><span>Flitdrop</span></a>
+        <p class="footer-tag" data-i18n="footer.tagline">Le partage direct entre tous vos appareils, sur votre Wi-Fi.</p>
+      </div>
+      <nav class="footer-cols" aria-label="Pied de page">
+        <div class="footer-col">
+          <h4 data-i18n="footer.product">Produit</h4>
+          <a href="/#features" data-i18n="footer.features">Fonctionnalités</a>
+          <a href="/#compare" data-i18n="nav.compare">Comparatif</a>
+          <a href="/#security" data-i18n="nav.security">Sécurité</a>
+          <a href="/#download" data-i18n="nav.download">Télécharger</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="footer.resources">Ressources</h4>
+          <a href="/#support" data-i18n="support.eyebrow">Support</a>
+          <a href="https://github.com/MrFrosas/flitdrop" target="_blank" rel="noopener">GitHub</a>
+          <a href="/brand.html" data-i18n="footer.brand">Marque</a>
+          <a href="/privacy.html" data-i18n="footer.privacy">Confidentialité</a>
+          <a href="/legal.html" data-i18n="footer.legal">Mentions légales</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="guides.title">Guides</h4>
+          <a href="/fr/alternative-airdrop" data-i18n="guides.alt">Alternative à AirDrop</a>
+          <a href="/fr/airdrop-windows" data-i18n="guides.windows">AirDrop pour Windows</a>
+          <a href="/fr/airdrop-iphone-android" data-i18n="guides.android">iPhone vers Android</a>
+          <a href="/fr/send-files-iphone-to-pc" data-i18n="guides.iphonepc">iPhone vers PC</a>
+          <a href="/fr/airdrop-linux" data-i18n="guides.linux">AirDrop pour Linux</a>
+        </div>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-rights" data-i18n="footer.rights">© 2026 Flitdrop. Tous droits réservés.</p>
+      <button class="lang-toggle" data-lang-toggle type="button">FR</button>
+    </div>
+  </footer>
+
+  <script src="/js/i18n-data.js"></script>
+  <script src="/js/i18n.js"></script>
+  <script>
+    (function () {
+      function apply() {
+        var l = window.FDI18N ? window.FDI18N.lang : 'en'
+        document.querySelectorAll('[data-en]').forEach(function (e) { e.textContent = l === 'fr' ? e.getAttribute('data-fr') : e.getAttribute('data-en') })
+      }
+      document.addEventListener('DOMContentLoaded', apply)
+      window.addEventListener('fd-lang', apply)
+    })()
+  </script>
+  <script>
+    (function () {
+      // FAQ accordion (this page does not load app.js): mirror the .expanded behaviour so answers reveal.
+      document.querySelectorAll('.faq-list details').forEach(function (d) {
+        var s = d.querySelector('summary')
+        if (!s) return
+        s.addEventListener('click', function (e) {
+          e.preventDefault()
+          var willOpen = !d.classList.contains('expanded')
+          d.parentNode.querySelectorAll('details.expanded').forEach(function (o) { o.classList.remove('expanded'); o.open = false })
+          if (willOpen) { d.classList.add('expanded'); d.open = true } else { d.open = false }
+        })
+      })
+    })()
+  </script>
+</body>
+</html>

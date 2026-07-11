@@ -1,158 +1,157 @@
-/* Prerender localized static pages from the i18n dictionaries.
+/* Prerender localized static pages.
  *
- * The landing page is authored once in English with [data-i18n] hooks. At runtime
- * the browser localizes it, but crawlers (and AI assistants that do not run JS) only
- * see the English HTML. This script bakes each target language into its own static
- * file under /<lang>/ so every language is a real, crawlable, hreflang-linked URL.
+ * Two kinds of source pages:
+ *  - the HOME page (index.html): fully [data-i18n] driven, so it is localized
+ *    straight from the shared dictionary (site/js/i18n-data.js).
+ *  - the SEO ARTICLE pages: hand-written English bodies, localized from a
+ *    per-page string map in tools/i18n/<lang>/<slug>.json (produced by the
+ *    translation workflow) applied via tools/i18n-pages.mjs, plus their
+ *    [data-i18n] nav/footer localized from the dictionary.
  *
- * It also injects reciprocal hreflang tags into the English source pages, so the
- * mapping stays in one place. Run after editing site content or translations:
+ * For every page it also injects reciprocal hreflang (en / <langs> / x-default)
+ * into the English source, sets canonical + OG per language, rewrites internal
+ * links to keep users inside their language, and writes site/<lang>/<slug>.html.
  *
- *   node tools/prerender.mjs
- *
- * Only pages whose visible content is fully driven by [data-i18n] can be prerendered
- * this way (currently the home page). Localized versions of the hand-written SEO
- * article pages come from translating their bodies, tracked separately.
+ * Run after editing content or translations:  node tools/prerender.mjs
+ * Commit the generated /<lang>/ files (Cloudflare Pages serves site/ raw).
  */
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { parse } from 'node-html-parser';
+import { applyToRoot } from './i18n-pages.mjs';
 
 const require = createRequire(import.meta.url);
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SITE = resolve(__dirname, '..', 'site');
+const ROOT = resolve(__dirname, '..');
+const SITE = resolve(ROOT, 'site');
+const TR = resolve(ROOT, 'tools', 'i18n');
 const ORIGIN = 'https://flitdrop.com';
-
 const DICT = require(resolve(SITE, 'js', 'i18n-data.js'));
 
-// Pages to localize: source (English) file -> per-language output + absolute URLs.
-const PAGES = [
-  {
-    src: 'index.html',
-    urls: { en: ORIGIN + '/', fr: ORIGIN + '/fr/', 'x-default': ORIGIN + '/' },
-    out: { fr: 'fr/index.html' },
-  },
-];
-
 const LANGS = ['fr'];
-const OG_LOCALE = { en: 'en_US', fr: 'fr_FR' };
+const OG_LOCALE = { en: 'en_US', fr: 'fr_FR', de: 'de_DE', es: 'es_ES' };
 
-function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+// slug '' = home. Article pages carry a translation map; home does not.
+const PAGES = [
+  { slug: '', src: 'index.html', mapped: false },
+  { slug: 'airdrop-windows', src: 'airdrop-windows.html', mapped: true },
+  { slug: 'airdrop-linux', src: 'airdrop-linux.html', mapped: true },
+  { slug: 'airdrop-iphone-android', src: 'airdrop-iphone-android.html', mapped: true },
+  { slug: 'send-files-iphone-to-pc', src: 'send-files-iphone-to-pc.html', mapped: true },
+  { slug: 'alternative-airdrop', src: 'alternative-airdrop.html', mapped: true },
+];
+const LOCALIZED_SLUGS = new Set(PAGES.map((p) => p.slug)); // for internal link rewriting
+
+const enUrl = (slug) => ORIGIN + '/' + slug;               // home slug '' -> https://flitdrop.com/
+const langUrl = (lang, slug) => ORIGIN + '/' + lang + '/' + (slug ? slug : '');
+const outPath = (lang, slug) => resolve(SITE, lang, slug ? slug + '.html' : 'index.html');
+
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function t(lang, key) {
   const d = DICT[lang] || {};
   return key in d ? d[key] : (DICT.en[key] != null ? DICT.en[key] : key);
 }
 
-// Build reciprocal hreflang <link> markup for a page (all langs + x-default).
-function hreflangLinks(urls) {
-  const order = ['en', ...LANGS, 'x-default'];
-  return order
-    .filter((k) => urls[k])
-    .map((k) => `<link rel="alternate" hreflang="${k}" href="${urls[k]}">`)
-    .join('\n  ');
+function hreflangBlock(slug) {
+  const rows = [`<link rel="alternate" hreflang="en" href="${enUrl(slug)}">`];
+  for (const l of LANGS) rows.push(`<link rel="alternate" hreflang="${l}" href="${langUrl(l, slug)}">`);
+  rows.push(`<link rel="alternate" hreflang="x-default" href="${enUrl(slug)}">`);
+  return rows.join('\n  ');
 }
-
-// Remove any existing alternate-hreflang links, then insert fresh ones after canonical.
-function setHreflang(root, urls) {
+function setHreflang(root, slug) {
   root.querySelectorAll('link[rel="alternate"][hreflang]').forEach((el) => el.remove());
   const canonical = root.querySelector('link[rel="canonical"]');
-  const block = hreflangLinks(urls);
+  const block = hreflangBlock(slug);
   if (canonical) canonical.insertAdjacentHTML('afterend', '\n  ' + block);
-  else root.querySelector('head').insertAdjacentHTML('beforeend', '\n  ' + block);
+  else root.querySelector('head')?.insertAdjacentHTML('beforeend', '\n  ' + block);
+}
+function setMeta(root, sel, attr, value) { const el = root.querySelector(sel); if (el) el.setAttribute(attr, value); }
+
+function localizeDataI18n(root, lang) {
+  root.querySelectorAll('[data-i18n]').forEach((el) => el.set_content(esc(t(lang, el.getAttribute('data-i18n')))));
+  root.querySelectorAll('[data-i18n-html]').forEach((el) => el.set_content(t(lang, el.getAttribute('data-i18n-html'))));
+  root.querySelectorAll('[data-i18n-aria]').forEach((el) => el.setAttribute('aria-label', t(lang, el.getAttribute('data-i18n-aria'))));
 }
 
-function setMeta(root, sel, attr, value) {
-  const el = root.querySelector(sel);
-  if (el) el.setAttribute(attr, value);
-}
-
-// Rebuild the FAQPage node of a JSON-LD @graph in the target language, and localize
-// the SoftwareApplication description, so structured data matches visible content.
-function localizeJsonLd(root, lang) {
-  const scripts = root.querySelectorAll('script[type="application/ld+json"]');
-  for (const s of scripts) {
-    let data;
-    try { data = JSON.parse(s.text); } catch { continue; }
+// Home JSON-LD: rebuild FAQ + description from the dictionary in the target language.
+function localizeJsonLdFromDict(root, lang) {
+  root.querySelectorAll('script[type="application/ld+json"]').forEach((s) => {
+    let data; try { data = JSON.parse(s.text); } catch { return; }
     const graph = Array.isArray(data['@graph']) ? data['@graph'] : [data];
     for (const node of graph) {
       if (node['@type'] === 'FAQPage' && Array.isArray(node.mainEntity)) {
         const items = [];
-        for (let i = 1; ('faq.q' + i) in DICT.en; i++) {
-          items.push({
-            '@type': 'Question',
-            name: t(lang, 'faq.q' + i),
-            acceptedAnswer: { '@type': 'Answer', text: t(lang, 'faq.a' + i) },
-          });
-        }
+        for (let i = 1; ('faq.q' + i) in DICT.en; i++) items.push({ '@type': 'Question', name: t(lang, 'faq.q' + i), acceptedAnswer: { '@type': 'Answer', text: t(lang, 'faq.a' + i) } });
         if (items.length) node.mainEntity = items;
       }
       if (node['@type'] === 'SoftwareApplication') node.description = t(lang, 'meta.desc');
       if (node['@type'] === 'WebSite') node.inLanguage = [lang];
     }
     s.set_content('\n  ' + JSON.stringify(data, null, 2).replace(/\n/g, '\n  ') + '\n  ');
-  }
+  });
 }
 
-function localizeText(root, lang) {
-  root.querySelectorAll('[data-i18n]').forEach((el) => { el.set_content(esc(t(lang, el.getAttribute('data-i18n')))); });
-  root.querySelectorAll('[data-i18n-html]').forEach((el) => { el.set_content(t(lang, el.getAttribute('data-i18n-html'))); });
-  root.querySelectorAll('[data-i18n-aria]').forEach((el) => { el.setAttribute('aria-label', t(lang, el.getAttribute('data-i18n-aria'))); });
+// Rewrite root-relative links to localized pages so users stay in-language.
+function rewriteInternalLinks(root, lang) {
+  root.querySelectorAll('a[href]').forEach((a) => {
+    const href = a.getAttribute('href');
+    if (href === '/') { a.setAttribute('href', '/' + lang + '/'); return; }
+    const m = /^\/([a-z0-9-]+)$/.exec(href);
+    if (m && LOCALIZED_SLUGS.has(m[1])) a.setAttribute('href', '/' + lang + '/' + m[1]);
+  });
 }
 
-function ensureDoctype(html) {
-  return /^\s*<!doctype/i.test(html) ? html : '<!doctype html>\n' + html;
-}
+function ensureDoctype(html) { return /^\s*<!doctype/i.test(html) ? html : '<!doctype html>\n' + html; }
 
 let generated = 0;
 for (const page of PAGES) {
   const srcHtml = readFileSync(resolve(SITE, page.src), 'utf8');
 
-  // 1) inject hreflang into the English source (idempotent) and save it back
+  // inject hreflang into the English source (idempotent)
   {
     const root = parse(srcHtml, { comment: true });
-    setHreflang(root, page.urls);
+    setHreflang(root, page.slug);
     writeFileSync(resolve(SITE, page.src), ensureDoctype(root.toString()));
   }
 
-  // 2) generate each localized page
   for (const lang of LANGS) {
-    const outRel = page.out[lang];
-    if (!outRel) continue;
     const root = parse(srcHtml, { comment: true });
-
     root.querySelector('html')?.setAttribute('lang', lang);
-    setMeta(root, 'link[rel="canonical"]', 'href', page.urls[lang]);
-    setHreflang(root, page.urls);
 
-    // localized <title> + description
-    const titleEl = root.querySelector('title');
-    if (titleEl) titleEl.set_content(esc(t(lang, 'meta.title')));
-    setMeta(root, 'meta[name="description"]', 'content', t(lang, 'meta.desc'));
-
-    // Open Graph + Twitter
-    setMeta(root, 'meta[property="og:url"]', 'content', page.urls[lang]);
-    setMeta(root, 'meta[property="og:title"]', 'content', t(lang, 'meta.title'));
-    setMeta(root, 'meta[property="og:description"]', 'content', t(lang, 'meta.desc'));
+    // head: canonical + hreflang + OG url/locale
+    setMeta(root, 'link[rel="canonical"]', 'href', langUrl(lang, page.slug));
+    setHreflang(root, page.slug);
+    setMeta(root, 'meta[property="og:url"]', 'content', langUrl(lang, page.slug));
     setMeta(root, 'meta[property="og:locale"]', 'content', OG_LOCALE[lang] || lang);
     setMeta(root, 'meta[property="og:locale:alternate"]', 'content', OG_LOCALE.en);
-    setMeta(root, 'meta[name="twitter:title"]', 'content', t(lang, 'meta.title'));
-    setMeta(root, 'meta[name="twitter:description"]', 'content', t(lang, 'meta.desc'));
 
-    // keep users inside the language: home link -> localized home
-    root.querySelectorAll('a[href="/"]').forEach((a) => a.setAttribute('href', '/' + lang + '/'));
+    if (page.mapped) {
+      const mapFile = resolve(TR, lang, page.slug + '.json');
+      if (!existsSync(mapFile)) { console.warn('SKIP', lang, page.slug, '(no translation map at', mapFile + ')'); continue; }
+      const translations = JSON.parse(readFileSync(mapFile, 'utf8'));
+      applyToRoot(root, translations);   // title, meta, body text, JSON-LD from the map
+      localizeDataI18n(root, lang);       // nav/footer etc. from the dictionary
+      rewriteInternalLinks(root, lang);
+    } else {
+      // home: dictionary-driven
+      const titleEl = root.querySelector('title'); if (titleEl) titleEl.set_content(esc(t(lang, 'meta.title')));
+      setMeta(root, 'meta[name="description"]', 'content', t(lang, 'meta.desc'));
+      setMeta(root, 'meta[property="og:title"]', 'content', t(lang, 'meta.title'));
+      setMeta(root, 'meta[property="og:description"]', 'content', t(lang, 'meta.desc'));
+      setMeta(root, 'meta[name="twitter:title"]', 'content', t(lang, 'meta.title'));
+      setMeta(root, 'meta[name="twitter:description"]', 'content', t(lang, 'meta.desc'));
+      localizeDataI18n(root, lang);
+      localizeJsonLdFromDict(root, lang);
+      rewriteInternalLinks(root, lang);
+    }
 
-    localizeText(root, lang);
-    localizeJsonLd(root, lang);
-
-    const outAbs = resolve(SITE, outRel);
-    mkdirSync(dirname(outAbs), { recursive: true });
-    writeFileSync(outAbs, ensureDoctype(root.toString()));
+    const out = outPath(lang, page.slug);
+    mkdirSync(dirname(out), { recursive: true });
+    writeFileSync(out, ensureDoctype(root.toString()));
     generated++;
-    console.log('generated', outRel, '<-', page.src, '[' + lang + ']');
+    console.log('generated', out.replace(SITE + '/', ''), '[' + lang + ']');
   }
 }
 console.log('done:', generated, 'localized page(s)');
