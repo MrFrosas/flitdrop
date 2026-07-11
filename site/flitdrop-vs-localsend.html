@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Flitdrop vs LocalSend: Which Local File Transfer Wins? | Flitdrop</title>
+  <meta name="description" content="Flitdrop vs LocalSend, compared fairly. LocalSend is open source and cross-platform but needs an app on every device including the iPhone. Flitdrop needs nothing on the phone, adds folders and clipboard, and is a persistent desktop app.">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="author" content="Flitdrop">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+
+  <!-- PostHog product analytics: cookieless (memory = zero device storage, no banner needed), no session recording, US-hosted, client IP discarded server-side -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_Bex8SoGTP3KQyVriFMzVChHugFgtkF6LYmjgJbYi6min',{api_host:'https://us.i.posthog.com',persistence:'memory',person_profiles:'identified_only',disable_session_recording:true,capture_pageview:true,autocapture:true});
+  </script>
+
+  <link rel="canonical" href="https://flitdrop.com/flitdrop-vs-localsend">
+  <link rel="alternate" hreflang="en" href="https://flitdrop.com/flitdrop-vs-localsend">
+  <link rel="alternate" hreflang="fr" href="https://flitdrop.com/fr/flitdrop-vs-localsend">
+  <link rel="alternate" hreflang="x-default" href="https://flitdrop.com/flitdrop-vs-localsend">
+
+  <link rel="icon" href="/assets/icon.svg">
+  <link rel="apple-touch-icon" href="/assets/icon-512.png">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Flitdrop">
+  <meta property="og:title" content="Flitdrop vs LocalSend: Which Local File Transfer Wins?">
+  <meta property="og:description" content="Flitdrop vs LocalSend, compared fairly. LocalSend is open source and cross-platform but needs an app on every device including the iPhone. Flitdrop needs nothing on the phone, adds folders and clipboard, and is a persistent desktop app.">
+  <meta property="og:url" content="https://flitdrop.com/flitdrop-vs-localsend">
+  <meta property="og:image" content="https://flitdrop.com/assets/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Flitdrop vs LocalSend compared">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="fr_FR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Flitdrop vs LocalSend: Which Local File Transfer Wins?">
+  <meta name="twitter:description" content="Flitdrop vs LocalSend, compared fairly. LocalSend is open source and cross-platform but needs an app on every device including the iPhone. Flitdrop needs nothing on the phone, adds folders and clipboard, and is a persistent desktop app.">
+  <meta name="twitter:image" content="https://flitdrop.com/assets/og.jpg">
+
+  <link rel="stylesheet" href="/style.css">
+
+  <script async src="/js/analytics.js"></script>
+  <script defer src="/js/i18n-data.js"></script>
+  <script defer src="/js/i18n.js"></script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "TechArticle",
+        "headline": "Flitdrop vs LocalSend: Which Local File Transfer Wins?",
+        "description": "Flitdrop vs LocalSend, compared fairly. LocalSend is open source and cross-platform but needs an app on every device including the iPhone. Flitdrop needs nothing on the phone, adds folders and clipboard, and is a persistent desktop app.",
+        "inLanguage": "en",
+        "url": "https://flitdrop.com/flitdrop-vs-localsend",
+        "mainEntityOfPage": "https://flitdrop.com/flitdrop-vs-localsend",
+        "image": "https://flitdrop.com/assets/og.jpg",
+        "author": { "@type": "Organization", "name": "Flitdrop", "url": "https://flitdrop.com/" },
+        "publisher": { "@type": "Organization", "name": "Flitdrop", "url": "https://flitdrop.com/", "logo": { "@type": "ImageObject", "url": "https://flitdrop.com/assets/icon-512.png" } }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "What is the difference between Flitdrop and LocalSend?", "acceptedAnswer": { "@type": "Answer", "text": "Both keep transfers on your local Wi-Fi with no account, so they are close on privacy. The core difference is setup and reach: LocalSend is open source and asks you to install its app on every device, including the phone, and finds devices with mDNS. Flitdrop needs nothing on the phone beyond a one time QR scan, is a persistent desktop app, and also moves whole folders and the clipboard, not just files." } },
+          { "@type": "Question", "name": "Does LocalSend need an app on the iPhone?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. LocalSend is an installed app, so to use it on an iPhone you download it from the App Store on that iPhone, and you do the same on every other device you want to share with. Flitdrop takes a different route: the iPhone installs nothing and simply uses its browser after you scan a QR code once, so only the computer runs an app." } },
+          { "@type": "Question", "name": "Why does LocalSend not find my iPhone?", "acceptedAnswer": { "@type": "Answer", "text": "LocalSend discovers devices with mDNS, the same local network broadcast that many routers, guest networks and stricter iOS privacy settings quietly block, so an iPhone can be on the same Wi-Fi yet stay invisible. Flitdrop avoids the problem because there is no discovery to break: you scan a QR code once to pair the phone directly to the desktop app." } },
+          { "@type": "Question", "name": "Is Flitdrop open source?", "acceptedAnswer": { "@type": "Answer", "text": "No. Flitdrop is source available, which means anyone can read the code to see how the sharing works, but it is not open source the way LocalSend is. If a fully open source licence is a hard requirement for you, LocalSend is the honest pick on that specific point." } },
+          { "@type": "Question", "name": "Are both free and private?", "acceptedAnswer": { "@type": "Answer", "text": "Yes to both. Neither asks for an account, neither shows ads, and both keep transfers on your local network rather than routing them through a server. LocalSend is free and open source; Flitdrop is free for local transfers on your own network and is source available. For sensitive files, both are strong local first choices." } },
+          { "@type": "Question", "name": "Which should I choose?", "acceptedAnswer": { "@type": "Answer", "text": "Choose LocalSend if a fully open source licence matters most to you and you are happy installing its app on every device, including each phone. Choose Flitdrop if you want nothing to install on the phone, a desktop app that stays discoverable in the background, folder and clipboard transfers, and no dependence on mDNS discovery that can fail on iPhone." } }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://flitdrop.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Flitdrop vs LocalSend", "item": "https://flitdrop.com/flitdrop-vs-localsend" }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="bg-aurora"></div>
+    <div class="bg-grain"></div>
+  </div>
+
+  <header class="nav" id="nav">
+    <a class="brand" href="/" aria-label="Flitdrop">
+      <img src="/assets/icon.svg" alt="" width="30" height="30">
+      <span>Flitdrop</span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="/#steps" data-i18n="nav.how">How it works</a>
+      <a href="/#compare" data-i18n="nav.compare">Comparison</a>
+      <a href="/#security" data-i18n="nav.security">Security</a>
+    </nav>
+    <div class="nav-right">
+      <button class="lang-toggle" id="langToggle" type="button">FR</button>
+      <a class="btn btn-primary btn-sm" href="/#download" data-i18n="nav.download">Download</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="section" id="top" style="padding-top:132px">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="Flitdrop vs LocalSend" data-fr="Flitdrop vs LocalSend">Flitdrop vs LocalSend</p>
+        <h1 class="display" data-en="Flitdrop vs LocalSend: Which Local File Transfer Wins?" data-fr="Flitdrop vs LocalSend : quel transfert de fichiers local l'emporte ?">Flitdrop vs LocalSend: Which Local File Transfer Wins?</h1>
+        <p class="lead" data-en="LocalSend is open source, cross-platform and well liked, and it keeps every transfer on your own network. Flitdrop shares the same local, no account approach but needs nothing on the phone, adds folders and clipboard, and stays a persistent desktop app. Here is a fair head-to-head." data-fr="LocalSend est open source, multiplateforme et apprécié, et il garde chaque transfert sur votre propre réseau. Flitdrop partage la même approche locale et sans compte, mais ne demande rien sur le téléphone, ajoute les dossiers et le presse-papiers, et reste une application de bureau permanente. Voici un face-à-face loyal.">LocalSend is open source, cross-platform and well liked, and it keeps every transfer on your own network. Flitdrop shares the same local, no account approach but needs nothing on the phone, adds folders and clipboard, and stays a persistent desktop app. Here is a fair head-to-head.</p>
+        <div class="hero-cta reveal" style="justify-content:center;margin-top:26px">
+          <a class="btn btn-primary btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v9.5"></path><path d="M8.5 9.5 12 13l3.5-3.5"></path><path d="M5 15.5v2.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-2.5"></path></svg>
+            <span data-en="Download Flitdrop" data-fr="Télécharger Flitdrop">Download Flitdrop</span>
+          </a>
+          <a class="btn btn-ghost btn-lg" href="/" data-en="See how it works" data-fr="Voir comment ça marche">See how it works</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- INTRO: direct answer -->
+    <section class="section" id="answer" style="padding-top:0">
+      <div class="section-head reveal">
+        <p class="section-sub" data-en="Short answer: both are free, private and local, so neither is a bad choice. LocalSend wins on being fully open source and truly installed on every device. Flitdrop wins on convenience: it needs nothing on the phone, has no mDNS discovery to fail on iPhone, moves folders and the clipboard, and stays a real desktop app in the background. Pick LocalSend for an open source licence on every device, Flitdrop for the least friction on a mixed set of phones and computers." data-fr="Réponse courte : les deux sont gratuits, privés et locaux, donc aucun n'est un mauvais choix. LocalSend l'emporte sur l'aspect entièrement open source et véritablement installé sur chaque appareil. Flitdrop l'emporte sur la simplicité : il ne demande rien sur le téléphone, n'a pas de découverte mDNS qui échoue sur iPhone, déplace les dossiers et le presse-papiers, et reste une vraie application de bureau en arrière-plan. Choisissez LocalSend pour une licence open source sur chaque appareil, Flitdrop pour le moins de friction sur un ensemble varié de téléphones et d'ordinateurs.">Short answer: both are free, private and local, so neither is a bad choice. LocalSend wins on being fully open source and truly installed on every device. Flitdrop wins on convenience: it needs nothing on the phone, has no mDNS discovery to fail on iPhone, moves folders and the clipboard, and stays a real desktop app in the background. Pick LocalSend for an open source licence on every device, Flitdrop for the least friction on a mixed set of phones and computers.</p>
+      </div>
+    </section>
+
+    <!-- HEAD TO HEAD: fair comparison, cards -->
+    <section class="section ground" id="compare">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="Head to head" data-fr="Face à face">Head to head</p>
+        <h2 data-en="Flitdrop vs LocalSend, Point by Point" data-fr="Flitdrop vs LocalSend, point par point">Flitdrop vs LocalSend, Point by Point</h2>
+        <p class="section-sub" data-en="Four honest criteria that separate them. LocalSend is genuinely good, so this shows where each one leads." data-fr="Quatre critères honnêtes qui les distinguent. LocalSend est vraiment bon, voici donc là où chacun mène.">Four honest criteria that separate them. LocalSend is genuinely good, so this shows where each one leads.</p>
+      </div>
+      <ul class="steps-grid">
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">1</span>
+          <h3 data-en="What you install" data-fr="Ce que vous installez">What you install</h3>
+          <p data-en="LocalSend is an installed app on every device, including each iPhone and Android, which is simple but means a download per phone. Flitdrop installs only on the computer; the phone uses its browser after a one time QR scan, so there is nothing to install on the phone." data-fr="LocalSend est une application installée sur chaque appareil, y compris chaque iPhone et Android, ce qui est simple mais impose un téléchargement par téléphone. Flitdrop ne s'installe que sur l'ordinateur ; le téléphone utilise son navigateur après un scan de QR code unique, il n'y a donc rien à installer sur le téléphone.">LocalSend is an installed app on every device, including each iPhone and Android, which is simple but means a download per phone. Flitdrop installs only on the computer; the phone uses its browser after a one time QR scan, so there is nothing to install on the phone.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">2</span>
+          <h3 data-en="Finding devices" data-fr="Trouver les appareils">Finding devices</h3>
+          <p data-en="LocalSend discovers devices with mDNS, which works well on many networks but is often blocked by routers, guest Wi-Fi and stricter iOS settings, so an iPhone can stay invisible. Flitdrop has no discovery to break: the QR scan pairs the phone directly to the desktop app." data-fr="LocalSend découvre les appareils avec mDNS, ce qui marche bien sur de nombreux réseaux mais est souvent bloqué par les routeurs, le Wi-Fi invité et les réglages iOS plus stricts, si bien qu'un iPhone peut rester invisible. Flitdrop n'a pas de découverte à casser : le scan du QR code appaire le téléphone directement à l'application de bureau.">LocalSend discovers devices with mDNS, which works well on many networks but is often blocked by routers, guest Wi-Fi and stricter iOS settings, so an iPhone can stay invisible. Flitdrop has no discovery to break: the QR scan pairs the phone directly to the desktop app.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">3</span>
+          <h3 data-en="What you can send" data-fr="Ce que vous pouvez envoyer">What you can send</h3>
+          <p data-en="LocalSend sends files and photos between devices reliably. Flitdrop covers the same and adds whole folders and the clipboard both ways, so pasting a snippet or moving a project folder is part of the flow, not a workaround." data-fr="LocalSend envoie fichiers et photos entre appareils de façon fiable. Flitdrop couvre la même chose et ajoute les dossiers entiers et le presse-papiers dans les deux sens, si bien que coller un extrait ou déplacer un dossier de projet fait partie du flux, et non d'un contournement.">LocalSend sends files and photos between devices reliably. Flitdrop covers the same and adds whole folders and the clipboard both ways, so pasting a snippet or moving a project folder is part of the flow, not a workaround.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">4</span>
+          <h3 data-en="Open source vs source available" data-fr="Open source vs source available">Open source vs source available</h3>
+          <p data-en="This is LocalSend's clear win: it is fully open source, so you can build, fork and audit it freely. Flitdrop is source available, meaning the code is readable but not open source. On licence alone, LocalSend is the honest pick." data-fr="C'est la victoire nette de LocalSend : il est entièrement open source, donc vous pouvez le compiler, le forker et l'auditer librement. Flitdrop est source available, ce qui veut dire que le code est lisible mais pas open source. Sur la licence seule, LocalSend est le choix honnête.">This is LocalSend's clear win: it is fully open source, so you can build, fork and audit it freely. Flitdrop is source available, meaning the code is readable but not open source. On licence alone, LocalSend is the honest pick.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- WHEN TO USE EACH -->
+    <section class="section" id="whicheach">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="When to use each" data-fr="Quand utiliser chacun">When to use each</p>
+        <h2 data-en="Which One Fits Your Setup" data-fr="Lequel convient à votre installation">Which One Fits Your Setup</h2>
+        <p class="section-sub" data-en="Neither wins on every point. Match the tool to what you value: an open source licence on every device, or the least friction across mixed phones and computers." data-fr="Aucun ne gagne sur tous les points. Choisissez l'outil selon ce qui compte pour vous : une licence open source sur chaque appareil, ou le moins de friction entre téléphones et ordinateurs variés.">Neither wins on every point. Match the tool to what you value: an open source licence on every device, or the least friction across mixed phones and computers.</p>
+      </div>
+      <ul class="steps-grid">
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">1</span>
+          <h3 data-en="Choose LocalSend when" data-fr="Choisissez LocalSend quand">Choose LocalSend when</h3>
+          <p data-en="A fully open source licence is a hard requirement, you are happy installing an app on every device, and your network lets mDNS discovery work. It is a genuinely good, trusted local tool for that case." data-fr="Une licence entièrement open source est une exigence stricte, vous acceptez d'installer une application sur chaque appareil, et votre réseau laisse fonctionner la découverte mDNS. C'est un outil local vraiment bon et fiable dans ce cas.">A fully open source licence is a hard requirement, you are happy installing an app on every device, and your network lets mDNS discovery work. It is a genuinely good, trusted local tool for that case.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">2</span>
+          <h3 data-en="Choose Flitdrop when" data-fr="Choisissez Flitdrop quand">Choose Flitdrop when</h3>
+          <p data-en="You want nothing to install on the phone, no discovery to fail on iPhone, folder and clipboard transfers, and a desktop app that stays discoverable in the background so the phone can send whenever you are on the same Wi-Fi." data-fr="Vous ne voulez rien à installer sur le téléphone, pas de découverte qui échoue sur iPhone, des transferts de dossiers et de presse-papiers, et une application de bureau qui reste détectable en arrière-plan pour que le téléphone envoie dès que vous êtes sur le même Wi-Fi.">You want nothing to install on the phone, no discovery to fail on iPhone, folder and clipboard transfers, and a desktop app that stays discoverable in the background so the phone can send whenever you are on the same Wi-Fi.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num" aria-hidden="true">3</span>
+          <h3 data-en="Where they tie" data-fr="Là où ils sont à égalité">Where they tie</h3>
+          <p data-en="Both are free, ad free and account free, and both keep transfers on your local network rather than a server. For privacy on sensitive files, either one is a strong local first choice you can trust." data-fr="Les deux sont gratuits, sans publicité et sans compte, et tous deux gardent les transferts sur votre réseau local plutôt que sur un serveur. Pour la confidentialité des fichiers sensibles, l'un comme l'autre est un choix local d'abord fiable.">Both are free, ad free and account free, and both keep transfers on your local network rather than a server. For privacy on sensitive files, either one is a strong local first choice you can trust.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- HOW IT WORKS: 3 steps -->
+    <section class="section ground" id="steps">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="Getting started" data-fr="Pour commencer">Getting started</p>
+        <h2 data-en="How Flitdrop Works" data-fr="Comment fonctionne Flitdrop">How Flitdrop Works</h2>
+        <p class="section-sub" data-en="Install the app on your computer once, pair your phone with a single scan, then send over your Wi-Fi." data-fr="Installez l'appli une fois sur votre ordinateur, appairez votre téléphone d'un seul scan, puis envoyez via votre Wi-Fi.">Install the app on your computer once, pair your phone with a single scan, then send over your Wi-Fi.</p>
+      </div>
+      <ol class="steps-grid">
+        <li class="step-card reveal">
+          <span class="step-num">1</span>
+          <h3 data-en="Install on your computer" data-fr="Installez sur votre ordinateur">Install on your computer</h3>
+          <p data-en="Install the lightweight Flitdrop app once on Windows, Mac or Linux; it auto updates and there is nothing to install on the phone." data-fr="Installez l'appli légère Flitdrop une fois sur Windows, Mac ou Linux ; elle se met à jour toute seule et il n'y a rien à installer sur le téléphone.">Install the lightweight Flitdrop app once on Windows, Mac or Linux; it auto updates and there is nothing to install on the phone.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num">2</span>
+          <h3 data-en="Scan once to pair" data-fr="Scannez une fois pour appairer">Scan once to pair</h3>
+          <p data-en="Scan a QR code one time to pair your iPhone or Android; the phone simply uses its browser as a lightweight web app, with no mDNS discovery to fail." data-fr="Scannez un QR code une seule fois pour appairer votre iPhone ou Android ; le téléphone utilise simplement son navigateur comme une appli web légère, sans découverte mDNS qui échoue.">Scan a QR code one time to pair your iPhone or Android; the phone simply uses its browser as a lightweight web app, with no mDNS discovery to fail.</p>
+        </li>
+        <li class="step-card reveal">
+          <span class="step-num">3</span>
+          <h3 data-en="Send over your Wi-Fi" data-fr="Envoyez via votre Wi-Fi">Send over your Wi-Fi</h3>
+          <p data-en="Both devices stay on the same local Wi-Fi and transfer peer to peer, so files, folders and the clipboard move fast and stay off the cloud." data-fr="Les deux appareils restent sur le même Wi-Fi local et le transfert se fait en direct, donc fichiers, dossiers et presse-papiers partent vite et ne passent pas par le cloud.">Both devices stay on the same local Wi-Fi and transfer peer to peer, so files, folders and the clipboard move fast and stay off the cloud.</p>
+        </li>
+      </ol>
+      <p class="cmp-note reveal" data-en="Everything is end to end encrypted, with no account to create and privacy first by design, exactly like LocalSend on that point." data-fr="Tout est chiffré de bout en bout, sans compte à créer et avec le respect de la vie privée par conception, exactement comme LocalSend sur ce point.">Everything is end to end encrypted, with no account to create and privacy first by design, exactly like LocalSend on that point.</p>
+    </section>
+
+    <!-- TRUST NOTE -->
+    <section class="section" id="security">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="Private by design" data-fr="Privé par conception">Private by design</p>
+        <h2 data-en="Both Keep Files on Your Wi-Fi" data-fr="Les deux gardent vos fichiers sur votre Wi-Fi">Both Keep Files on Your Wi-Fi</h2>
+        <p class="section-sub" data-en="On privacy the two are close. Flitdrop is not an internet or cloud service: transfers go directly device to device over your local Wi-Fi, everything is end to end encrypted, and there is no account, so nothing is ever uploaded to a server. LocalSend works the same local first way." data-fr="Sur la confidentialité, les deux sont proches. Flitdrop n'est ni un service internet ni un service cloud : les transferts vont directement d'un appareil à l'autre sur votre Wi-Fi local, tout est chiffré de bout en bout, et il n'y a pas de compte, donc rien n'est jamais envoyé vers un serveur. LocalSend fonctionne de la même manière, local d'abord.">On privacy the two are close. Flitdrop is not an internet or cloud service: transfers go directly device to device over your local Wi-Fi, everything is end to end encrypted, and there is no account, so nothing is ever uploaded to a server. LocalSend works the same local first way.</p>
+      </div>
+      <p class="cmp-note reveal" data-en="Flitdrop is source available, so anyone can inspect how the sharing works, while LocalSend is fully open source; both stay free for local transfers on your own network." data-fr="Flitdrop est source available : chacun peut vérifier comment le partage fonctionne, tandis que LocalSend est entièrement open source ; les deux restent gratuits pour les transferts locaux sur votre propre réseau.">Flitdrop is source available, so anyone can inspect how the sharing works, while LocalSend is fully open source; both stay free for local transfers on your own network.</p>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section faq ground" id="faq">
+      <div class="section-head reveal">
+        <h2 data-en="Frequently asked" data-fr="Questions fréquentes">Frequently asked</h2>
+      </div>
+      <div class="faq-list reveal">
+        <details>
+          <summary data-en="What is the difference between Flitdrop and LocalSend?" data-fr="Quelle est la différence entre Flitdrop et LocalSend ?">What is the difference between Flitdrop and LocalSend?</summary>
+          <p data-en="Both keep transfers on your local Wi-Fi with no account, so they are close on privacy. The core difference is setup and reach: LocalSend is open source and asks you to install its app on every device, including the phone, and finds devices with mDNS. Flitdrop needs nothing on the phone beyond a one time QR scan, is a persistent desktop app, and also moves whole folders and the clipboard, not just files." data-fr="Les deux gardent les transferts sur votre Wi-Fi local sans compte, ils sont donc proches sur la confidentialité. La différence de fond porte sur l'installation et la portée : LocalSend est open source et demande d'installer son appli sur chaque appareil, y compris le téléphone, et trouve les appareils avec mDNS. Flitdrop ne demande rien sur le téléphone au-delà d'un scan de QR code unique, c'est une application de bureau permanente, et il déplace aussi des dossiers entiers et le presse-papiers, pas seulement des fichiers.">Both keep transfers on your local Wi-Fi with no account, so they are close on privacy. The core difference is setup and reach: LocalSend is open source and asks you to install its app on every device, including the phone, and finds devices with mDNS. Flitdrop needs nothing on the phone beyond a one time QR scan, is a persistent desktop app, and also moves whole folders and the clipboard, not just files.</p>
+        </details>
+        <details>
+          <summary data-en="Does LocalSend need an app on the iPhone?" data-fr="LocalSend a-t-il besoin d'une appli sur l'iPhone ?">Does LocalSend need an app on the iPhone?</summary>
+          <p data-en="Yes. LocalSend is an installed app, so to use it on an iPhone you download it from the App Store on that iPhone, and you do the same on every other device you want to share with. Flitdrop takes a different route: the iPhone installs nothing and simply uses its browser after you scan a QR code once, so only the computer runs an app." data-fr="Oui. LocalSend est une application installée : pour l'utiliser sur un iPhone, vous le téléchargez depuis l'App Store sur cet iPhone, et vous faites de même sur chaque autre appareil avec lequel vous voulez partager. Flitdrop suit une autre voie : l'iPhone n'installe rien et utilise simplement son navigateur après un scan de QR code unique, donc seul l'ordinateur exécute une application.">Yes. LocalSend is an installed app, so to use it on an iPhone you download it from the App Store on that iPhone, and you do the same on every other device you want to share with. Flitdrop takes a different route: the iPhone installs nothing and simply uses its browser after you scan a QR code once, so only the computer runs an app.</p>
+        </details>
+        <details>
+          <summary data-en="Why does LocalSend not find my iPhone?" data-fr="Pourquoi LocalSend ne trouve-t-il pas mon iPhone ?">Why does LocalSend not find my iPhone?</summary>
+          <p data-en="LocalSend discovers devices with mDNS, the same local network broadcast that many routers, guest networks and stricter iOS privacy settings quietly block, so an iPhone can be on the same Wi-Fi yet stay invisible. Flitdrop avoids the problem because there is no discovery to break: you scan a QR code once to pair the phone directly to the desktop app." data-fr="LocalSend découvre les appareils avec mDNS, la diffusion réseau locale que de nombreux routeurs, réseaux invités et réglages iOS plus stricts bloquent discrètement, si bien qu'un iPhone peut être sur le même Wi-Fi tout en restant invisible. Flitdrop évite le problème car il n'y a pas de découverte à casser : vous scannez un QR code une fois pour appairer le téléphone directement à l'application de bureau.">LocalSend discovers devices with mDNS, the same local network broadcast that many routers, guest networks and stricter iOS privacy settings quietly block, so an iPhone can be on the same Wi-Fi yet stay invisible. Flitdrop avoids the problem because there is no discovery to break: you scan a QR code once to pair the phone directly to the desktop app.</p>
+        </details>
+        <details>
+          <summary data-en="Is Flitdrop open source?" data-fr="Flitdrop est-il open source ?">Is Flitdrop open source?</summary>
+          <p data-en="No. Flitdrop is source available, which means anyone can read the code to see how the sharing works, but it is not open source the way LocalSend is. If a fully open source licence is a hard requirement for you, LocalSend is the honest pick on that specific point." data-fr="Non. Flitdrop est source available, ce qui signifie que chacun peut lire le code pour voir comment le partage fonctionne, mais il n'est pas open source comme l'est LocalSend. Si une licence entièrement open source est une exigence stricte pour vous, LocalSend est le choix honnête sur ce point précis.">No. Flitdrop is source available, which means anyone can read the code to see how the sharing works, but it is not open source the way LocalSend is. If a fully open source licence is a hard requirement for you, LocalSend is the honest pick on that specific point.</p>
+        </details>
+        <details>
+          <summary data-en="Are both free and private?" data-fr="Les deux sont-ils gratuits et privés ?">Are both free and private?</summary>
+          <p data-en="Yes to both. Neither asks for an account, neither shows ads, and both keep transfers on your local network rather than routing them through a server. LocalSend is free and open source; Flitdrop is free for local transfers on your own network and is source available. For sensitive files, both are strong local first choices." data-fr="Oui aux deux. Aucun ne demande de compte, aucun n'affiche de publicité, et tous deux gardent les transferts sur votre réseau local plutôt que de les faire passer par un serveur. LocalSend est gratuit et open source ; Flitdrop est gratuit pour les transferts locaux sur votre propre réseau et il est source available. Pour les fichiers sensibles, les deux sont de solides choix locaux d'abord.">Yes to both. Neither asks for an account, neither shows ads, and both keep transfers on your local network rather than routing them through a server. LocalSend is free and open source; Flitdrop is free for local transfers on your own network and is source available. For sensitive files, both are strong local first choices.</p>
+        </details>
+        <details>
+          <summary data-en="Which should I choose?" data-fr="Lequel devrais-je choisir ?">Which should I choose?</summary>
+          <p data-en="Choose LocalSend if a fully open source licence matters most to you and you are happy installing its app on every device, including each phone. Choose Flitdrop if you want nothing to install on the phone, a desktop app that stays discoverable in the background, folder and clipboard transfers, and no dependence on mDNS discovery that can fail on iPhone." data-fr="Choisissez LocalSend si une licence entièrement open source compte le plus pour vous et que vous acceptez d'installer son appli sur chaque appareil, y compris chaque téléphone. Choisissez Flitdrop si vous ne voulez rien à installer sur le téléphone, une application de bureau qui reste détectable en arrière-plan, des transferts de dossiers et de presse-papiers, et aucune dépendance à la découverte mDNS qui peut échouer sur iPhone.">Choose LocalSend if a fully open source licence matters most to you and you are happy installing its app on every device, including each phone. Choose Flitdrop if you want nothing to install on the phone, a desktop app that stays discoverable in the background, folder and clipboard transfers, and no dependence on mDNS discovery that can fail on iPhone.</p>
+        </details>
+      </div>
+    </section>
+
+    <!-- RELATED -->
+    <section class="section" id="related">
+      <div class="section-head reveal">
+        <p class="eyebrow" data-en="Keep reading" data-fr="À lire ensuite">Keep reading</p>
+        <h2 data-en="Related guides" data-fr="Guides liés">Related guides</h2>
+      </div>
+      <ul class="steps-grid reveal">
+        <li class="step-card">
+          <h3><a href="/best-airdrop-alternatives" data-en="Best AirDrop alternatives" data-fr="Les meilleures alternatives à AirDrop">Best AirDrop alternatives</a></h3>
+          <p data-en="An honest comparison of Flitdrop, LocalSend, PairDrop, Send Anywhere, Quick Share and more." data-fr="Une comparaison honnête de Flitdrop, LocalSend, PairDrop, Send Anywhere, Quick Share et d'autres.">An honest comparison of Flitdrop, LocalSend, PairDrop, Send Anywhere, Quick Share and more.</p>
+        </li>
+        <li class="step-card">
+          <h3><a href="/alternative-airdrop" data-en="The best AirDrop alternative" data-fr="La meilleure alternative à AirDrop">The best AirDrop alternative</a></h3>
+          <p data-en="One free tool that sends between iPhone, Android, Windows, Mac and Linux, in every direction." data-fr="Un outil gratuit qui envoie entre iPhone, Android, Windows, Mac et Linux, dans tous les sens.">One free tool that sends between iPhone, Android, Windows, Mac and Linux, in every direction.</p>
+        </li>
+        <li class="step-card">
+          <h3><a href="/snapdrop-alternative" data-en="A private Snapdrop alternative" data-fr="Une alternative privée à Snapdrop">A private Snapdrop alternative</a></h3>
+          <p data-en="A private, cross platform replacement for Snapdrop that keeps every file on your local Wi-Fi." data-fr="Un remplaçant privé et multiplateforme de Snapdrop qui garde chaque fichier sur votre Wi-Fi local.">A private, cross platform replacement for Snapdrop that keeps every file on your local Wi-Fi.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- DOWNLOAD CTA -->
+    <section class="section download" id="download">
+      <div class="dl-card reveal">
+        <div class="dl-copy">
+          <h2 data-en="Want the least friction? Try Flitdrop" data-fr="Envie du moins de friction ? Essayez Flitdrop">Want the least friction? Try Flitdrop</h2>
+          <p class="section-sub" data-en="Install Flitdrop on your computer, keep your phone exactly as it is." data-fr="Installez Flitdrop sur votre ordinateur, gardez votre téléphone tel qu'il est.">Install Flitdrop on your computer, keep your phone exactly as it is.</p>
+          <div class="dl-buttons">
+            <a class="btn btn-primary btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener"><span data-en="Download Flitdrop" data-fr="Télécharger Flitdrop">Download Flitdrop</span></a>
+            <a class="btn btn-ghost btn-lg" href="/" data-en="See how it works" data-fr="Voir comment ça marche">See how it works</a>
+          </div>
+          <a class="dl-other" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-en="Windows, Mac and Linux" data-fr="Windows, Mac et Linux">Windows, Mac and Linux</a>
+        </div>
+        <div class="dl-qr" aria-hidden="true">
+          <div class="qr-tile"><img class="qr-img" src="/assets/qr.svg" alt="" width="132" height="132"></div>
+          <p data-en="Scan to download on your phone" data-fr="Scannez pour télécharger sur votre téléphone">Scan to download on your phone</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="brand" href="/"><img src="/assets/icon.svg" alt="" width="26" height="26"><span>Flitdrop</span></a>
+        <p class="footer-tag" data-i18n="footer.tagline">Direct sharing between all your devices, on your Wi-Fi.</p>
+      </div>
+      <nav class="footer-cols" aria-label="Footer">
+        <div class="footer-col">
+          <h4 data-i18n="footer.product">Product</h4>
+          <a href="/#features" data-i18n="footer.features">Features</a>
+          <a href="/#compare" data-i18n="nav.compare">Comparison</a>
+          <a href="/#security" data-i18n="nav.security">Security</a>
+          <a href="/#download" data-i18n="nav.download">Download</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="footer.resources">Resources</h4>
+          <a href="/#support" data-i18n="support.eyebrow">Support</a>
+          <a href="https://github.com/MrFrosas/flitdrop" target="_blank" rel="noopener">GitHub</a>
+          <a href="/brand.html" data-i18n="footer.brand">Brand</a>
+          <a href="/privacy.html" data-i18n="footer.privacy">Privacy</a>
+          <a href="/legal.html" data-i18n="footer.legal">Legal</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="guides.title">Guides</h4>
+          <a href="/alternative-airdrop" data-i18n="guides.alt">AirDrop alternative</a>
+          <a href="/airdrop-windows" data-i18n="guides.windows">AirDrop for Windows</a>
+          <a href="/airdrop-iphone-android" data-i18n="guides.android">iPhone to Android</a>
+          <a href="/send-files-iphone-to-pc" data-i18n="guides.iphonepc">iPhone to PC</a>
+          <a href="/airdrop-linux" data-i18n="guides.linux">AirDrop for Linux</a>
+        </div>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-rights" data-i18n="footer.rights">© 2026 Flitdrop. All rights reserved.</p>
+      <button class="lang-toggle" data-lang-toggle type="button">FR</button>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      function apply() {
+        var l = window.FDI18N ? window.FDI18N.lang : 'en'
+        document.querySelectorAll('[data-en]').forEach(function (e) { e.textContent = l === 'fr' ? e.getAttribute('data-fr') : e.getAttribute('data-en') })
+      }
+      document.addEventListener('DOMContentLoaded', apply)
+      window.addEventListener('fd-lang', apply)
+    })()
+  </script>
+</body>
+</html>

@@ -212,7 +212,14 @@
     "guides.noapp": "Send without an app",
     "guides.xender": "Xender alternative",
     "guides.sendanywhere": "Send Anywhere alternative",
-    "guides.pairdrop": "PairDrop alternative"
+    "guides.pairdrop": "PairDrop alternative",
+    "footer.versus": "Flitdrop vs",
+    "guides.quickshare": "Quick Share to iPhone",
+    "guides.linuxiphone": "Linux to iPhone",
+    "guides.vsairdrop": "vs AirDrop",
+    "guides.vslocalsend": "vs LocalSend",
+    "guides.vssnapdrop": "vs Snapdrop",
+    "guides.vsnearby": "vs Quick Share"
   },
   "fr": {
     "meta.title": "Flitdrop, envoyez vos fichiers entre téléphone et ordinateur comme un AirDrop universel",
@@ -418,7 +425,14 @@
     "guides.noapp": "Envoyer sans application",
     "guides.xender": "Alternative à Xender",
     "guides.sendanywhere": "Alternative à Send Anywhere",
-    "guides.pairdrop": "Alternative à PairDrop"
+    "guides.pairdrop": "Alternative à PairDrop",
+    "footer.versus": "Flitdrop vs",
+    "guides.quickshare": "Quick Share vers iPhone",
+    "guides.linuxiphone": "Linux vers iPhone",
+    "guides.vsairdrop": "vs AirDrop",
+    "guides.vslocalsend": "vs LocalSend",
+    "guides.vssnapdrop": "vs Snapdrop",
+    "guides.vsnearby": "vs Quick Share"
   }
 };
 });
