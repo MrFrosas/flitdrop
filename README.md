@@ -48,7 +48,16 @@ And it works in **every direction, between every brand**: Windows or Mac on one 
 
 ## Install
 
-**Download from the [releases page](https://github.com/MrFrosas/flitdrop/releases/latest).**
+**Download from the [releases page](https://github.com/MrFrosas/flitdrop/releases/latest)**, or install from a package manager on Windows:
+
+```powershell
+# Scoop
+scoop bucket add flitdrop https://github.com/MrFrosas/scoop-flitdrop
+scoop install flitdrop
+
+# winget (rolling out through the Microsoft community repo)
+winget install Flitdrop
+```
 
 - **Windows**: run the `.exe`, done. Installing also adds **Send to → Flitdrop** to the right-click menu in Explorer. The installer is code-signed (verified publisher: CC's Global); if SmartScreen still shows a prompt while the download reputation builds up, click **More info → Run anyway**.
 - **Mac**: open the `.dmg`, drag Flitdrop into Applications. The build is ad-hoc signed but not yet notarized by Apple, so on first open macOS may block it. Two ways through: **System Settings → Privacy & Security → Open Anyway**, or, if it says "damaged", run this once in Terminal: `xattr -cr /Applications/Flitdrop.app`. (Both go away with the notarized Mac App Store version.)
