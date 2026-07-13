@@ -12,6 +12,17 @@
   function gtag() { dataLayer.push(arguments); }
   window.gtag = gtag;
 
+  // Consent Mode v2, default DENIED. Keeps the whole site genuinely cookieless:
+  // with analytics_storage denied, GA4 sends cookieless pings (aggregate only)
+  // and sets NO _ga cookies, so no consent banner is needed and the "we store
+  // nothing on your device" claim holds across GA4 too (PostHog is memory-only).
+  gtag('consent', 'default', {
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    analytics_storage: 'denied'
+  });
+
   var s = document.createElement('script');
   s.async = true;
   s.src = 'https://www.googletagmanager.com/gtag/js?id=' + ID;
