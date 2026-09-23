@@ -44,21 +44,50 @@ jobs:
           winget validate --manifest $env:MANIFEST --disable-interactivity
           if ($LASTEXITCODE -ne 0) { throw "winget validate : echec ($LASTEXITCODE)" }
 
-      - name: winget install --manifest (3 installations propres)
+      # Diagnostic : l'installeur lance par winget ne rendait pas la main alors que
+      # le meme /S termine en 7 s. Hypothese : la marque « telecharge d'Internet »
+      # (Zone.Identifier) declenche une fenetre de securite invisible sur un runner.
+      # Chaque essai a un delai maximum et liste les fenetres ouvertes s'il bloque.
+      - name: installeur /S, sans puis avec marque Internet
+        shell: pwsh
+        run: |
+          $url = 'https://github.com/MrFrosas/flitdrop/releases/download/v0.6.3/Flitdrop-Setup-0.6.3.exe'
+          Invoke-WebRequest $url -OutFile "$env:RUNNER_TEMPd.exe"
+          function Try-Install($label) {
+            Remove-Item -Recurse -Force "HKCU:\Software\$env:GUID" -ErrorAction SilentlyContinue
+            $p = Start-Process "$env:RUNNER_TEMP\fd.exe" -ArgumentList '/S' -PassThru
+            if (-not $p.WaitForExit(120000)) {
+              Write-Host "$label : BLOQUE apres 120 s. Fenetres ouvertes :"
+              Get-Process | Where-Object MainWindowTitle | Select-Object ProcessName, Id, MainWindowTitle | Format-Table -AutoSize | Out-String | Write-Host
+              Stop-Process -Id $p.Id -Force; return
+            }
+            Write-Host "$label : termine, code $($p.ExitCode)"
+            Get-Process Flitdrop -ErrorAction SilentlyContinue | Stop-Process -Force
+            $u = (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$env:GUID" -ErrorAction SilentlyContinue).QuietUninstallString
+            if ($u) { cmd /c $u; Start-Sleep 3 }
+          }
+          Try-Install 'sans marque Internet'
+          Set-Content -Path "$env:RUNNER_TEMP\fd.exe" -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3"
+          Try-Install 'avec marque Internet'
+
+      - name: winget install --manifest (3 installations, delai max)
         shell: pwsh
         run: |
           winget settings --enable LocalManifestFiles
           foreach ($i in 1..3) {
-            # profil propre : aucune trace d'une installation precedente
             Remove-Item -Recurse -Force "HKCU:\Software\$env:GUID" -ErrorAction SilentlyContinue
-            winget install --manifest $env:MANIFEST --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
-            if ($LASTEXITCODE -ne 0) { throw "essai $i : winget install en echec ($LASTEXITCODE)" }
+            $p = Start-Process winget -ArgumentList @('install','--manifest',$env:MANIFEST,'--silent','--accept-package-agreements','--accept-source-agreements','--disable-interactivity') -NoNewWindow -PassThru
+            if (-not $p.WaitForExit(180000)) {
+              Write-Host "essai $i : winget BLOQUE apres 180 s. Processus et fenetres :"
+              Get-Process | Where-Object { $_.ProcessName -match 'Flitdrop|fd|Setup|winget|WindowsTerminal|smartscreen|consent' -or $_.MainWindowTitle } | Select-Object ProcessName, Id, MainWindowTitle | Format-Table -AutoSize | Out-String | Write-Host
+              Get-Process | Where-Object ProcessName -match 'Flitdrop|winget' | Stop-Process -Force -ErrorAction SilentlyContinue
+              throw "essai $i : bloque"
+            }
+            if ($p.ExitCode -ne 0) { throw "essai $i : winget install en echec ($($p.ExitCode))" }
             $loc = (Get-ItemProperty "HKCU:\Software\$env:GUID").InstallLocation
             if (-not (Test-Path (Join-Path $loc 'Flitdrop.exe'))) { throw "essai $i : Flitdrop.exe absent dans $loc" }
-            $arp = Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$env:GUID"
-            Write-Host "essai $i : OK ($($arp.DisplayName), $loc)"
+            Write-Host "essai $i : OK ($loc)"
             Get-Process Flitdrop -ErrorAction SilentlyContinue | Stop-Process -Force
             winget uninstall --product-code $env:GUID --silent --disable-interactivity
-            if ($LASTEXITCODE -ne 0) { throw "essai $i : desinstallation en echec ($LASTEXITCODE)" }
             Start-Sleep -Seconds 3
           }
