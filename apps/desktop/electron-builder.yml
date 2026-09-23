@@ -89,7 +89,7 @@ linux:
   executableName: flitdrop
   synopsis: Send files between your phone and your computer, like AirDrop
   description: >-
-    Flitdrop sends files, photos, folders and clipboard between any phone and
+    Flitdrop sends files, photos and clipboard between any phone and
     this computer over your local Wi-Fi, end-to-end encrypted. Nothing to
     install on the phone: scan a QR code once.
   maintainer: CC's Global <contact@flitdrop.com>
@@ -101,6 +101,9 @@ appImage:
   artifactName: ${productName}-${version}-${arch}.${ext}
 deb:
   artifactName: ${productName}-${version}-${arch}.${ext}
+  # post-installation qui rend chrome-sandbox setuid dans tous les cas (le
+  # modele d'origine se trompe sur Ubuntu 24.04, voir le fichier)
+  afterInstall: build/linux/after-install.tpl
   # outils presse-papiers : wl-clipboard (Wayland) sinon xclip (X11)
   recommends:
     - wl-clipboard

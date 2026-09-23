@@ -60,8 +60,13 @@ jobs:
           $p = Start-Process -FilePath $exe.FullName -ArgumentList '/S' -Wait -PassThru
           Write-Host "Code de sortie : $($p.ExitCode)"
           if ($p.ExitCode -ne 0) { throw "installation silencieuse en echec ($($p.ExitCode))" }
-          $app = Join-Path $env:LOCALAPPDATA 'Programs\Flitdrop\Flitdrop.exe'
+          # dossier reel lu dans le registre (electron-builder nomme le dossier
+          # d'apres le paquet, pas forcement « Flitdrop »)
+          $loc = (Get-ItemProperty 'HKCU:\Software\13d66c6d-ea8b-5233-a385-4233ab80b29d').InstallLocation
+          Write-Host "InstallLocation : $loc"
+          $app = Join-Path $loc 'Flitdrop.exe'
           if (-not (Test-Path $app)) { throw "Flitdrop.exe absent apres installation : $app" }
+          if ($loc -ne (Join-Path $env:LOCALAPPDATA "Programs\$(Split-Path $loc -Leaf)")) { throw "dossier inattendu : $loc" }
           $arp = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\13d66c6d-ea8b-5233-a385-4233ab80b29d'
           if (-not (Test-Path $arp)) { throw "cle de desinstallation absente" }
           Get-ItemProperty $arp | Select-Object DisplayName, DisplayVersion, Publisher | Format-List
@@ -145,6 +150,8 @@ jobs:
           sudo apt-get install -y -q "./$DEB_FILE"
           test -x /opt/Flitdrop/flitdrop-bin
           stat -c '%A %U' /opt/Flitdrop/chrome-sandbox
+          # doit etre setuid root (-rwsr-xr-x) : voir build/linux/after-install.tpl
+          [ "$(stat -c '%a %U' /opt/Flitdrop/chrome-sandbox)" = "4755 root" ]
           export FLITDROP_HOME="$RUNNER_TEMP/fd-deb"
           xvfb-run -a flitdrop --hidden > "$RUNNER_TEMP/deb.log" 2>&1 &
           PID=$!
