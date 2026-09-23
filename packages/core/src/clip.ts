@@ -28,7 +28,8 @@ function run(cmd: string, args: string[], stdinText?: string): Promise<string> {
   return new Promise((resolve, reject) => {
     let p
     try {
-      p = spawn(cmd, args, { stdio: ['pipe', writing ? 'ignore' : 'pipe', 'ignore'] })
+      // windowsHide : pas de fenêtre console qui clignote sous Windows (PowerShell)
+      p = spawn(cmd, args, { stdio: ['pipe', writing ? 'ignore' : 'pipe', 'ignore'], windowsHide: true })
     } catch (e) {
       reject(e)
       return
@@ -123,4 +124,39 @@ export async function readClipboard(): Promise<string> {
     ])
   }
   return runLinux('read')
+}
+
+/**
+ * Lecture et écriture du texte fournies par l'hôte. L'app de bureau passe celles
+ * d'Electron (clipboard.readText / writeText) : appel natif dans le processus,
+ * sans lancer pbpaste ou PowerShell à chaque vérification.
+ */
+export interface ClipboardTextBackend {
+  read: () => string
+  write: (text: string) => void
+}
+
+export interface ClipboardText {
+  read: () => Promise<string>
+  write: (text: string) => Promise<void>
+}
+
+/**
+ * Presse-papiers texte utilisé par le serveur. Avec un `backend` (app de bureau),
+ * aucun processus n'est lancé ; sans lui (coeur seul en ligne de commande,
+ * tests), on garde pbpaste, PowerShell ou xclip. FLITDROP_NO_CLIP coupe tout.
+ */
+export function createClipboardText(backend?: ClipboardTextBackend): ClipboardText {
+  if (!backend) return { read: readClipboard, write: writeClipboard }
+  return {
+    read: async () => {
+      if (clipboardDisabled()) return ''
+      const text = backend.read()
+      return typeof text === 'string' ? text : ''
+    },
+    write: async (text: string) => {
+      if (clipboardDisabled()) return
+      backend.write(text)
+    },
+  }
 }

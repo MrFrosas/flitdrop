@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, Notification, clipboard, nativeImage, shell, dialog } = require('electron')
+const { app, BrowserWindow, Tray, Menu, Notification, clipboard, nativeImage, shell, dialog, powerMonitor } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 
@@ -7,7 +7,7 @@ let tray = null
 let core = null
 let updater = null
 let quitting = false
-let clipImageTimer = null
+let clipWatcher = null
 
 // i18n : fonctions du bundle coeur, chargées au démarrage. `tr` traduit selon le
 // réglage de langue du PC, sinon la locale du système d'exploitation.
@@ -54,35 +54,29 @@ process.on('unhandledRejection', (reason) => {
   reportMainError(reason, false)
 })
 
-// Surveille les IMAGES du presse-papiers (ce que la page web ne peut pas lire).
-// Electron donne la vraie image copiée : on en fait une miniature et on la
-// confie au coeur pour l'historique. `lastSig` évite les doublons.
-function watchClipboardImages() {
-  let lastSig = ''
-  clipImageTimer = setInterval(() => {
-    if (!core || !core.cfg.clipHistoryEnabled) return
-    let img
-    try {
-      img = clipboard.readImage()
-    } catch {
-      return
-    }
-    if (!img || img.isEmpty()) return
-    const size = img.getSize()
-    const png = img.toPNG()
-    const sig = `${png.length}:${size.width}x${size.height}`
-    if (sig === lastSig) return
-    lastSig = sig
-    // miniature 256px de large max pour l'aperçu
-    const thumbImg = size.width > 256 ? img.resize({ width: 256 }) : img
-    const thumb = thumbImg.toDataURL()
-    try {
-      core.addClipboardImage(png, thumb, size.width, size.height)
-    } catch {
-      // non critique
-    }
-  }, 1500)
-  clipImageTimer.unref?.()
+// Surveillance UNIQUE du presse-papiers : une minuterie pour le texte (lu par
+// Electron et confié au coeur, sans lancer pbpaste ni PowerShell) et pour les
+// images (ce que la page web ne peut pas lire). Une image restée copiée n'est
+// plus réencodée : on compare d'abord une empreinte de ses octets bruts.
+// Ralentie après une minute sans activité, en pause écran verrouillé ou en
+// veille, avec une vérification immédiate au retour.
+function watchClipboard(ClipboardWatcher) {
+  clipWatcher = new ClipboardWatcher({
+    clipboard,
+    checkText: () => (core ? core.pollClipboard() : undefined),
+    imagesEnabled: () => !!core && core.cfg.clipHistoryEnabled,
+    anyEnabled: () => !!core && (core.cfg.clipHistoryEnabled || core.cfg.clipboardAutoPush),
+    onImage: (png, thumb, w, h) => {
+      if (core) core.addClipboardImage(png, thumb, w, h)
+    },
+    idleSeconds: () => powerMonitor.getSystemIdleTime(),
+  })
+  clipWatcher.start()
+  // verrouillage : macOS et Windows seulement ; la veille partout
+  powerMonitor.on('lock-screen', () => clipWatcher && clipWatcher.pause())
+  powerMonitor.on('suspend', () => clipWatcher && clipWatcher.pause())
+  powerMonitor.on('unlock-screen', () => clipWatcher && clipWatcher.resume())
+  powerMonitor.on('resume', () => clipWatcher && clipWatcher.resume())
 }
 
 // fichiers passés en argument : clic-droit "Envoyer vers > Flitdrop" dans
@@ -153,7 +147,7 @@ if (!gotLock) {
 
   app.whenReady().then(async () => {
     const bundle = require(path.join(__dirname, 'core', 'flitdrop.cjs'))
-    const { startServer } = bundle
+    const { startServer, ClipboardWatcher } = bundle
     _t = bundle.t
     _resolveLang = bundle.resolveLang
     _langFrom = bundle.langFrom
@@ -169,8 +163,16 @@ if (!gotLock) {
           // non critique
         }
       },
+      // texte lu et écrit dans le processus, sans lancer de programme externe.
+      // Linux sous Wayland : on garde wl-paste tant que ce n'est pas testé sur Ubuntu.
+      clipboardText:
+        process.platform === 'linux' && process.env.WAYLAND_DISPLAY
+          ? undefined
+          : { read: () => clipboard.readText(), write: (text) => clipboard.writeText(text) },
+      // la surveillance unique ci-dessous appelle core.pollClipboard()
+      manualClipboardPoll: true,
     })
-    watchClipboardImages()
+    watchClipboard(ClipboardWatcher)
     // auto-update : vérifie/télécharge la dernière version publiée sur GitHub,
     // propose de redémarrer. Windows fonctionne tout de suite ; macOS quand signé.
     try {
@@ -206,6 +208,10 @@ if (!gotLock) {
       // y laisse l'icône par défaut. macOS/Linux prennent le .png.
       icon: path.join(__dirname, 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png'),
       webPreferences: { contextIsolation: true, nodeIntegration: false, backgroundThrottling: true },
+      // démarrage caché : la page ne dessine rien (ni l'animation du radar)
+      // avant la première ouverture. Seulement dans ce cas : sinon
+      // 'ready-to-show' ne viendrait jamais et la fenêtre ne s'afficherait pas.
+      paintWhenInitiallyHidden: !startHidden,
     }
     if (isMac) {
       // rendu natif macOS : feux tricolores intégrés + matériau "vibrancy"
@@ -278,6 +284,7 @@ if (!gotLock) {
 
   app.on('before-quit', async () => {
     quitting = true
+    if (clipWatcher) clipWatcher.stop()
     if (core) await core.close().catch(() => {})
   })
 }

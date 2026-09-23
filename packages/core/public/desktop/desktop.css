@@ -412,6 +412,8 @@ label.check.stat-check input { margin-top: 3px; }
 .stat-check b { font-weight: 600; }
 .stat-check small { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
 @media (prefers-reduced-motion: reduce) { .wring { animation: none; opacity: 0.3; transform: scale(0.8); } }
+/* fenêtre cachée : aucune animation ne tourne pour rien (classe posée par desktop.ts) */
+html.paused .rpulse, html.paused .wring, html.paused .spin { animation-play-state: paused; }
 
 .dropoverlay {
   position: fixed; inset: 0; z-index: 40; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);

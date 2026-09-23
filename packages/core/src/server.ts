@@ -26,7 +26,7 @@ import { Outbox } from './outbox.js'
 import { Hub } from './events.js'
 import { TransferManager, ApiError } from './transfers.js'
 import { NonceCache, open, seal, openFreshJSON, sealJSON, randomToken } from './crypto.js'
-import { readClipboard, writeClipboard } from './clip.js'
+import { createClipboardText, type ClipboardTextBackend } from './clip.js'
 import { ClipHistory } from './cliphistory.js'
 import { saveMultipartFiles } from './uploads.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
@@ -44,6 +44,7 @@ import {
 
 // ré-exporté pour l'app Electron (main.cjs) : tray, notifications, dialogue.
 export { t, resolveLang, langFrom } from './i18n.js'
+export { ClipboardWatcher } from './clipwatch.js'
 
 // réglages dont le NOM (jamais la valeur) peut remonter dans settings_changed
 const SETTINGS_KEYS = [
@@ -92,6 +93,12 @@ export interface StartOptions {
   // fourni par l'app de bureau (Electron) pour recopier une image de
   // l'historique dans le presse-papiers du système.
   writeImageToClipboard?: (png: Buffer) => void
+  // fourni par l'app de bureau : lecture et écriture du texte par Electron,
+  // sans lancer pbpaste ou PowerShell à chaque vérification.
+  clipboardText?: ClipboardTextBackend
+  // l'app de bureau fait tourner UNE seule surveillance (texte et images) et
+  // appelle pollClipboard() elle-même : le coeur ne lance pas sa minuterie.
+  manualClipboardPoll?: boolean
   // fourni par l'app de bureau uniquement : version, canal d'installation et
   // langue du système. Sans lui (CLI, tests), la télémétrie reste éteinte.
   telemetry?: TelemetryOptions
@@ -109,6 +116,9 @@ export interface RunningServer {
   /** Enregistre une image copiée sur le PC dans l'historique du presse-papiers
    *  (appelé par l'app de bureau qui lit l'image via Electron). */
   addClipboardImage: (png: Buffer, thumb: string, w: number, h: number) => void
+  /** Vérifie une fois le texte du presse-papiers (surveillance pilotée par
+   *  l'app de bureau quand manualClipboardPoll est vrai). */
+  pollClipboard: () => Promise<void>
   /** Statistiques et rapports d'erreur (no-op sans opts.telemetry). */
   telemetry: Telemetry
   close: () => Promise<void>
@@ -120,10 +130,10 @@ interface PhoneContext {
   payload: Record<string, unknown>
 }
 
-function rateLimit(max: number, windowMs: number) {
+function rateLimit(max: number, windowMs: number, keyOf?: (req: Request) => string) {
   const hits = new Map<string, { n: number; reset: number }>()
   return (req: Request, res: Response, next: NextFunction) => {
-    const ip = req.socket.remoteAddress ?? '?'
+    const ip = keyOf ? keyOf(req) : (req.socket.remoteAddress ?? '?')
     const now = Date.now()
     if (hits.size > 2000) {
       for (const [k, v] of hits) if (v.reset < now) hits.delete(k)
@@ -137,6 +147,13 @@ function rateLimit(max: number, windowMs: number) {
     next()
   }
 }
+
+// budget des requêtes de transfert d'un téléphone appairé, par minute : environ
+// 100 par seconde, bien au-delà de ce que le wifi permet (morceaux de 8 Mo),
+// et assez pour 2 000 petites photos par minute.
+const TRANSFER_RATE_PER_MIN = 6000
+// chemins (sous /api/phone) comptés dans ce budget
+const PHONE_TRANSFER_ROUTE = /^\/(?:transfer\/(?:init|[^/]+\/(?:chunk\/\d+|status|finish))|outbox\/[^/]+\/download)$/
 
 export async function startServer(opts: StartOptions = {}): Promise<RunningServer> {
   if (opts.disableClipboard) process.env.FLITDROP_NO_CLIP = '1'
@@ -175,10 +192,20 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // vient de recopier soi-même depuis l'historique.
   let lastImageHash = ''
   const imageHash = (png: Buffer): string => `${png.length}:${png.length > 64 ? png.subarray(0, 64).toString('hex') : png.toString('hex')}`
-  readClipboard().then((t) => (lastClip = t)).catch(() => {})
-  const clipTimer = setInterval(async () => {
-    if (!cfg.clipboardAutoPush && !cfg.clipHistoryEnabled) return
-    const text = await readClipboard().catch(() => '')
+  const clip = createClipboardText(opts.clipboardText)
+  clip.read().then((t) => (lastClip = t)).catch(() => {})
+  // une lecture à la fois : un PowerShell lent (antivirus, disque) ne doit pas
+  // empiler les processus d'une vérification à l'autre.
+  let polling = false
+  const pollClipboard = async (): Promise<void> => {
+    if (polling || (!cfg.clipboardAutoPush && !cfg.clipHistoryEnabled)) return
+    polling = true
+    let text = ''
+    try {
+      text = await clip.read().catch(() => '')
+    } finally {
+      polling = false
+    }
     if (!text || text === lastClip || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) return
     lastClip = text
     if (cfg.clipHistoryEnabled && clipHistory.add(text, 'pc', cfg)) {
@@ -189,8 +216,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       hub.broadcast('outbox-changed', {})
       hub.broadcast('clip-autopushed', { preview: text.slice(0, 120) })
     }
-  }, 1500)
-  clipTimer.unref?.()
+  }
+  const clipTimer = opts.manualClipboardPoll ? undefined : setInterval(() => void pollClipboard(), 1500)
+  clipTimer?.unref?.()
   // purge périodique de l'historique (rétention par âge)
   const clipPurgeTimer = setInterval(() => {
     if (clipHistory.size() > 0) clipHistory.purge(cfg)
@@ -316,7 +344,20 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // Garde montée AVANT tout body-parser : on refuse un appareil inconnu et on
   // limite le débit sans jamais bufferiser le corps d'un attaquant non appairé.
   const phoneRate = rateLimit(240, 60_000)
-  app.use('/api/phone', phoneRate, (req, res, next) => {
+  // Les requêtes de transfert d'un téléphone appairé (début, morceaux, statut,
+  // fin, téléchargement) ont leur propre budget, par appareil et bien plus
+  // large : une vidéo à pleine vitesse du wifi ou un lot de 100 photos en font
+  // des centaines par minute. Chaque morceau est de toute façon authentifié
+  // (déchiffrement refusé s'il est forgé). Tout le reste, et surtout les
+  // appareils inconnus, garde la limite stricte par adresse.
+  const transferRate = rateLimit(TRANSFER_RATE_PER_MIN, 60_000, (req) => 'dev:' + String(req.headers['x-wd-device'] ?? ''))
+  app.use('/api/phone', (req, res, next) => {
+    const id = String(req.headers['x-wd-device'] ?? '')
+    const dev = id ? devices.get(id) : undefined
+    if (dev && dev.status === 'active' && PHONE_TRANSFER_ROUTE.test(req.path)) return transferRate(req, res, next)
+    return phoneRate(req, res, next)
+  })
+  app.use('/api/phone', (req, res, next) => {
     const id = String(req.headers['x-wd-device'] ?? '')
     const dev = id ? devices.get(id) : undefined
     if (!dev) return res.status(403).json({ code: 'deviceUnknown' })
@@ -391,7 +432,17 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   app.post(
     '/api/phone/transfer/:tid/chunk/:n',
     // l'appareil est déjà vérifié par la garde montée sur /api/phone (avant tout
-    // buffering) : on ne lit pas 8 Mo pour un inconnu.
+    // buffering) : on ne lit pas 8 Mo pour un inconnu. On vérifie aussi le
+    // transfert et l'indice AVANT de lire le corps : un morceau pour un
+    // transfert qui n'existe pas ne coûte rien.
+    (req, res, next) => {
+      const dev = devices.get(String(req.headers['x-wd-device'] ?? ''))
+      const t = transfers.get(String(req.params.tid))
+      if (!dev || !t || t.deviceId !== dev.id) return res.status(404).json({ code: 'transferNotFound' })
+      const n = Number(req.params.n)
+      if (!Number.isInteger(n) || n < 0 || n >= t.chunks) return res.status(400).json({ code: 'badIndex' })
+      next()
+    },
     express.raw({ type: () => true, limit: MAX_CHUNK_BODY }),
     async (req, res) => {
       const id = String(req.headers['x-wd-device'] ?? '')
@@ -473,7 +524,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const mode = payload.mode === 'message' ? 'message' : 'clip'
     let copied = false
     if (mode === 'clip') {
-      copied = await writeClipboard(text).then(
+      copied = await clip.write(text).then(
         () => true,
         () => false
       )
@@ -752,7 +803,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
     const text = typeof req.body === 'string' ? req.body : ''
     if (!text) return res.status(400).type('text/plain; charset=utf-8').send(st(req, 'srv.scNothing'))
-    const copied = await writeClipboard(text).then(
+    const copied = await clip.write(text).then(
       () => true,
       () => false
     )
@@ -766,7 +817,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   app.get('/api/shortcut/clipboard', rlShortcut, async (req, res) => {
     const dev = shortcutDevice(req)
     if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
-    const text = await readClipboard().catch(() => '')
+    const text = await clip.read().catch(() => '')
     history.add({ dir: 'out', kind: 'clip', preview: text.slice(0, 160), deviceId: dev.id, deviceName: dev.name, status: 'ok' })
     devices.touch(dev.id)
     if (text) telemetry.transferOk('pc_to_phone', 'clipboard')
@@ -835,7 +886,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         return res.status(410).json({ code: 'imageGone' })
       }
     } else {
-      const ok = await writeClipboard(entry.text).then(
+      const ok = await clip.write(entry.text).then(
         () => true,
         () => false
       )
@@ -957,7 +1008,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   })
 
   admin.post('/clipboard/push', async (_req, res) => {
-    const text = await readClipboard().catch(() => '')
+    const text = await clip.read().catch(() => '')
     if (!text) return res.status(400).json({ code: 'clipboardEmpty' })
     const item = outbox.addText(text.slice(0, MAX_TEXT_BYTES), 'clipboard')
     hub.broadcast('outbox-changed', {})
@@ -1011,11 +1062,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       cfg.clipboardAutoPush = body.clipboardAutoPush
       // en (ré)activant, on prend l'état courant comme référence pour ne pas
       // pousser d'un coup le contenu déjà présent dans le presse-papiers.
-      if (cfg.clipboardAutoPush) readClipboard().then((t) => (lastClip = t)).catch(() => {})
+      if (cfg.clipboardAutoPush) clip.read().then((t) => (lastClip = t)).catch(() => {})
     }
     if (typeof body.clipHistoryEnabled === 'boolean') {
       cfg.clipHistoryEnabled = body.clipHistoryEnabled
-      if (cfg.clipHistoryEnabled) readClipboard().then((t) => (lastClip = t)).catch(() => {})
+      if (cfg.clipHistoryEnabled) clip.read().then((t) => (lastClip = t)).catch(() => {})
     }
     if (body.clipHistoryMaxItems !== undefined) {
       cfg.clipHistoryMaxItems = clampInt(body.clipHistoryMaxItems, 10, 1000, cfg.clipHistoryMaxItems)
@@ -1208,6 +1259,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     adminUrl,
     addLocalFiles,
     addClipboardImage,
+    pollClipboard,
     telemetry,
     close: async () => {
       telemetry.stop()

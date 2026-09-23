@@ -479,11 +479,31 @@ function renderAll() {
   renderSettings()
 }
 
+// Fenêtre cachée (barre des tâches, démarrage caché) : on ne redessine rien
+// pour une page que personne ne voit. On le note et on rattrape d'un coup à la
+// réapparition. Le tout premier chargement passe toujours (state encore vide).
+let dirty = false
 async function refresh() {
+  if (document.hidden && state) {
+    dirty = true
+    return
+  }
+  dirty = false
   state = await api<State>('/state')
   renderAll()
   renderConsentCard()
 }
+
+// animations du radar en pause tant que la fenêtre est cachée
+function syncVisibility() {
+  document.documentElement.classList.toggle('paused', document.hidden)
+  if (document.hidden) return
+  if (dirty) void refresh()
+  // les points « en ligne » dépendent de l'heure : on les remet à jour
+  else renderRadar()
+}
+syncVisibility()
+document.addEventListener('visibilitychange', syncVisibility)
 
 // ---------- question « aider à améliorer » ----------
 
@@ -958,7 +978,9 @@ function initUI() {
   }
 
   window.addEventListener('resize', renderRadar)
-  setInterval(renderRadar, 30_000)
+  setInterval(() => {
+    if (!document.hidden) renderRadar()
+  }, 30_000)
 }
 
 async function uploadOutbox(files: FileList) {
