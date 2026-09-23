@@ -5,13 +5,20 @@ But : savoir enfin si les gens qui installent Flitdrop s'en servent (activation)
 ## Le circuit
 
 ```
-App (partie Node : serveur core ou processus principal Electron)
-  → POST https://telemetry.flitdrop.com/e   (un évènement par requête, JSON)
-  → Worker Cloudflare flitdrop-telemetry     (telemetry-worker/worker.js)
+App 0.6.4 et plus (partie Node : serveur core ou processus principal Electron)
+  → POST https://flitdrop.com/api/telemetry  (un évènement par requête, JSON)
+  → Pages Function functions/api/telemetry.js, déployée avec le site à chaque push sur main
+      (elle importe telemetry-worker/worker.js : un seul code pour les deux entrées)
       1. valide et nettoie (listes blanches, tailles bornées)
-      2. Analytics Engine, dataset flitdrop_events (si la liaison existe)
+      2. Analytics Engine, dataset flitdrop_events (seulement si la liaison existe ; aucune aujourd'hui)
       3. PostHog, projet « Flitdrop » sur le cloud EU (id 282507)
+
+Versions 0.5 à 0.6.3 : POST https://telemetry.flitdrop.com/e → Worker flitdrop-telemetry
+  (déployé à la main dans le tableau de bord ; il porte encore le code de juillet,
+  qui relaie vers l'ancien projet PostHog US tant qu'on ne le redéploie pas)
 ```
+
+Pourquoi une Pages Function : le Worker ne se déploie que dans le tableau de bord Cloudflare (ou avec wrangler connecté au compte), alors que la fonction part avec le site à chaque push. Aucune manipulation à la main.
 
 Le navigateur du téléphone n'envoie jamais rien directement : tout part du PC. Le Worker appelle PostHog lui-même, donc l'IP de l'utilisateur ne quitte jamais Cloudflare. Il ajoute seulement le pays (`request.cf.country`, par exemple `FR`), et demande à PostHog de ne pas géolocaliser le Worker (`$ip` nul, `$geoip_disable`).
 
@@ -102,9 +109,19 @@ Elles envoyaient, **seulement si l'utilisateur avait coché la case**, `{ iid, v
 
 Le `distinct_id` est calculé comme avant (hash de l'iid), mais ces évènements arrivent maintenant dans le projet EU, alors que l'historique de ces installations est resté dans l'ancien projet US : pas de continuité entre les deux.
 
-## Déployer le Worker
+## Déployer
 
-Par le tableau de bord Cloudflare (le plus simple) :
+Le collecteur des versions 0.6.4 et plus se déploie tout seul : push sur main (site + `functions/`).
+
+Contrôle après déploiement :
+
+```bash
+curl -i -X POST https://flitdrop.com/api/telemetry \
+  -H 'content-type: application/json' \
+  -d '{"event":"app_daily_active","v":"test","ts":0,"tier":"basic","props":{"os":"mac","channel":"dev"}}'
+```
+
+Le Worker `telemetry.flitdrop.com` (anciennes versions), si on veut un jour le mettre à jour, par le tableau de bord Cloudflare :
 
 1. **Workers & Pages** → **flitdrop-telemetry** → **Edit code**.
 2. Remplacer tout le contenu par celui de `telemetry-worker/worker.js`, puis **Deploy**.

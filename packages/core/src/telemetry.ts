@@ -18,7 +18,9 @@ import os from 'node:os'
 import { saveConfig, type Config } from './config.js'
 import { resolveLang, langFrom, type Lang } from './i18n.js'
 
-export const TELEMETRY_ENDPOINT = 'https://telemetry.flitdrop.com/e'
+// Collecteur : Pages Function du site (functions/api/telemetry.js), déployée
+// avec le site. Le Worker telemetry.flitdrop.com/e reste pour les versions < 0.6.4.
+export const TELEMETRY_ENDPOINT = 'https://flitdrop.com/api/telemetry'
 
 export type Tier = 'basic' | 'full'
 type PropValue = string | number | boolean

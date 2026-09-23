@@ -78,7 +78,7 @@
       <p>Legal basis: your consent. You can withdraw it at any time in Settings, and nothing more is sent afterwards.</p>
 
       <h3>Where app data goes and how long it is kept</h3>
-      <p>App statistics go to our collector hosted by Cloudflare (telemetry.flitdrop.com), which keeps only the country and passes the events on to PostHog, where they are stored in the European Union (Frankfurt). Individual events are kept there for 12 months at most; after that, only overall totals (for example the number of transfers per month) are kept. So that we can count them quickly, the collector also keeps a copy of the main details of each event (never more than what is listed above) in Cloudflare Workers Analytics Engine, which deletes it after about 3 months.</p>
+      <p>App statistics go to our collector hosted by Cloudflare (flitdrop.com/api/telemetry, and telemetry.flitdrop.com for versions before 0.6.4), which keeps only the country and passes the events on to PostHog, where they are stored in the European Union (Frankfurt). Individual events are kept there for 12 months at most; after that, only overall totals (for example the number of transfers per month) are kept.</p>
 
       <h2>On this website</h2>
       <h3>If you are in the EU, the EEA, the UK or Switzerland</h3>
@@ -161,7 +161,7 @@
       <div class="trk">
         <h3>Flitdrop app statistics</h3>
         <ul>
-          <li>Provider: Cloudflare (collector, and a copy kept about 3 months) and PostHog (storage in the EU, Frankfurt).</li>
+          <li>Provider: Cloudflare (collector, keeps nothing) and PostHog (storage in the EU, Frankfurt).</li>
           <li>Purpose: know whether the app works and where it fails.</li>
           <li>On your computer, in the app settings file: the date of first launch (to count days since install), the last version launched, the last day the daily count was sent, whether a first pairing and a first transfer already happened, and a random install identifier. This identifier is created on every install but is sent only if you accepted detailed statistics.</li>
           <li>When it runs: basic statistics by default, until you turn them off in Settings; detailed statistics and error reports only if you say yes.</li>
@@ -173,7 +173,7 @@
 
       <h2>How long data is kept</h2>
       <ul>
-        <li>App statistics: 12 months at most for individual events in PostHog, then only overall totals; about 3 months for the copy kept by Cloudflare.</li>
+        <li>App statistics: 12 months at most for individual events in PostHog, then only overall totals.</li>
         <li>PostHog (website): 12 months at most; its cookie lasts up to 1 year.</li>
         <li>Google Analytics: cookies up to 13 months; detailed data kept 14 months at most.</li>
         <li>Microsoft Clarity: cookies up to 1 year; Microsoft keeps recordings about 30 days and statistics up to 13 months.</li>
@@ -244,7 +244,7 @@
       <p>Base légale : votre consentement. Vous pouvez le retirer à tout moment dans les Réglages, et plus rien n'est envoyé ensuite.</p>
 
       <h3>Où vont les données de l'app et combien de temps</h3>
-      <p>Les statistiques de l'application partent vers notre collecteur hébergé chez Cloudflare (telemetry.flitdrop.com), qui ne garde que le pays et transmet les événements à PostHog, où ils sont stockés dans l'Union européenne (Francfort). Les événements individuels y sont conservés 12 mois au maximum ; au-delà, seuls des totaux (par exemple le nombre de transferts par mois) sont gardés. Pour pouvoir les compter rapidement, le collecteur garde aussi une copie des principaux détails de chaque événement (jamais plus que ce qui est listé plus haut) dans Cloudflare Workers Analytics Engine, qui l'efface au bout d'environ 3 mois.</p>
+      <p>Les statistiques de l'application partent vers notre collecteur hébergé chez Cloudflare (flitdrop.com/api/telemetry, et telemetry.flitdrop.com pour les versions antérieures à la 0.6.4), qui ne garde que le pays et transmet les événements à PostHog, où ils sont stockés dans l'Union européenne (Francfort). Les événements individuels y sont conservés 12 mois au maximum ; au-delà, seuls des totaux (par exemple le nombre de transferts par mois) sont gardés.</p>
 
       <h2>Sur ce site</h2>
       <h3>Si vous êtes dans l'Union européenne, l'EEE, au Royaume-Uni ou en Suisse</h3>
@@ -327,7 +327,7 @@
       <div class="trk">
         <h3>Statistiques de l'application Flitdrop</h3>
         <ul>
-          <li>Prestataires : Cloudflare (collecteur, et une copie gardée environ 3 mois) et PostHog (stockage dans l'UE, à Francfort).</li>
+          <li>Prestataires : Cloudflare (collecteur, ne garde rien) et PostHog (stockage dans l'UE, à Francfort).</li>
           <li>Finalité : savoir si l'application marche et où elle échoue.</li>
           <li>Sur votre ordinateur, dans le fichier de réglages de l'app : la date du premier lancement (pour compter les jours depuis l'installation), la dernière version lancée, le dernier jour où le comptage quotidien est parti, si une première association et un premier transfert ont déjà eu lieu, et un identifiant d'installation aléatoire. Cet identifiant est créé sur chaque installation mais n'est envoyé que si vous avez accepté les statistiques détaillées.</li>
           <li>Quand : statistiques de base par défaut, jusqu'à ce que vous les coupiez dans les Réglages ; statistiques détaillées et rapports d'erreur seulement si vous dites oui.</li>
@@ -339,7 +339,7 @@
 
       <h2>Durées de conservation</h2>
       <ul>
-        <li>Statistiques de l'application : 12 mois au maximum pour les événements individuels dans PostHog, puis seulement des totaux ; environ 3 mois pour la copie gardée par Cloudflare.</li>
+        <li>Statistiques de l'application : 12 mois au maximum pour les événements individuels dans PostHog, puis seulement des totaux.</li>
         <li>PostHog (site) : 12 mois au maximum ; son cookie dure jusqu'à 1 an.</li>
         <li>Google Analytics : cookies jusqu'à 13 mois ; données détaillées conservées 14 mois au maximum.</li>
         <li>Microsoft Clarity : cookies jusqu'à 1 an ; Microsoft garde les enregistrements environ 30 jours et les statistiques jusqu'à 13 mois.</li>
@@ -410,7 +410,7 @@
       <p>Rechtsgrundlage: deine Einwilligung. Du kannst sie jederzeit in den Einstellungen widerrufen, danach wird nichts mehr gesendet.</p>
 
       <h3>Wohin die App-Daten gehen und wie lange sie bleiben</h3>
-      <p>Die App-Statistiken gehen an unseren Sammeldienst bei Cloudflare (telemetry.flitdrop.com), der nur das Land behält und die Ereignisse an PostHog weitergibt, wo sie in der Europäischen Union (Frankfurt) gespeichert werden. Einzelne Ereignisse werden dort höchstens 12 Monate aufbewahrt; danach bleiben nur Gesamtzahlen (zum Beispiel die Zahl der Übertragungen pro Monat). Damit wir sie schnell zählen können, legt der Sammeldienst außerdem eine Kopie der wichtigsten Angaben jedes Ereignisses (nie mehr als oben aufgeführt) in Cloudflare Workers Analytics Engine ab, das sie nach etwa 3 Monaten löscht.</p>
+      <p>Die App-Statistiken gehen an unseren Sammeldienst bei Cloudflare (flitdrop.com/api/telemetry, für Versionen vor 0.6.4 telemetry.flitdrop.com), der nur das Land behält und die Ereignisse an PostHog weitergibt, wo sie in der Europäischen Union (Frankfurt) gespeichert werden. Einzelne Ereignisse werden dort höchstens 12 Monate aufbewahrt; danach bleiben nur Gesamtzahlen (zum Beispiel die Zahl der Übertragungen pro Monat).</p>
 
       <h2>Auf dieser Website</h2>
       <h3>Wenn du in der EU, im EWR, im Vereinigten Königreich oder in der Schweiz bist</h3>
@@ -493,7 +493,7 @@
       <div class="trk">
         <h3>Statistiken der Flitdrop-App</h3>
         <ul>
-          <li>Anbieter: Cloudflare (Sammeldienst, und eine Kopie, die etwa 3 Monate bleibt) und PostHog (Speicherung in der EU, Frankfurt).</li>
+          <li>Anbieter: Cloudflare (Sammeldienst, speichert nichts) und PostHog (Speicherung in der EU, Frankfurt).</li>
           <li>Zweck: wissen, ob die App funktioniert und wo sie scheitert.</li>
           <li>Auf deinem Computer, in der Einstellungsdatei der App: das Datum des ersten Starts (um die Tage seit der Installation zu zählen), die zuletzt gestartete Version, der letzte Tag, an dem die tägliche Zählung gesendet wurde, ob schon eine erste Kopplung und eine erste Übertragung stattgefunden haben, und eine zufällige Installationskennung. Diese Kennung wird bei jeder Installation erzeugt, aber nur gesendet, wenn du den ausführlichen Statistiken zugestimmt hast.</li>
           <li>Wann: einfache Statistiken standardmäßig, bis du sie in den Einstellungen ausschaltest; ausführliche Statistiken und Fehlerberichte nur, wenn du zustimmst.</li>
@@ -505,7 +505,7 @@
 
       <h2>Wie lange Daten aufbewahrt werden</h2>
       <ul>
-        <li>App-Statistiken: einzelne Ereignisse in PostHog höchstens 12 Monate, danach nur Gesamtzahlen; etwa 3 Monate für die Kopie bei Cloudflare.</li>
+        <li>App-Statistiken: einzelne Ereignisse in PostHog höchstens 12 Monate, danach nur Gesamtzahlen.</li>
         <li>PostHog (Website): höchstens 12 Monate; sein Cookie gilt bis zu 1 Jahr.</li>
         <li>Google Analytics: Cookies bis zu 13 Monate; ausführliche Daten höchstens 14 Monate.</li>
         <li>Microsoft Clarity: Cookies bis zu 1 Jahr; Microsoft bewahrt Aufzeichnungen etwa 30 Tage und Statistiken bis zu 13 Monate auf.</li>

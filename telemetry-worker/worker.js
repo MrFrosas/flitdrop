@@ -276,11 +276,15 @@ function randomId() {
 
 const empty = (status = 204) => new Response(null, { status, headers: CORS })
 
+const PATHS = new Set(['/e', '/api/telemetry'])
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return empty(204)
     const url = new URL(request.url)
-    if (request.method !== 'POST' || url.pathname !== '/e') {
+    // /e sur telemetry.flitdrop.com (Worker, anciennes versions de l'app),
+    // /api/telemetry sur flitdrop.com (Pages Function, versions 0.6.4 et plus)
+    if (request.method !== 'POST' || !PATHS.has(url.pathname)) {
       return new Response('Flitdrop telemetry', { status: 404, headers: CORS })
     }
 
