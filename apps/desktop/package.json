@@ -12,7 +12,7 @@
     "dist:win": "npm run prepare:app && electron-builder --win nsis appx --publish never",
     "dist:win:ci": "npm run prepare:app && electron-builder --win nsis --publish never",
     "dist:linux:ci": "npm run prepare:app && electron-builder --linux AppImage deb --x64 --publish never",
-    "dist:mac": "npm run prepare:app && electron-builder --mac dir --arm64 --x64 --publish never && node make-dmg.mjs arm64 && node make-dmg.mjs x64"
+    "dist:mac": "npm --prefix ../../packages/core run build && npm run prepare:app && electron-builder --mac dir --arm64 --x64 --publish never && node make-dmg.mjs arm64 && node make-dmg.mjs x64"
   },
   "devDependencies": {
     "electron": "33.2.1",
