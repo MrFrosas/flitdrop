@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { startServer, type RunningServer } from '../src/server.js'
 import { seal, sealJSON, openJSON, randomToken } from '../src/crypto.js'
-import { b64u } from '../src/util.js'
+import { b64u, localIPv4s } from '../src/util.js'
 import { EVENTS, COMMON_PROPS, type Envelope } from '../src/telemetry.js'
 
 // Serveur réel, télémétrie branchée sur un fetch enregistreur (aucun réseau) :
@@ -89,6 +89,30 @@ describe('télémétrie branchée sur le serveur', () => {
     expect(events('app_daily_active')).toHaveLength(1)
     for (const e of sent) expect(e.iid).toBeUndefined()
     expect(((await (await admin('/state')).json()) as { config: Record<string, unknown> }).config.basicNoticeShown).toBe(true)
+  })
+
+  it('page du téléphone ouverte : comptée par le PC, pas pour ses fichiers ni depuis le PC lui-même', async () => {
+    const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1'
+    // le PC lui-même (127.0.0.1) : pas un téléphone
+    expect((await fetch(base + '/s/', { headers: { 'user-agent': IPHONE } })).status).toBe(200)
+    await settle()
+    expect(events('phone_page_opened')).toHaveLength(0)
+    // un téléphone sur le wifi : une adresse du PC autre que 127.0.0.1
+    const lan = localIPv4s().find((ip) => !ip.startsWith('169.254.'))
+    if (!lan) return // machine sans réseau : le reste est couvert par les tests unitaires
+    const phoneBase = `http://${lan}:${srv.port}`
+    const page = await fetch(phoneBase + '/s/', { headers: { 'user-agent': IPHONE } })
+    expect(page.status).toBe(200)
+    await page.text()
+    // fichiers de la page, rechargement : rien de plus
+    await (await fetch(phoneBase + '/s/app.js', { headers: { 'user-agent': IPHONE } })).text()
+    await (await fetch(phoneBase + '/s/index.html', { headers: { 'user-agent': IPHONE } })).text()
+    await settle()
+    const opened = events('phone_page_opened')
+    expect(opened).toHaveLength(1)
+    expect(opened[0]!.props).toMatchObject({ first: true, platform: 'ios' })
+    expect(opened[0]!.tier).toBe('basic')
+    expect(JSON.stringify(opened[0])).not.toContain(lan)
   })
 
   it('état : la question n’a pas encore été posée', async () => {
@@ -243,6 +267,9 @@ describe('télémétrie branchée sur le serveur', () => {
     const phone = await pairPhone('android')
     await phone.post('/api/phone/text', 'text', { text: 'x', mode: 'message' })
     await admin('/telemetry/event', { event: 'history_opened' })
+    // page ouverte par un autre téléphone (Android) : rien non plus
+    const lan = localIPv4s().find((ip) => !ip.startsWith('169.254.'))
+    if (lan) await (await fetch(`http://${lan}:${srv.port}/s/`, { headers: { 'user-agent': 'Mozilla/5.0 (Linux; Android 17)' } })).text()
     await settle()
     expect(sent.length).toBe(before)
     const st = (await (await admin('/state')).json()) as { config: Record<string, unknown> }

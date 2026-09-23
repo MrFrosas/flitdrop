@@ -57,9 +57,10 @@
       <p>To know whether Flitdrop really works for people, the app sends small anonymous counts:</p>
       <ul>
         <li>whether the app was used that day and how many phones are paired (0, 1, 2 or more), its first launch and its updates;</li>
+        <li>when a phone opens the Flitdrop page of your computer (after scanning the pairing code), with the phone type (iPhone, Android, other);</li>
         <li>when a phone is paired successfully, with the phone type (iPhone, Android, other);</li>
         <li>when a transfer succeeds or fails, with its direction (phone to computer or computer to phone), its type (file, photo, text, clipboard) and an approximate size range, never the file itself, its name or where it is stored; when a transfer fails, a short error code;</li>
-        <li>whether it is the first pairing or the first transfer on this computer;</li>
+        <li>whether it is the first time a phone opens the page, the first pairing or the first transfer on this computer;</li>
         <li>technical context: app version, operating system, processor type, how the app was installed (for example Microsoft Store or installer), interface language, the month of the first launch and a rough install age (same day, first week, first month, older).</li>
       </ul>
       <p>These events carry no identifier of any kind: they cannot be linked to each other or to a person. Our collector works out the country from the connection and keeps only the country; the IP address is never stored.</p>
@@ -163,7 +164,7 @@
         <ul>
           <li>Provider: Cloudflare (collector, keeps nothing) and PostHog (storage in the EU, Frankfurt).</li>
           <li>Purpose: know whether the app works and where it fails.</li>
-          <li>On your computer, in the app settings file: the date of first launch (to count days since install), the last version launched, the last day the daily count was sent, whether a first pairing and a first transfer already happened, and a random install identifier. This identifier is created on every install but is sent only if you accepted detailed statistics.</li>
+          <li>On your computer, in the app settings file: the date of first launch (to count days since install), the last version launched, the last day the daily count was sent, whether a phone already opened the page, whether a first pairing and a first transfer already happened, and a random install identifier. This identifier is created on every install but is sent only if you accepted detailed statistics.</li>
           <li>When it runs: basic statistics by default, until you turn them off in Settings; detailed statistics and error reports only if you say yes.</li>
         </ul>
       </div>
@@ -223,9 +224,10 @@
       <p>Pour savoir si Flitdrop marche vraiment chez les gens, l'application envoie de petits comptages anonymes :</p>
       <ul>
         <li>si l'app a servi dans la journée et combien de téléphones sont associés (0, 1, 2 ou plus), son premier lancement et ses mises à jour ;</li>
+        <li>l'ouverture de la page Flitdrop de votre ordinateur par un téléphone (après le scan du code d'association), avec son type (iPhone, Android, autre) ;</li>
         <li>l'association réussie d'un téléphone, avec son type (iPhone, Android, autre) ;</li>
         <li>la réussite ou l'échec d'un transfert, avec son sens (du téléphone vers l'ordinateur ou de l'ordinateur vers le téléphone), son type (fichier, photo, texte, presse-papiers) et une tranche de taille approximative, jamais le fichier lui-même, son nom ou son emplacement ; en cas d'échec, un court code d'erreur ;</li>
-        <li>s'il s'agit de la première association ou du premier transfert sur cet ordinateur ;</li>
+        <li>s'il s'agit de la première ouverture de la page par un téléphone, de la première association ou du premier transfert sur cet ordinateur ;</li>
         <li>le contexte technique : version de l'app, système d'exploitation, type de processeur, mode d'installation (par exemple Microsoft Store ou installeur), langue de l'interface, mois du premier lancement et ancienneté approximative de l'installation (le jour même, première semaine, premier mois, plus ancien).</li>
       </ul>
       <p>Ces événements ne portent aucun identifiant, quel qu'il soit : impossible de les relier entre eux ou à une personne. Notre collecteur déduit le pays à partir de la connexion et ne garde que le pays ; l'adresse IP n'est jamais enregistrée.</p>
@@ -329,7 +331,7 @@
         <ul>
           <li>Prestataires : Cloudflare (collecteur, ne garde rien) et PostHog (stockage dans l'UE, à Francfort).</li>
           <li>Finalité : savoir si l'application marche et où elle échoue.</li>
-          <li>Sur votre ordinateur, dans le fichier de réglages de l'app : la date du premier lancement (pour compter les jours depuis l'installation), la dernière version lancée, le dernier jour où le comptage quotidien est parti, si une première association et un premier transfert ont déjà eu lieu, et un identifiant d'installation aléatoire. Cet identifiant est créé sur chaque installation mais n'est envoyé que si vous avez accepté les statistiques détaillées.</li>
+          <li>Sur votre ordinateur, dans le fichier de réglages de l'app : la date du premier lancement (pour compter les jours depuis l'installation), la dernière version lancée, le dernier jour où le comptage quotidien est parti, si un téléphone a déjà ouvert la page, si une première association et un premier transfert ont déjà eu lieu, et un identifiant d'installation aléatoire. Cet identifiant est créé sur chaque installation mais n'est envoyé que si vous avez accepté les statistiques détaillées.</li>
           <li>Quand : statistiques de base par défaut, jusqu'à ce que vous les coupiez dans les Réglages ; statistiques détaillées et rapports d'erreur seulement si vous dites oui.</li>
         </ul>
       </div>
@@ -389,9 +391,10 @@
       <p>Damit wir wissen, ob Flitdrop bei den Leuten wirklich funktioniert, sendet die App kleine anonyme Zählungen:</p>
       <ul>
         <li>ob die App an diesem Tag benutzt wurde und wie viele Handys gekoppelt sind (0, 1, 2 oder mehr), ihren ersten Start und ihre Updates;</li>
+        <li>wenn ein Handy die Flitdrop-Seite deines Computers öffnet (nach dem Scannen des Kopplungscodes), mit der Art des Handys (iPhone, Android, anderes);</li>
         <li>wenn ein Handy erfolgreich gekoppelt wurde, mit der Art des Handys (iPhone, Android, anderes);</li>
         <li>wenn eine Übertragung klappt oder fehlschlägt, mit ihrer Richtung (vom Handy zum Computer oder vom Computer zum Handy), ihrer Art (Datei, Foto, Text, Zwischenablage) und einer ungefähren Größenklasse, nie die Datei selbst, ihren Namen oder ihren Speicherort; bei einem Fehlschlag einen kurzen Fehlercode;</li>
-        <li>ob es die erste Kopplung oder die erste Übertragung auf diesem Computer ist;</li>
+        <li>ob es das erste Öffnen der Seite durch ein Handy, die erste Kopplung oder die erste Übertragung auf diesem Computer ist;</li>
         <li>technische Angaben: App-Version, Betriebssystem, Prozessortyp, wie die App installiert wurde (zum Beispiel Microsoft Store oder Installer), Sprache der Oberfläche, der Monat des ersten Starts und ein grobes Installationsalter (am selben Tag, erste Woche, erster Monat, älter).</li>
       </ul>
       <p>Diese Ereignisse tragen keinerlei Kennung: Sie lassen sich weder miteinander noch mit einer Person verknüpfen. Unser Sammeldienst leitet das Land aus der Verbindung ab und behält nur das Land; die IP-Adresse wird nie gespeichert.</p>
@@ -495,7 +498,7 @@
         <ul>
           <li>Anbieter: Cloudflare (Sammeldienst, speichert nichts) und PostHog (Speicherung in der EU, Frankfurt).</li>
           <li>Zweck: wissen, ob die App funktioniert und wo sie scheitert.</li>
-          <li>Auf deinem Computer, in der Einstellungsdatei der App: das Datum des ersten Starts (um die Tage seit der Installation zu zählen), die zuletzt gestartete Version, der letzte Tag, an dem die tägliche Zählung gesendet wurde, ob schon eine erste Kopplung und eine erste Übertragung stattgefunden haben, und eine zufällige Installationskennung. Diese Kennung wird bei jeder Installation erzeugt, aber nur gesendet, wenn du den ausführlichen Statistiken zugestimmt hast.</li>
+          <li>Auf deinem Computer, in der Einstellungsdatei der App: das Datum des ersten Starts (um die Tage seit der Installation zu zählen), die zuletzt gestartete Version, der letzte Tag, an dem die tägliche Zählung gesendet wurde, ob schon ein Handy die Seite geöffnet hat, ob schon eine erste Kopplung und eine erste Übertragung stattgefunden haben, und eine zufällige Installationskennung. Diese Kennung wird bei jeder Installation erzeugt, aber nur gesendet, wenn du den ausführlichen Statistiken zugestimmt hast.</li>
           <li>Wann: einfache Statistiken standardmäßig, bis du sie in den Einstellungen ausschaltest; ausführliche Statistiken und Fehlerberichte nur, wenn du zustimmst.</li>
         </ul>
       </div>

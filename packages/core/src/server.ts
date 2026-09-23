@@ -28,6 +28,7 @@ import { TransferManager, ApiError } from './transfers.js'
 import { NonceCache, open, seal, openFreshJSON, sealJSON, randomToken } from './crypto.js'
 import { createClipboardText, type ClipboardTextBackend } from './clip.js'
 import { ClipHistory } from './cliphistory.js'
+import { TransferActivity } from './activity.js'
 import { saveMultipartFiles } from './uploads.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
 import { t as tr, resolveLang, langFrom, acceptLang } from './i18n.js'
@@ -45,6 +46,7 @@ import {
 // ré-exporté pour l'app Electron (main.cjs) : tray, notifications, dialogue.
 export { t, resolveLang, langFrom } from './i18n.js'
 export { ClipboardWatcher } from './clipwatch.js'
+export { TransferActivity, type TransferActivityState } from './activity.js'
 
 // réglages dont le NOM (jamais la valeur) peut remonter dans settings_changed
 const SETTINGS_KEYS = [
@@ -124,6 +126,12 @@ export interface RunningServer {
   pollClipboard: () => Promise<boolean>
   /** Statistiques et rapports d'erreur (no-op sans opts.telemetry). */
   telemetry: Telemetry
+  /** Activité des transferts : événement 'transfer' { active, progress }.
+   *  active passe à true dès que des octets passent (dans un sens ou dans
+   *  l'autre), à false 30 s après le dernier octet ; progress (0 à 1) est la
+   *  progression globale quand elle est connue, sinon null. Au plus 2
+   *  annonces par seconde. */
+  activity: TransferActivity
   close: () => Promise<void>
 }
 
@@ -160,6 +168,9 @@ const TRANSFER_RATE_PER_MIN = 6000
 // (le téléphone ne le demande qu'après une coupure).
 const PHONE_TRANSFER_ROUTE = /^\/(?:transfer\/(?:init|[^/]+\/(?:chunk\/\d+|finish))|outbox\/[^/]+\/download)$/
 
+// au-delà, un texte envoyé compte comme un transfert (activité, PC éveillé)
+const LARGE_TEXT_BYTES = 64 * 1024
+
 export async function startServer(opts: StartOptions = {}): Promise<RunningServer> {
   if (opts.disableClipboard) process.env.FLITDROP_NO_CLIP = '1'
   const home = flitdropHome(opts.home)
@@ -173,7 +184,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const outbox = new Outbox(home)
   const hub = new Hub()
   const nonces = new NonceCache()
-  const transfers = new TransferManager(() => cfg, history, hub)
+  const activity = new TransferActivity()
+  const transfers = new TransferManager(() => cfg, history, hub, activity)
   const clipHistory = new ClipHistory(home)
   const telemetry = new Telemetry(
     { home, cfg, pairedDevices: () => devices.listPublic().filter((d) => d.status === 'active').length },
@@ -311,9 +323,50 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   const wd = (req: Request): PhoneContext => (req as Request & { wd: PhoneContext }).wd
 
+  // ---------- activité des transferts ----------
+
+  // Compte les octets d'un corps de requête au fil de l'eau. L'écouteur ne se
+  // branche qu'au moment où le vrai lecteur (analyseur, busboy) se branche :
+  // brancher « data » plus tôt ferait couler le flux dans le vide.
+  const watchBody = (req: Request, onBytes: (n: number) => void) => {
+    const onNew = (ev: string | symbol) => {
+      if (ev !== 'data') return
+      req.off('newListener', onNew)
+      req.on('data', (c: Buffer) => onBytes(c.length))
+    }
+    req.on('newListener', onNew)
+  }
+  // Corps d'au moins `minBytes` (texte long, envoi par Raccourci) : compté
+  // comme un transfert, avec sa progression quand la taille est annoncée.
+  const trackBody = (prefix: string, minBytes: number) => (req: Request, _res: Response, next: NextFunction) => {
+    const total = Number(req.headers['content-length']) || 0
+    if (total < minBytes) return next()
+    const key = `${prefix}:${randomToken(6)}`
+    let got = 0
+    watchBody(req, (n) => {
+      got += n
+      activity.update(key, got, total)
+    })
+    const done = () => activity.end(key)
+    req.once('end', done)
+    req.once('close', done)
+    next()
+  }
+
   // ---------- pages ----------
 
   app.get('/', (_req, res) => res.redirect('/s/'))
+
+  // Chemin de connexion : un téléphone a ouvert la page (QR scanné). Compté
+  // ici, par le PC, jamais par le téléphone ; la page elle-même, pas ses
+  // fichiers. Une page ouverte sur le PC lui-même n'est pas un téléphone.
+  app.use('/s', (req, _res, next) => {
+    if (req.method === 'GET' && (req.path === '/' || req.path === '/index.html') && !isLoopback(req.socket.remoteAddress)) {
+      const ua = req.headers['user-agent']
+      telemetry.phonePageOpened(req.socket.remoteAddress ?? '?', typeof ua === 'string' ? ua : undefined)
+    }
+    next()
+  })
 
   app.use(
     '/s',
@@ -455,6 +508,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       if (!dev || !t || t.deviceId !== dev.id) return res.status(404).json({ code: 'transferNotFound' })
       const n = Number(req.params.n)
       if (!Number.isInteger(n) || n < 0 || n >= t.chunks) return res.status(400).json({ code: 'badIndex' })
+      // un morceau de 8 Mo peut mettre longtemps sur un wifi lent : chaque
+      // paquet reçu compte comme activité, pas seulement le morceau complet
+      watchBody(req, () => activity.update(`up:${t.id}`, t.bytes, t.size))
       next()
     },
     express.raw({ type: () => true, limit: MAX_CHUNK_BODY }),
@@ -530,7 +586,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
   })
 
-  app.post('/api/phone/text', jsonText, phoneAuth('text'), async (req, res) => {
+  app.post('/api/phone/text', trackBody('txt', LARGE_TEXT_BYTES), jsonText, phoneAuth('text'), async (req, res) => {
     const { dev, key, payload } = wd(req)
     const text = typeof payload.text === 'string' ? payload.text : ''
     if (!text || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES)
@@ -567,8 +623,21 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     res.json({ p: sealJSON(key, { ok: true, copied }, aad(dev.id, 'text:res')) })
   })
 
+  // Listes que le téléphone relit toutes les 5 à 6 s : une étiquette de
+  // version (propre à ce lancement du serveur, pour qu'un redémarrage ne soit
+  // jamais pris pour « rien de neuf »). Le téléphone renvoie celle qu'il a
+  // (`since`) ; si rien n'a changé, la réponse tient en quelques octets et le
+  // téléphone garde sa liste. Une ancienne page sans `since` reçoit toujours
+  // la liste complète.
+  const bootTag = randomToken(4)
+  // réglages qui changent le contenu de ces listes (nom du PC, historique
+  // activé ou non) : on ne suit pas le détail, tout enregistrement compte
+  let settingsGen = 0
+  const outboxTag = () => `${bootTag}.${outbox.version}.${settingsGen}`
+  const clipTag = () => `${bootTag}.${clipHistory.version}.${settingsGen}`
+
   app.post('/api/phone/outbox', jsonSmall, phoneAuth('outbox'), (req, res) => {
-    const { dev, key } = wd(req)
+    const { dev, key, payload } = wd(req)
     devices.touch(dev.id)
     // un texte de la file est « reçu » dès que ce téléphone l'a en main (il
     // s'affiche tel quel) : compté une fois par texte et par téléphone.
@@ -578,9 +647,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       textDelivered.add(`${item.id}|${dev.id}`)
       telemetry.transferOk('pc_to_phone', item.origin === 'clipboard' ? 'clipboard' : 'text')
     }
-    res.json({
-      p: sealJSON(key, { desktopName: cfg.deviceName, items: outbox.listForPhone() }, aad(dev.id, 'outbox:res')),
-    })
+    const v = outboxTag()
+    const body = payload.since === v ? { unchanged: true, v } : { desktopName: cfg.deviceName, items: outbox.listForPhone(), v }
+    res.json({ p: sealJSON(key, body, aad(dev.id, 'outbox:res')) })
   })
 
   // Historique du presse-papiers du PC, servi (chiffré) au téléphone appairé :
@@ -588,15 +657,14 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // TES appareils voient TON presse-papiers. Les miniatures suffisent à l'aperçu ;
   // le chemin disque n'est jamais exposé (clipHistory.list le retire déjà).
   app.post('/api/phone/cliphistory', jsonSmall, phoneAuth('cliphistory'), (req, res) => {
-    const { dev, key } = wd(req)
+    const { dev, key, payload } = wd(req)
     devices.touch(dev.id)
-    res.json({
-      p: sealJSON(
-        key,
-        { enabled: cfg.clipHistoryEnabled, items: cfg.clipHistoryEnabled ? clipHistory.list(200) : [] },
-        aad(dev.id, 'cliphistory:res')
-      ),
-    })
+    const v = clipTag()
+    const body =
+      payload.since === v
+        ? { unchanged: true, v }
+        : { enabled: cfg.clipHistoryEnabled, items: cfg.clipHistoryEnabled ? clipHistory.list(200) : [], v }
+    res.json({ p: sealJSON(key, body, aad(dev.id, 'cliphistory:res')) })
   })
 
   // Envoie une entrée d'historique vers le téléphone (texte -> presse-papiers du
@@ -661,9 +729,15 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
     res.once('close', onClose)
     let index = 0
+    // clé propre à CE téléchargement : deux téléphones (ou deux essais) du même
+    // fichier ont chacun leur progression
+    const actKey = `dl:${randomToken(6)}`
+    let sentBytes = 0
     try {
       for await (const chunk of stream) {
         if (aborted || res.writableEnded) break
+        sentBytes += (chunk as Buffer).length
+        activity.update(actKey, sentBytes, item.size ?? 0)
         const sealed = seal(key, chunk as Buffer, aad(dev.id, 'dl', `${item.id}|${index}`))
         const len = Buffer.alloc(4)
         len.writeUInt32BE(sealed.length, 0)
@@ -712,6 +786,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     } finally {
       res.off('close', onClose)
       stream.destroy()
+      activity.end(actKey)
     }
   })
 
@@ -774,7 +849,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     return dev
   }
 
-  app.post('/api/shortcut/upload', rlShortcut, async (req, res) => {
+  app.post('/api/shortcut/upload', rlShortcut, trackBody('sc', 0), async (req, res) => {
     const dev = shortcutDevice(req)
     if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
     fs.mkdirSync(cfg.downloadDir, { recursive: true })
@@ -812,7 +887,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
   })
 
-  app.post('/api/shortcut/text', rlShortcut, express.text({ limit: '1mb', type: () => true }), async (req, res) => {
+  app.post('/api/shortcut/text', rlShortcut, trackBody('sctxt', LARGE_TEXT_BYTES), express.text({ limit: '1mb', type: () => true }), async (req, res) => {
     const dev = shortcutDevice(req)
     if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
     const text = typeof req.body === 'string' ? req.body : ''
@@ -1056,6 +1131,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   admin.post('/settings', jsonSmall, (req, res) => {
     const body = req.body as Partial<Config>
+    // les listes du téléphone (nom du PC, historique activé) sont à relire,
+    // même si la requête échoue plus bas après un premier changement
+    settingsGen++
     // instantané pour savoir quels réglages ont VRAIMENT changé (statistiques :
     // on n'envoie que le nom du réglage, jamais sa valeur)
     const before: Record<string, unknown> = { ...cfg }
@@ -1280,8 +1358,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     addClipboardImage,
     pollClipboard,
     telemetry,
+    activity,
     close: async () => {
       telemetry.stop()
+      activity.close()
       clearInterval(clipTimer)
       clearInterval(clipPurgeTimer)
       clearInterval(pendingTimer)

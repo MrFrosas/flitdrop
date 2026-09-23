@@ -448,6 +448,89 @@ describe('PC -> téléphone (outbox)', () => {
   })
 })
 
+describe('listes du téléphone versionnées (rien de neuf = quelques octets)', () => {
+  const read = async <T,>(phone: Phone, route: string, purpose: string, obj: Record<string, unknown>) => {
+    const r = await phone.post(route, purpose, obj)
+    expect(r.status).toBe(200)
+    const text = await r.text()
+    return { size: text.length, body: openJSON<T>(phone.key, (JSON.parse(text) as { p: string }).p, phone.aad(purpose + ':res')) }
+  }
+  type OutboxRes = { unchanged?: boolean; v?: string; items?: { id: string; text?: string }[]; desktopName?: string }
+  type ClipRes = { unchanged?: boolean; v?: string; items?: { text: string }[]; enabled?: boolean }
+
+  it('file d’envoi : liste complète, puis « rien de neuf », puis la nouveauté', async () => {
+    const phone = await pairPhone()
+    await admin('/outbox/text', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'x'.repeat(20_000) }),
+    })
+    const full = await read<OutboxRes>(phone, '/api/phone/outbox', 'outbox', {})
+    expect(full.body.items?.length).toBeGreaterThan(0)
+    expect(typeof full.body.v).toBe('string')
+    const same = await read<OutboxRes>(phone, '/api/phone/outbox', 'outbox', { since: full.body.v })
+    expect(same.body).toEqual({ unchanged: true, v: full.body.v })
+    expect(same.size).toBeLessThan(300)
+    expect(full.size).toBeGreaterThan(20_000)
+    // un nouvel élément : liste complète avec une autre étiquette
+    await admin('/outbox/text', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text: 'nouveau lien' }),
+    })
+    const next = await read<OutboxRes>(phone, '/api/phone/outbox', 'outbox', { since: full.body.v })
+    expect(next.body.unchanged).toBeUndefined()
+    expect(next.body.v).not.toBe(full.body.v)
+    expect(next.body.items?.[0]?.text).toBe('nouveau lien')
+    // retrait sur le PC : la liste change aussi
+    const rm = await admin(`/outbox/${next.body.items![0]!.id}/remove`, { method: 'POST' })
+    expect(rm.status).toBe(200)
+    const afterRm = await read<OutboxRes>(phone, '/api/phone/outbox', 'outbox', { since: next.body.v })
+    expect(afterRm.body.unchanged).toBeUndefined()
+    expect(afterRm.body.items?.some((i) => i.text === 'nouveau lien')).toBe(false)
+  })
+
+  it('ancienne page sans étiquette : toujours la liste complète', async () => {
+    const phone = await pairPhone()
+    const a = await read<OutboxRes>(phone, '/api/phone/outbox', 'outbox', {})
+    const b = await read<OutboxRes>(phone, '/api/phone/outbox', 'outbox', {})
+    expect(Array.isArray(a.body.items)).toBe(true)
+    expect(b.body.items).toEqual(a.body.items)
+    expect(b.body.desktopName).toBe(a.body.desktopName)
+  })
+
+  it('une étiquette fausse ou périmée donne la liste complète', async () => {
+    const phone = await pairPhone()
+    const r = await read<OutboxRes>(phone, '/api/phone/outbox', 'outbox', { since: 'autre-lancement.0.0' })
+    expect(Array.isArray(r.body.items)).toBe(true)
+    const r2 = await read<ClipRes>(phone, '/api/phone/cliphistory', 'cliphistory', { since: 12 })
+    expect(Array.isArray(r2.body.items)).toBe(true)
+  })
+
+  it('historique du presse-papiers : « rien de neuf », puis nouvelle copie et réglages', async () => {
+    const phone = await pairPhone()
+    await phone.post('/api/phone/text', 'text', { text: 'version 1', mode: 'clip' })
+    const full = await read<ClipRes>(phone, '/api/phone/cliphistory', 'cliphistory', {})
+    expect(full.body.items?.[0]?.text).toBe('version 1')
+    const same = await read<ClipRes>(phone, '/api/phone/cliphistory', 'cliphistory', { since: full.body.v })
+    expect(same.body).toEqual({ unchanged: true, v: full.body.v })
+    await phone.post('/api/phone/text', 'text', { text: 'version 2', mode: 'clip' })
+    const next = await read<ClipRes>(phone, '/api/phone/cliphistory', 'cliphistory', { since: full.body.v })
+    expect(next.body.items?.[0]?.text).toBe('version 2')
+    // réglage (nom du PC, historique coupé...) : la liste est renvoyée
+    const set = await admin('/settings', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ deviceName: 'PC renommé' }),
+    })
+    expect(set.status).toBe(200)
+    const afterSet = await read<ClipRes>(phone, '/api/phone/cliphistory', 'cliphistory', { since: next.body.v })
+    expect(afterSet.body.unchanged).toBeUndefined()
+    const box = await read<OutboxRes>(phone, '/api/phone/outbox', 'outbox', {})
+    expect(box.body.desktopName).toBe('PC renommé')
+  })
+})
+
 describe('confidentialité : liaison au PC + historique téléphone', () => {
   it('le téléphone voit l’historique du presse-papiers du PC', async () => {
     const phone = await pairPhone()

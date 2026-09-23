@@ -65,6 +65,9 @@ export interface Config {
   lastVersion: string
   firstPairingDone: boolean
   firstTransferDone: boolean
+  // un téléphone a déjà ouvert la page Flitdrop de ce PC (statistique
+  // « page ouverte », premier passage ou non)
+  firstPhonePageDone: boolean
   // dernier jour local (AAAA-MM-JJ) où app_daily_active a été envoyé.
   lastDailyActiveDay: string
 }
@@ -125,7 +128,12 @@ export function loadConfig(home: string): Config {
     firstPairingDone: stored.firstPairingDone === true || legacyHistory.paired,
     firstTransferDone: stored.firstTransferDone === true || legacyHistory.transferred,
     lastDailyActiveDay: typeof stored.lastDailyActiveDay === 'string' ? stored.lastDailyActiveDay.slice(0, 10) : '',
+    firstPhonePageDone: false,
   }
+  // migration : absent d'un config.json plus ancien. Une installation qui a
+  // déjà appairé un téléphone ou transféré quelque chose a forcément vu la page
+  // s'ouvrir sur un téléphone : ce ne sera pas une « première fois ».
+  cfg.firstPhonePageDone = stored.firstPhonePageDone === true || cfg.firstPairingDone || cfg.firstTransferDone
   saveConfig(home, cfg)
   return cfg
 }

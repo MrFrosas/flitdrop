@@ -44,6 +44,7 @@ export const EVENTS: Record<string, { tier: Tier; props: readonly string[] }> = 
   app_updated: { tier: 'basic', props: ['from_version'] },
   app_daily_active: { tier: 'basic', props: ['paired_devices', 'launches_today'] },
   pairing_success: { tier: 'basic', props: ['platform', 'first'] },
+  phone_page_opened: { tier: 'basic', props: ['first', 'platform'] },
   transfer_ok: { tier: 'basic', props: ['direction', 'kind', 'size', 'first'] },
   transfer_fail: { tier: 'basic', props: ['direction', 'kind', 'status', 'reason'] },
   welcome_shown: { tier: 'full', props: [] },
@@ -96,6 +97,18 @@ export function platformOf(p: string | undefined): 'ios' | 'android' | 'other' {
   if (p === 'android') return 'android'
   return 'other'
 }
+
+/** Type de téléphone d'après l'en-tête User-Agent de la page (jamais gardé). */
+export function platformFromUserAgent(ua: string | undefined): 'ios' | 'android' | 'other' {
+  const s = typeof ua === 'string' ? ua : ''
+  if (/iPhone|iPad|iPod/.test(s)) return 'ios'
+  if (/Android/.test(s)) return 'android'
+  return 'other'
+}
+
+// une même page de téléphone rechargée ou rouverte compte au plus une fois
+// par tranche de 10 minutes
+const PAGE_OPEN_DEDUPE_MS = 10 * 60 * 1000
 
 // ---------- dates ----------
 
@@ -272,6 +285,9 @@ export class Telemetry {
   private excTimes: number[] = []
   private excSeen = new Map<string, number>()
   private lastPhoneConnect = new Map<string, number>()
+  // clé « adresse du téléphone|type » -> dernière ouverture comptée. En mémoire
+  // seulement : jamais écrit sur le disque, jamais envoyé.
+  private lastPageOpen = new Map<string, number>()
   private now: () => number
   private fetchImpl: typeof fetch | undefined
 
@@ -514,6 +530,28 @@ export class Telemetry {
     this.lastPhoneConnect.set(deviceId, now)
     if (this.lastPhoneConnect.size > 200) this.lastPhoneConnect.clear()
     this.track('phone_connect', { platform: platformOf(platform) })
+  }
+
+  /** Un téléphone vient de charger la page Flitdrop servie par le PC (étape
+   *  « QR scanné » du chemin de connexion, avant tout appairage). `client`
+   *  sert seulement à ne pas recompter la même page (en mémoire). */
+  phonePageOpened(client: string, userAgent: string | undefined): void {
+    const now = this.now()
+    const platform = platformFromUserAgent(userAgent)
+    const k = `${client}|${platform}`
+    const last = this.lastPageOpen.get(k)
+    if (last !== undefined && now - last < PAGE_OPEN_DEDUPE_MS) return
+    if (this.lastPageOpen.size >= 200) {
+      for (const [key, ts] of this.lastPageOpen) if (now - ts >= PAGE_OPEN_DEDUPE_MS) this.lastPageOpen.delete(key)
+      if (this.lastPageOpen.size >= 200) this.lastPageOpen.clear()
+    }
+    this.lastPageOpen.set(k, now)
+    const first = !this.cfg.firstPhonePageDone
+    if (first) {
+      this.cfg.firstPhonePageDone = true
+      this.save()
+    }
+    this.track('phone_page_opened', { first, platform })
   }
 
   transferOk(direction: Direction, kind: Kind, bytes?: number): void {

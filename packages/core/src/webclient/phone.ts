@@ -1,6 +1,7 @@
 import { b64uToBytes, seal, sealJSON, openJSON, open, jti } from './wdcrypto.js'
 import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '../i18n.js'
 import { applyI18n } from '../i18n-dom.js'
+import { KeyedNodes, VersionedList, reconcile } from './lists.js'
 
 const LANG_KEY = 'wd_lang'
 let lang: Lang = resolveLang(localStorage.getItem(LANG_KEY) || undefined, langFrom(navigator.language))
@@ -502,47 +503,70 @@ async function sendFiles(files: FileList | File[]) {
 
 // ---------- réception ----------
 
+// liste « Recevoir » : lignes gardées d'une relecture à l'autre (plus de
+// clignotement, et la barre d'un téléchargement en cours ne disparaît plus)
+const outboxList = new VersionedList<OutboxItem[]>()
+const recvNodes = new KeyedNodes<HTMLLIElement>()
+// téléchargements en cours : leur ligne n'est jamais recréée ni retirée
+const downloading = new Set<string>()
+
 function renderRecv(items: OutboxItem[]) {
-  const list = $('recvList')
   const badge = $('recvBadge')
   const fresh = items.filter((i) => !downloadedIds.has(i.id))
   badge.textContent = String(fresh.length)
   badge.classList.toggle('hidden', fresh.length === 0)
   $('recvEmpty').classList.toggle('hidden', items.length > 0)
-  list.innerHTML = ''
-  for (const item of items) {
-    const li = document.createElement('li')
-    li.className = 'qitem' + (downloadedIds.has(item.id) ? ' done' : '')
-    if (item.kind === 'text') {
-      li.innerHTML = `
-        <div class="qhead"><div class="qicon">✂</div><div class="qname">${t('ph.recv.textFrom')}</div>
-        <button class="qbtn">${t('ph.recv.copy')}</button></div>
-        <div class="rtext"></div>`
-      ;(li.querySelector('.rtext') as HTMLElement).textContent = item.text ?? ''
-      ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = () => {
-        const ok = copyText(item.text ?? '')
-        downloadedIds.add(item.id)
-        li.classList.add('done')
-        toast(ok ? t('ph.recv.copied') : t('ph.recv.selectCopy'))
-      }
-    } else {
-      li.innerHTML = `
-        <div class="qhead"><div class="qicon">↓</div><div class="qname"></div><div class="qsize"></div>
-        <button class="qbtn">${t('ph.recv.open')}</button></div>
-        <div class="qbar hidden"><span></span></div>
-        <div class="qstate hidden"></div>`
-      ;(li.querySelector('.qname') as HTMLElement).textContent = item.name ?? t('hist.file')
-      ;(li.querySelector('.qsize') as HTMLElement).textContent = fmtSize(item.size ?? 0)
-      ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = () => downloadItem(item, li)
+  const nodes = recvNodes.sync(items, lang, recvLine, downloading)
+  items.forEach((item, i) => nodes[i]?.classList.toggle('done', downloadedIds.has(item.id)))
+  reconcile($('recvList'), nodes)
+}
+
+function recvLine(item: OutboxItem): HTMLLIElement {
+  const li = document.createElement('li')
+  li.className = 'qitem'
+  if (item.kind === 'text') {
+    li.innerHTML = `
+      <div class="qhead"><div class="qicon">✂</div><div class="qname">${t('ph.recv.textFrom')}</div>
+      <button class="qbtn">${t('ph.recv.copy')}</button></div>
+      <div class="rtext"></div>`
+    ;(li.querySelector('.rtext') as HTMLElement).textContent = item.text ?? ''
+    ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = () => {
+      const ok = copyText(item.text ?? '')
+      downloadedIds.add(item.id)
+      li.classList.add('done')
+      toast(ok ? t('ph.recv.copied') : t('ph.recv.selectCopy'))
     }
-    list.appendChild(li)
+  } else {
+    li.innerHTML = `
+      <div class="qhead"><div class="qicon">↓</div><div class="qname"></div><div class="qsize"></div>
+      <button class="qbtn">${t('ph.recv.open')}</button></div>
+      <div class="qbar hidden"><span></span></div>
+      <div class="qstate hidden"></div>`
+    ;(li.querySelector('.qname') as HTMLElement).textContent = item.name ?? t('hist.file')
+    ;(li.querySelector('.qsize') as HTMLElement).textContent = fmtSize(item.size ?? 0)
+    ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = () => downloadItem(item, li)
   }
+  return li
 }
 
 async function downloadItem(item: OutboxItem, li: HTMLLIElement) {
+  // un deuxième appui pendant le téléchargement ne relance rien
+  if (downloading.has(item.id)) return
+  downloading.add(item.id)
+  try {
+    await downloadInto(item, li)
+  } finally {
+    downloading.delete(item.id)
+  }
+}
+
+async function downloadInto(item: OutboxItem, li: HTMLLIElement) {
   const bar = li.querySelector('.qbar') as HTMLElement
   const barFill = li.querySelector('.qbar span') as HTMLElement
   const state = li.querySelector('.qstate') as HTMLElement
+  // nouvel essai après un échec : la ligne repart de zéro
+  li.classList.remove('err')
+  barFill.style.width = '0%'
   bar.classList.remove('hidden')
   state.classList.remove('hidden')
   state.textContent = t('ph.recv.downloading')
@@ -662,8 +686,9 @@ async function downloadItem(item: OutboxItem, li: HTMLLIElement) {
 async function pollOutbox() {
   if (!hello || document.hidden) return
   try {
-    const res = await post<{ items: OutboxItem[] }>('/api/phone/outbox', 'outbox', {})
-    renderRecv(res.items)
+    const res = await post<{ items?: OutboxItem[]; unchanged?: boolean; v?: string }>('/api/phone/outbox', 'outbox', outboxList.request())
+    const items = outboxList.accept(res, () => res.items ?? [])
+    if (items) renderRecv(items)
     $('statusDot').classList.remove('off')
   } catch {
     $('statusDot').classList.add('off')
@@ -688,60 +713,77 @@ interface ClipEntry {
 }
 
 let clipTimer: number | null = null
+const clipList = new VersionedList<{ items: ClipEntry[]; enabled: boolean }>()
+const clipNodes = new KeyedNodes<HTMLLIElement>()
+
+const clipLabel = (e: ClipEntry) =>
+  e.kind === 'image' && e.image
+    ? `${e.text} · ${rtf(lang, e.ts)}`
+    : `${e.source === 'pc' ? t('ph.clip.copiedPc') : t('ph.clip.receivedFrom', { name: e.source })} · ${rtf(lang, e.ts)}`
 
 function renderClipHistory(items: ClipEntry[], enabled: boolean) {
-  const list = $('clipList')
   $('clipDisabled').classList.toggle('hidden', enabled)
   $('clipEmpty').classList.toggle('hidden', !enabled || items.length > 0)
-  list.innerHTML = ''
-  if (!enabled) return
-  for (const e of items) {
-    const li = document.createElement('li')
-    li.className = 'qitem'
-    if (e.kind === 'image' && e.image) {
-      li.innerHTML = `
-        <div class="qhead">
-          <img class="clip-thumb-img" alt="">
-          <div class="qname"></div>
-          <button class="qbtn">${t('ph.clip.receive')}</button>
-        </div>`
-      const thumb = li.querySelector('.clip-thumb-img') as HTMLImageElement
-      thumb.src = e.image.thumb
-      ;(li.querySelector('.qname') as HTMLElement).textContent = `${e.text} · ${rtf(lang, e.ts)}`
-      thumb.onclick = () => {
-        const img = $('imgPreview') as HTMLImageElement
-        img.src = e.image!.thumb
-        $('imgModal').classList.remove('hidden')
-      }
-      ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = async () => {
-        try {
-          await post(`/api/phone/cliphistory/${e.id}/tophone`, 'clip-tophone', { entryId: e.id })
-          toast(t('ph.clip.imgAvailable'))
-        } catch {
-          toast(t('ph.clip.imgFailed'))
-        }
-      }
-    } else {
-      li.innerHTML = `
-        <div class="qhead"><div class="qicon">≡</div><div class="qname"></div>
-        <button class="qbtn">${t('ph.clip.copy')}</button></div>
-        <div class="rtext"></div>`
-      ;(li.querySelector('.qname') as HTMLElement).textContent = `${e.source === 'pc' ? t('ph.clip.copiedPc') : t('ph.clip.receivedFrom', { name: e.source })} · ${rtf(lang, e.ts)}`
-      ;(li.querySelector('.rtext') as HTMLElement).textContent = e.text
-      ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = () => {
-        const ok = copyText(e.text)
-        toast(ok ? t('ph.recv.copied') : t('ph.recv.selectCopy'))
+  const shown = enabled ? items : []
+  const nodes = clipNodes.sync(shown, lang, clipLine)
+  shown.forEach((e, i) => {
+    // seule l'heure relative (« il y a 2 min ») bouge sur une ligne gardée
+    const label = nodes[i]?.querySelector('.qname') as HTMLElement | null
+    const text = clipLabel(e)
+    if (label && label.textContent !== text) label.textContent = text
+  })
+  reconcile($('clipList'), nodes)
+}
+
+function clipLine(e: ClipEntry): HTMLLIElement {
+  const li = document.createElement('li')
+  li.className = 'qitem'
+  if (e.kind === 'image' && e.image) {
+    li.innerHTML = `
+      <div class="qhead">
+        <img class="clip-thumb-img" alt="">
+        <div class="qname"></div>
+        <button class="qbtn">${t('ph.clip.receive')}</button>
+      </div>`
+    const thumb = li.querySelector('.clip-thumb-img') as HTMLImageElement
+    thumb.src = e.image.thumb
+    thumb.onclick = () => {
+      const img = $('imgPreview') as HTMLImageElement
+      img.src = e.image!.thumb
+      $('imgModal').classList.remove('hidden')
+    }
+    ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = async () => {
+      try {
+        await post(`/api/phone/cliphistory/${e.id}/tophone`, 'clip-tophone', { entryId: e.id })
+        toast(t('ph.clip.imgAvailable'))
+      } catch {
+        toast(t('ph.clip.imgFailed'))
       }
     }
-    list.appendChild(li)
+  } else {
+    li.innerHTML = `
+      <div class="qhead"><div class="qicon">≡</div><div class="qname"></div>
+      <button class="qbtn">${t('ph.clip.copy')}</button></div>
+      <div class="rtext"></div>`
+    ;(li.querySelector('.rtext') as HTMLElement).textContent = e.text
+    ;(li.querySelector('.qbtn') as HTMLButtonElement).onclick = () => {
+      const ok = copyText(e.text)
+      toast(ok ? t('ph.recv.copied') : t('ph.recv.selectCopy'))
+    }
   }
+  return li
 }
 
 async function pollClipHistory() {
   if (!hello || document.hidden) return
   try {
-    const res = await post<{ items: ClipEntry[]; enabled: boolean }>('/api/phone/cliphistory', 'cliphistory', {})
-    renderClipHistory(res.items, res.enabled)
+    const res = await post<{ items?: ClipEntry[]; enabled?: boolean; unchanged?: boolean; v?: string }>(
+      '/api/phone/cliphistory',
+      'cliphistory',
+      clipList.request()
+    )
+    const got = clipList.accept(res, () => ({ items: res.items ?? [], enabled: res.enabled !== false }))
+    if (got) renderClipHistory(got.items, got.enabled)
   } catch {
     // silencieux : l'onglet « Recevoir » signale déjà l'état de connexion
   }
@@ -866,6 +908,9 @@ function initUI() {
     applyI18n(lang)
     updateTxtCount()
     if (hello) $('menuInfo').textContent = t('ph.menuInfo', { name: hello.desktopName })
+    // les lignes déjà affichées sont redessinées dans la nouvelle langue
+    if (outboxList.data) renderRecv(outboxList.data)
+    if (clipList.data) renderClipHistory(clipList.data.items, clipList.data.enabled)
   }
 
   // collage manuel d'un lien d'appairage : secours si on est bloqué dans la PWA

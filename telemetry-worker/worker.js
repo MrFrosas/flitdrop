@@ -67,6 +67,8 @@ const BASIC_EVENTS = {
   app_updated: { from_version: str(16) },
   app_daily_active: { paired_devices: PAIRED, launches_today: COUNT },
   pairing_success: { platform: PLATFORM, first: BOOL },
+  // un téléphone a ouvert la page Flitdrop du PC (QR scanné), compté par le PC
+  phone_page_opened: { first: BOOL, platform: PLATFORM },
   transfer_ok: { direction: DIRECTION, kind: KIND, size: SIZE, first: BOOL },
   transfer_fail: { direction: DIRECTION, kind: KIND, status: INT, reason: REASON },
   // évènement de contrôle après un déploiement (voir docs/telemetry.md)

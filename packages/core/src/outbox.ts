@@ -23,6 +23,10 @@ export interface OutboxItem {
 export class Outbox {
   readonly dir: string
   private items: OutboxItem[] = []
+  /** Augmente à chaque changement de la liste vue par les téléphones : le
+   *  téléphone qui a déjà cette version reçoit « rien de neuf » en quelques
+   *  octets au lieu de toute la liste. */
+  version = 0
 
   constructor(home: string) {
     this.dir = path.join(home, 'outbox')
@@ -47,6 +51,7 @@ export class Outbox {
     }
     this.items.unshift(item)
     this.prune()
+    this.version++
     return item
   }
 
@@ -67,6 +72,7 @@ export class Outbox {
     }
     this.items.unshift(item)
     this.prune()
+    this.version++
     return item
   }
 
@@ -84,6 +90,7 @@ export class Outbox {
     if (idx === -1) return false
     const [item] = this.items.splice(idx, 1)
     if (item?.filePath && item.filePath.startsWith(this.dir)) fs.unlink(item.filePath, () => {})
+    this.version++
     return true
   }
 
@@ -93,6 +100,7 @@ export class Outbox {
       if (item.filePath && item.filePath.startsWith(this.dir)) fs.unlink(item.filePath, () => {})
     }
     this.items = []
+    this.version++
   }
 
   /** Éléments bruts (usage interne au serveur, jamais renvoyés tels quels). */

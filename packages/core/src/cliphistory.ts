@@ -35,6 +35,9 @@ export class ClipHistory {
   private file: string
   readonly imgDir: string
   private timer: ReturnType<typeof setTimeout> | null = null
+  /** Augmente à chaque changement de la liste (ajout, remontée, retrait,
+   *  purge) : le téléphone qui a déjà cette version reçoit « rien de neuf ». */
+  version = 0
 
   constructor(home: string) {
     this.file = path.join(home, 'cliphistory.json')
@@ -130,6 +133,7 @@ export class ClipHistory {
     }
     this.entries = kept
     for (const e of dropped) this.deleteImageFile(e)
+    if (dropped.length > 0) this.version++
   }
 
   private deleteImageFile(e: ClipEntry): void {
@@ -152,6 +156,7 @@ export class ClipHistory {
   }
 
   private persist(): void {
+    this.version++
     if (this.timer) return
     this.timer = setTimeout(() => {
       this.timer = null

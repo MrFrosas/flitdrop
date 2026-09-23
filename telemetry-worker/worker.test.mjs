@@ -130,6 +130,25 @@ test('propriétés : clés inconnues retirées, types et valeurs contrôlés', a
   assert.equal(p.os.length, 40)
 })
 
+test('phone_page_opened : niveau de base, first et platform seulement', async () => {
+  await call(env('basic', 'phone_page_opened', { ...COMMON, first: true, platform: 'ios', ip: '192.168.1.23', ua: 'Mozilla/5.0 (iPhone)' }, { iid: 'should-be-ignored-123' }))
+  await call(env('basic', 'phone_page_opened', { first: 'oui', platform: 'iphone' }))
+  assert.equal(sent.length, 2)
+  const p = sent[0].body.properties
+  assert.equal(sent[0].body.event, 'phone_page_opened')
+  assert.equal(p.tier, 'basic')
+  assert.equal(p.$process_person_profile, false)
+  assert.equal(p.first, true)
+  assert.equal(p.platform, 'ios')
+  assert.equal(p.ip, undefined)
+  assert.equal(p.ua, undefined)
+  const raw = JSON.stringify(sent[0].body)
+  for (const leak of ['192.168', 'Mozilla', 'should-be-ignored']) assert.ok(!raw.includes(leak), leak)
+  // valeurs hors liste : retirées
+  assert.equal(sent[1].body.properties.first, undefined)
+  assert.equal(sent[1].body.properties.platform, undefined)
+})
+
 test('transfer_fail : raison nettoyée, status numérique', async () => {
   await call(env('basic', 'transfer_fail', { direction: 'phone_to_pc', kind: 'file', status: 507, reason: 'ENOSPC' }))
   await call(env('basic', 'transfer_fail', { direction: 'phone_to_pc', kind: 'file', status: '500', reason: "open 'C:\\Users\\thomas\\x.pdf'" }))

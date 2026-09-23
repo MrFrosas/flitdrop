@@ -34,6 +34,7 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     firstPairingDone: false,
     firstTransferDone: false,
     lastDailyActiveDay: '',
+    firstPhonePageDone: false,
   }
 }
 
@@ -98,5 +99,40 @@ describe('ClipHistory', () => {
     expect(h.remove('inexistant')).toBe(false)
     h.clear()
     expect(h.size()).toBe(0)
+  })
+})
+
+describe('ClipHistory : version de la liste (téléphone)', () => {
+  it('change à chaque modification visible, jamais sans raison', () => {
+    const h = freshHistory()
+    const cfg = cfgWith(200, 7)
+    const v0 = h.version
+    h.add('a', 'pc', cfg)
+    const v1 = h.version
+    expect(v1).toBeGreaterThan(v0)
+    // doublon refusé : la liste n'a pas changé
+    h.add('a', 'pc', cfg)
+    expect(h.version).toBe(v1)
+    // purge sans rien retirer : pas de changement
+    h.purge(cfg)
+    expect(h.version).toBe(v1)
+    h.add('b', 'pc', cfg)
+    const v2 = h.version
+    expect(v2).toBeGreaterThan(v1)
+    const a = h.list()[1]!
+    h.bump(a.id)
+    const v3 = h.version
+    expect(v3).toBeGreaterThan(v2)
+    h.remove(a.id)
+    const v4 = h.version
+    expect(v4).toBeGreaterThan(v3)
+    // purge par âge qui retire une entrée
+    const internal = h as unknown as { entries: { id: string; ts: string; text: string; source: string }[] }
+    internal.entries.push({ id: 'vieux', ts: new Date(Date.now() - 9 * 86_400_000).toISOString(), text: 'x', source: 'pc' })
+    h.purge(cfg)
+    const v5 = h.version
+    expect(v5).toBeGreaterThan(v4)
+    h.clear()
+    expect(h.version).toBeGreaterThan(v5)
   })
 })

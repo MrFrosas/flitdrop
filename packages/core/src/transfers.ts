@@ -5,6 +5,7 @@ import type { Device } from './pairing.js'
 import { History } from './history.js'
 import { Hub } from './events.js'
 import { randomToken } from './crypto.js'
+import type { TransferActivity } from './activity.js'
 import { sanitizeFilename, reserveUniquePath } from './util.js'
 import {
   CHUNK_SIZE,
@@ -69,7 +70,9 @@ export class TransferManager {
   constructor(
     private getCfg: () => Config,
     private history: History,
-    private hub: Hub
+    private hub: Hub,
+    // activité des transferts (PC gardé éveillé, progression sur l'icône)
+    private activity?: TransferActivity
   ) {
     const timer = setInterval(() => this.sweep(), 60_000)
     timer.unref?.()
@@ -177,6 +180,7 @@ export class TransferManager {
     t.bytes += plain.length
     t.received = t.have.size
     t.lastActivity = Date.now()
+    this.activity?.update(`up:${t.id}`, t.bytes, t.size)
 
     const last = this.lastProgressPush.get(t.id) ?? 0
     if (Date.now() - last > 400 || t.received === t.chunks) {
@@ -206,6 +210,7 @@ export class TransferManager {
     t.status = 'done'
     this.active.delete(t.id)
     this.lastProgressPush.delete(t.id)
+    this.activity?.end(`up:${t.id}`)
     this.history.update(t.historyId, { status: 'ok', path: finalPath, name: path.basename(finalPath) })
     this.hub.broadcast('transfer-done', {
       id: t.id,
@@ -242,6 +247,7 @@ export class TransferManager {
     fs.unlink(t.tmpPath, () => {})
     this.active.delete(t.id)
     this.lastProgressPush.delete(t.id)
+    this.activity?.end(`up:${t.id}`)
     this.history.update(t.historyId, { status: 'error', error: reason })
     this.hub.broadcast('transfer-error', { id: t.id, name: t.name, reason })
   }

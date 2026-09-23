@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { loadConfig } from '../src/config.js'
-import { Telemetry, EVENTS, COMMON_PROPS, scrub, isoWeek, isoMonth, dayBucket, localDay, type Envelope } from '../src/telemetry.js'
+import { Telemetry, EVENTS, COMMON_PROPS, scrub, isoWeek, isoMonth, dayBucket, localDay, platformFromUserAgent, type Envelope } from '../src/telemetry.js'
 
 // Aucun appel réseau : fetch est remplacé par un enregistreur.
 function recorder(status = 204) {
@@ -331,6 +331,101 @@ describe('télémétrie : premières fois et cycle de vie', () => {
     tel.pairingSuccess('iphone')
     await tel.flush()
     expect(rec.sent).toHaveLength(0)
+  })
+})
+
+describe('télémétrie : page ouverte par un téléphone', () => {
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 27_0 like Mac OS X) AppleWebKit/605.1.15 Version/27.0 Mobile/15E148 Safari/604.1'
+  const ANDROID = 'Mozilla/5.0 (Linux; Android 17; Pixel 10) AppleWebKit/537.36 Chrome/154.0 Mobile Safari/537.36'
+
+  it('type de téléphone ramené à ios, android ou other', () => {
+    expect(platformFromUserAgent(IPHONE)).toBe('ios')
+    expect(platformFromUserAgent('Mozilla/5.0 (iPad; CPU OS 27_0 like Mac OS X)')).toBe('ios')
+    expect(platformFromUserAgent(ANDROID)).toBe('android')
+    expect(platformFromUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')).toBe('other')
+    expect(platformFromUserAgent(undefined)).toBe('other')
+  })
+
+  it('first=true la toute première fois seulement, persisté ; ni adresse ni navigateur envoyés', async () => {
+    const { tel, sent, home } = setup()
+    tel.phonePageOpened('192.168.1.23', IPHONE)
+    tel.phonePageOpened('192.168.1.40', ANDROID)
+    await tel.flush()
+    expect(sent.map((e) => e.event)).toEqual(['phone_page_opened', 'phone_page_opened'])
+    expect(sent.map((e) => e.props.first)).toEqual([true, false])
+    expect(sent.map((e) => e.props.platform)).toEqual(['ios', 'android'])
+    for (const e of sent) {
+      expect(e.tier).toBe('basic')
+      expect(e.iid).toBeUndefined()
+      const raw = JSON.stringify(e)
+      expect(raw).not.toContain('192.168')
+      expect(raw).not.toContain('Mozilla')
+      assertContract(e)
+    }
+    expect(loadConfig(home).firstPhonePageDone).toBe(true)
+  })
+
+  it('même téléphone : au plus une fois par tranche de 10 minutes, en mémoire seulement', async () => {
+    let now = Date.parse('2026-09-23T10:00:00Z')
+    const { tel, sent, home } = setup({ now: () => now })
+    tel.phonePageOpened('192.168.1.23', IPHONE)
+    now += 60_000
+    tel.phonePageOpened('192.168.1.23', IPHONE)
+    now += 8 * 60_000
+    tel.phonePageOpened('192.168.1.23', IPHONE)
+    // autre téléphone pendant ce temps : compté
+    tel.phonePageOpened('192.168.1.24', IPHONE)
+    now += 2 * 60_000
+    tel.phonePageOpened('192.168.1.23', IPHONE)
+    await tel.flush()
+    expect(sent).toHaveLength(3)
+    // rien d'autre que le drapeau de première fois n'est écrit sur le disque
+    const onDisk = fs.readFileSync(path.join(home, 'config.json'), 'utf8')
+    expect(onDisk).not.toContain('192.168.1.23')
+  })
+
+  it('beaucoup de téléphones : la mémoire reste bornée', async () => {
+    let now = 0
+    const { tel, sent } = setup({ now: () => now })
+    for (let i = 0; i < 1000; i++) {
+      now += 1
+      tel.phonePageOpened(`10.0.${i >> 8}.${i & 255}`, ANDROID)
+    }
+    const seen = (tel as unknown as { lastPageOpen: Map<string, number> }).lastPageOpen
+    expect(seen.size).toBeLessThanOrEqual(200)
+    await tel.flush()
+    expect(sent.length).toBeGreaterThan(0)
+  })
+
+  it('rien quand les statistiques de base sont coupées', async () => {
+    const { tel, sent } = setup({ basic: false, full: false })
+    tel.phonePageOpened('192.168.1.23', IPHONE)
+    await tel.flush()
+    expect(sent).toHaveLength(0)
+  })
+
+  it('rien avant l’affichage de l’annonce des statistiques', async () => {
+    const { tel, sent } = setup({ basic: true, notice: false })
+    tel.phonePageOpened('192.168.1.23', IPHONE)
+    await tel.flush()
+    expect(sent).toHaveLength(0)
+  })
+
+  it('migration : une installation qui a déjà appairé ne compte pas une « première fois »', () => {
+    const home = tmpHome()
+    fs.writeFileSync(
+      path.join(home, 'config.json'),
+      JSON.stringify({ installId: 'abcdefghijklmnop', firstPairingDone: true, firstTransferDone: false })
+    )
+    expect(loadConfig(home).firstPhonePageDone).toBe(true)
+    const fresh = tmpHome()
+    fs.writeFileSync(path.join(fresh, 'config.json'), JSON.stringify({ installId: 'abcdefghijklmnop' }))
+    expect(loadConfig(fresh).firstPhonePageDone).toBe(false)
+    // valeur absurde : traitée comme absente
+    const odd = tmpHome()
+    fs.writeFileSync(path.join(odd, 'config.json'), JSON.stringify({ installId: 'abcdefghijklmnop', firstPhonePageDone: 'oui' }))
+    expect(loadConfig(odd).firstPhonePageDone).toBe(false)
+    expect(loadConfig(tmpHome()).firstPhonePageDone).toBe(false)
   })
 })
 
