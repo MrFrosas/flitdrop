@@ -20,19 +20,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: winget disponible
+      # derniere version stable de winget : celle du runner (1.11) ne connait pas
+      # le schema 1.12 utilise aujourd'hui par winget-pkgs
+      - name: winget a jour
         shell: pwsh
         run: |
-          if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-            $rel = Invoke-RestMethod https://api.github.com/repos/microsoft/winget-cli/releases/latest
-            $bundle = $rel.assets | Where-Object name -like '*.msixbundle' | Select-Object -First 1
-            $deps = $rel.assets | Where-Object name -eq 'DesktopAppInstaller_Dependencies.zip' | Select-Object -First 1
-            Invoke-WebRequest $bundle.browser_download_url -OutFile winget.msixbundle
-            Invoke-WebRequest $deps.browser_download_url -OutFile deps.zip
-            Expand-Archive deps.zip deps
-            Get-ChildItem deps -Recurse -Include *.appx | Where-Object FullName -match 'x64' | ForEach-Object { Add-AppxPackage $_.FullName }
-            Add-AppxPackage winget.msixbundle
+          $rel = Invoke-RestMethod https://api.github.com/repos/microsoft/winget-cli/releases/latest
+          $bundle = $rel.assets | Where-Object name -like '*.msixbundle' | Select-Object -First 1
+          $deps = $rel.assets | Where-Object name -eq 'DesktopAppInstaller_Dependencies.zip' | Select-Object -First 1
+          Invoke-WebRequest $bundle.browser_download_url -OutFile winget.msixbundle
+          Invoke-WebRequest $deps.browser_download_url -OutFile deps.zip
+          Expand-Archive deps.zip deps
+          Get-ChildItem deps -Recurse -Include *.appx | Where-Object FullName -match 'x64' | ForEach-Object {
+            try { Add-AppxPackage $_.FullName -ErrorAction Stop } catch { Write-Host "dependance deja presente : $($_.Exception.Message.Split([Environment]::NewLine)[0])" }
           }
+          Add-AppxPackage winget.msixbundle -ForceApplicationShutdown
+          Write-Host "release : $($rel.tag_name)"
           winget --version
 
       - name: winget validate
