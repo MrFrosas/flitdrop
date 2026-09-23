@@ -129,7 +129,7 @@
     });
   }
 
-  /* ----- OS aware download labels ----- */
+  /* ----- OS aware download buttons ----- */
   function isPhone() {
     var p = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '').toLowerCase();
     return /iphone|ipad|ipod|android/.test(p);
@@ -138,6 +138,7 @@
     var p = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '').toLowerCase();
     if (/mac/.test(p)) return 'mac';
     if (/win/.test(p)) return 'windows';
+    if (/linux|x11|cros/.test(p)) return 'linux';
     return null;
   }
   function setupOS() {
@@ -165,24 +166,35 @@
             if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, done);
             else done();
           } catch (_) { done(); }
-          if (window.gtag) { try { window.gtag('event', 'mobile_copy_link'); } catch (_) {} }
           if (window.posthog) { try { window.posthog.capture('mobile_copy_link'); } catch (_) {} }
         });
         buttons.appendChild(copy);
         // keep the button label correct across a language switch
         window.addEventListener('langchange', function () { if (copy.hasAttribute('data-i18n')) copy.textContent = t('download.copylink'); });
       }
+      var more = document.querySelector('.dl-more');
+      if (more) more.hidden = true;
       return;
     }
     var os = osOf();
-    if (!os) return;
-    var map = { mac: 'download.mac', windows: 'download.windows' };
-    var primary = document.querySelector('.dl-buttons .btn-primary span');
-    var secondary = document.querySelector('.dl-buttons .btn-ghost span');
-    if (primary) { primary.setAttribute('data-i18n', map[os]); primary.textContent = t(map[os]); }
-    if (secondary) { var sk = os === 'mac' ? 'download.windows' : 'download.mac'; secondary.setAttribute('data-i18n', sk); secondary.textContent = t(sk); }
-    var hero = document.querySelector('#ctaDownload span');
-    if (hero) { hero.setAttribute('data-i18n', map[os]); hero.textContent = t(map[os]); }
+    if (os) {
+      // primary = this computer, secondary = the other big desktop OS
+      var other = os === 'windows' ? 'mac' : 'windows';
+      var label = { mac: 'download.mac', windows: 'download.windows', linux: 'download.linux' };
+      var primary = document.querySelector('.dl-buttons .btn-primary');
+      var secondary = document.querySelector('.dl-buttons .btn-ghost');
+      [[primary, os], [secondary, other]].forEach(function (pair) {
+        var btn = pair[0], o = pair[1];
+        if (!btn) return;
+        btn.setAttribute('data-dl', o);
+        var span = btn.querySelector('span');
+        if (span) { span.setAttribute('data-i18n', label[o]); span.textContent = t(label[o]); }
+      });
+      var hero = document.querySelector('#ctaDownload span');
+      if (hero) { hero.setAttribute('data-i18n', label[os]); hero.textContent = t(label[os]); }
+    }
+    // liens directs vers le bon fichier (logique dans analytics.js, chargé sur toutes les pages)
+    if (window.fdLinkDownloads) window.fdLinkDownloads();
   }
 
   /* ----- give the compare table marks a screen-reader value ----- */

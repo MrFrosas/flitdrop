@@ -411,6 +411,10 @@ html.anim .reveal.in { opacity: 1; transform: none; transition: opacity 0.7s var
 .dl-qr .qr-tile { margin-bottom: 12px; }
 .qr-tile-sm { padding: 12px; border-radius: 16px; }
 .dl-note { font-size: 13px; color: var(--muted); margin-top: 6px; max-width: 46ch; line-height: 1.5; }
+.dl-more { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; font-size: 14px; color: var(--muted); margin: 14px 0 12px; max-width: 52ch; }
+.dl-more a { color: var(--cyan); font-weight: 500; }
+.dl-more a:hover { text-decoration: underline; }
+.dl-more[hidden] { display: none; }
 
 /* ---------- faq ---------- */
 .faq-list { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }

@@ -73,7 +73,7 @@
         "url": "https://flitdrop.com/",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Windows, macOS, Linux",
-        "softwareVersion": "0.5.0",
+        "softwareVersion": "0.6.3",
         "downloadUrl": "https://github.com/MrFrosas/flitdrop/releases/latest",
         "softwareHelp": "https://flitdrop.com/#faq",
         "screenshot": "https://flitdrop.com/assets/og.jpg",
@@ -83,16 +83,23 @@
           "priceCurrency": "USD"
         },
         "featureList": [
-          "Send files, folders and full quality photos between any devices",
+          "Send files of any kind, several at once, plus full quality photos and videos, between any phone and any computer",
+          "Big files up to 16 GB each, and interrupted transfers resume",
           "iPhone, Android, Samsung to Windows, Mac and Linux",
-          "End to end encrypted, on your local Wi-Fi",
+          "End to end encrypted, on your local Wi-Fi or the computer's hotspot, works without internet",
           "Two way clipboard sync",
           "Nothing to install on the phone, scan a QR code once"
         ],
         "description": "Flitdrop fait passer photos, fichiers et presse-papiers entre iPhone, Android, Windows, Mac et Linux en un geste. Chiffré de bout en bout, gratuit sur votre Wi-Fi, rien à installer sur le téléphone.",
         "publisher": {
           "@id": "https://flitdrop.com/#org"
-        }
+        },
+        "installUrl": "https://apps.microsoft.com/detail/XPDCK4DDN3LK69",
+        "sameAs": [
+          "https://apps.microsoft.com/detail/XPDCK4DDN3LK69",
+          "https://github.com/MrFrosas/flitdrop",
+          "https://www.producthunt.com/products/flitdrop"
+        ]
       },
       {
         "@type": "Organization",
@@ -155,7 +162,7 @@
             "name": "Les deux appareils doivent-ils être sur le même Wi-Fi ?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Oui. Flitdrop va directement d'un appareil à l'autre sur votre réseau local, donc les deux partagent le même Wi-Fi. Rien ne passe par internet."
+              "text": "Oui, ou le téléphone peut rejoindre un point d'accès partagé par l'ordinateur. Flitdrop va directement d'un appareil à l'autre sur votre réseau local, donc il marche même sans internet. Rien ne passe par internet."
             }
           },
           {
@@ -163,7 +170,7 @@
             "name": "Y a-t-il une limite de taille ou de nombre ?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Non. Comme le transfert reste sur votre réseau, aucun plafond n'est imposé. La seule limite est l'espace libre sur l'appareil qui reçoit."
+              "text": "Chaque fichier peut peser jusqu'à 8 Go par défaut, et vous pouvez monter à 16 Go dans les réglages. Vous pouvez envoyer plusieurs fichiers d'un coup, et un transfert interrompu reprend là où il s'était arrêté."
             }
           },
           {
@@ -171,7 +178,7 @@
             "name": "Sur quels ordinateurs puis-je l'installer ?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Windows, macOS et Linux. Le téléphone, lui, n'a besoin de rien, juste de son navigateur."
+              "text": "Windows 10 et 11, macOS sur puce Apple et Intel, et Linux (AppImage ou .deb). Le téléphone, lui, n'a besoin de rien, juste de son navigateur."
             }
           },
           {
@@ -187,7 +194,7 @@
             "name": "Pourquoi mon ordinateur affiche un avertissement à l'ouverture de Flitdrop ?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Parce que Flitdrop est une application récente et indépendante, pas encore signée, macOS et Windows affichent une mise en garde une seule fois. C'est normal et sans danger. Sur Windows, cliquez sur Informations complémentaires puis Exécuter quand même ; sur Mac, faites un clic droit sur l'app puis Ouvrir. Vous ne le faites qu'une fois."
+              "text": "Sur Windows, l'installeur est signé et Flitdrop est aussi sur le Microsoft Store ; si SmartScreen affiche encore une mise en garde le temps que l'app se fasse connaître, cliquez sur Informations complémentaires puis Exécuter quand même. Sur Mac, Flitdrop n'est pas encore notarisé par Apple, donc macOS affiche une mise en garde la première fois : ouvrez l'app une fois, puis allez dans Réglages Système > Confidentialité et sécurité et cliquez sur Ouvrir quand même (sur macOS 14 ou plus ancien, clic droit > Ouvrir fonctionne aussi). Vous ne le faites qu'une fois."
             }
           }
         ]
@@ -223,7 +230,7 @@
     <section class="hero" id="top">
       <div class="hero-inner">
         <h1 class="display reveal" data-i18n="hero.headline">L'AirDrop qui marche entre tous vos appareils</h1>
-        <p class="lead reveal" data-i18n="hero.subhead">Envoyez photos, fichiers et presse-papiers d'un appareil à l'autre, en un geste.</p>
+        <p class="lead reveal" data-i18n="hero.subhead">Envoyez photos, fichiers et presse-papiers entre votre téléphone et votre ordinateur, dans les deux sens, en un geste.</p>
         <div class="hero-cta reveal">
           <a class="btn btn-primary btn-lg" id="ctaDownload" href="#download">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v9.5"></path><path d="M8.5 9.5 12 13l3.5-3.5"></path><path d="M5 15.5v2.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-2.5"></path></svg>
@@ -285,7 +292,7 @@
         <li class="step-card reveal">
           <span class="step-num">2</span>
           <h3 data-i18n="steps.two.title">Glissez</h3>
-          <p data-i18n="steps.two.body">Choisissez une photo, un fichier ou un dossier, ou copiez un texte. Un geste suffit.</p>
+          <p data-i18n="steps.two.body">Choisissez une photo, une vidéo ou quelques fichiers, ou copiez un texte. Un geste suffit.</p>
         </li>
         <li class="step-card reveal">
           <span class="step-num">3</span>
@@ -406,7 +413,7 @@
         <div class="band-head reveal">
           <p class="eyebrow eyebrow-blue" data-i18n="features.eyebrow">Tout ce qui voyage</p>
           <h2 data-i18n="features.title">Plus que des photos, entre plus que deux appareils</h2>
-          <p class="band-sub" data-i18n="features.blurb">Fichiers, dossiers, photos en pleine qualité et presse-papiers, en un geste, dans les deux sens.</p>
+          <p class="band-sub" data-i18n="features.blurb">Fichiers, photos et vidéos en pleine qualité, et presse-papiers, en un geste, dans les deux sens.</p>
         </div>
 
         <div class="bento">
@@ -414,11 +421,11 @@
           <article class="bento-card b-wide reveal">
             <div class="bc-copy">
               <h3 data-i18n="features.send.title">Envoyez tout, pas seulement des photos</h3>
-              <p data-i18n="features.send.body">Fichiers de tout type, dossiers entiers, photos en pleine qualité. Sans compression ni limite de taille sur votre réseau.</p>
+              <p data-i18n="features.send.body">Fichiers de tout type, plusieurs d'un coup, photos et vidéos en pleine qualité. Sans compression, jusqu'à 16 Go par fichier, et un transfert interrompu reprend là où il s'était arrêté.</p>
             </div>
             <div class="bc-visual bv-stack" aria-hidden="true">
               <div class="tcard tc-b2">
-                <div class="tc-head"><span class="tc-ic i-folder"></span><span class="tc-kind" data-i18n="features.kind.folder">Dossier</span><span class="tc-time">now</span></div>
+                <div class="tc-head"><span class="tc-ic i-folder"></span><span class="tc-kind" data-i18n="features.kind.folder">Vidéo</span><span class="tc-time">now</span></div>
                 <div class="tc-rows"><span></span><span class="s"></span></div>
               </div>
               <div class="tcard tc-b1">
@@ -521,7 +528,7 @@
           <div class="persona reveal">
             <span class="p-ic"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M9.4 7.6L4.8 12l4.6 4.4-1.4 1.5L2 12l6-6 1.4 1.6zm5.2 0L19.2 12l-4.6 4.4 1.4 1.5L22 12l-6-6-1.4 1.6z"></path></svg></span>
             <h3 data-i18n="showcase.dev.title">Développeurs</h3>
-            <p data-i18n="showcase.dev.body">Faites passer un build, un log ou une capture entre machines, sans câble ni cloud.</p>
+            <p data-i18n="showcase.dev.body">Faites passer un build, un log ou une capture entre l'ordinateur et le téléphone, sans câble ni cloud.</p>
           </div>
           <div class="persona reveal">
             <span class="p-ic"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 3a9 9 0 000 18c1.7 0 2-1.2 1.2-2-.8-.9-.5-2 .8-2H16a5 5 0 005-5c0-4.4-4-6-9-6zm-4 6a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm3-3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm5 0a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"></path></svg></span>
@@ -547,8 +554,15 @@
             <a class="btn btn-primary btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-dl="mac"><span data-i18n="download.mac">Télécharger pour Mac</span></a>
             <a class="btn btn-ghost btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-dl="windows"><span data-i18n="download.windows">Télécharger pour Windows</span></a>
           </div>
-          <p class="dl-note" data-i18n="download.note">À la première ouverture, votre ordinateur peut afficher une mise en garde car l'app est récente et pas encore signée. C'est normal.</p>
-          <a class="dl-other" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-i18n="download.other">Autres plateformes</a>
+          <p class="dl-note" data-i18n="download.note">Sur Windows, l'installeur est signé. Sur Mac, l'app n'est pas encore notarisée par Apple : la première fois, ouvrez-la, puis allez dans Réglages Système &gt; Confidentialité et sécurité et cliquez sur Ouvrir quand même (sur macOS 14 ou plus ancien, clic droit &gt; Ouvrir fonctionne aussi).</p>
+          <p class="dl-more">
+            <span data-i18n="download.more">Aussi disponible :</span>
+            <a href="https://apps.microsoft.com/detail/XPDCK4DDN3LK69" target="_blank" rel="noopener" data-i18n="download.store">Microsoft Store</a>
+            <a href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-dl="mac" data-dl-file="mac-x64" data-i18n="download.macintel">Mac Intel</a>
+            <a href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-dl="linux" data-dl-file="linux-deb" data-i18n="download.linuxdeb">Linux .deb (Ubuntu, Debian, Mint)</a>
+            <a href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-dl="linux" data-dl-file="linux-appimage" data-i18n="download.appimage">Linux AppImage</a>
+          </p>
+          <a class="dl-other" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-i18n="download.other">Tous les téléchargements</a>
         </div>
         <div class="dl-qr" aria-hidden="true">
           <div class="qr-tile"><img class="qr-img" src="/assets/qr.svg" alt="" width="132" height="132"></div>
@@ -581,15 +595,15 @@
         </details>
         <details>
           <summary data-i18n="faq.q5">Les deux appareils doivent-ils être sur le même Wi-Fi ?</summary>
-          <p data-i18n="faq.a5">Oui. Flitdrop va directement d'un appareil à l'autre sur votre réseau local, donc les deux partagent le même Wi-Fi. Rien ne passe par internet.</p>
+          <p data-i18n="faq.a5">Oui, ou le téléphone peut rejoindre un point d'accès partagé par l'ordinateur. Flitdrop va directement d'un appareil à l'autre sur votre réseau local, donc il marche même sans internet. Rien ne passe par internet.</p>
         </details>
         <details>
           <summary data-i18n="faq.q6">Y a-t-il une limite de taille ou de nombre ?</summary>
-          <p data-i18n="faq.a6">Non. Comme le transfert reste sur votre réseau, aucun plafond n'est imposé. La seule limite est l'espace libre sur l'appareil qui reçoit.</p>
+          <p data-i18n="faq.a6">Chaque fichier peut peser jusqu'à 8 Go par défaut, et vous pouvez monter à 16 Go dans les réglages. Vous pouvez envoyer plusieurs fichiers d'un coup, et un transfert interrompu reprend là où il s'était arrêté.</p>
         </details>
         <details>
           <summary data-i18n="faq.q7">Sur quels ordinateurs puis-je l'installer ?</summary>
-          <p data-i18n="faq.a7">Windows, macOS et Linux. Le téléphone, lui, n'a besoin de rien, juste de son navigateur.</p>
+          <p data-i18n="faq.a7">Windows 10 et 11, macOS sur puce Apple et Intel, et Linux (AppImage ou .deb). Le téléphone, lui, n'a besoin de rien, juste de son navigateur.</p>
         </details>
         <details>
           <summary data-i18n="faq.q8">Mes photos sont-elles compressées ?</summary>
@@ -597,7 +611,7 @@
         </details>
         <details>
           <summary data-i18n="faq.q9">Pourquoi mon ordinateur affiche un avertissement à l'ouverture de Flitdrop ?</summary>
-          <p data-i18n="faq.a9">Parce que Flitdrop est une application récente et indépendante, pas encore signée, macOS et Windows affichent une mise en garde une seule fois. C'est normal et sans danger. Sur Windows, cliquez sur Informations complémentaires puis Exécuter quand même ; sur Mac, faites un clic droit sur l'app puis Ouvrir. Vous ne le faites qu'une fois.</p>
+          <p data-i18n="faq.a9">Sur Windows, l'installeur est signé et Flitdrop est aussi sur le Microsoft Store ; si SmartScreen affiche encore une mise en garde le temps que l'app se fasse connaître, cliquez sur Informations complémentaires puis Exécuter quand même. Sur Mac, Flitdrop n'est pas encore notarisé par Apple, donc macOS affiche une mise en garde la première fois : ouvrez l'app une fois, puis allez dans Réglages Système &gt; Confidentialité et sécurité et cliquez sur Ouvrir quand même (sur macOS 14 ou plus ancien, clic droit &gt; Ouvrir fonctionne aussi). Vous ne le faites qu'une fois.</p>
         </details>
       </div>
     </section>
@@ -649,9 +663,9 @@
           <h4 data-i18n="footer.resources">Ressources</h4>
           <a href="#support" data-i18n="support.eyebrow">Support</a>
           <a href="https://github.com/MrFrosas/flitdrop" target="_blank" rel="noopener">GitHub</a>
-          <a href="/brand.html" data-i18n="footer.brand">Marque</a>
-          <a href="/privacy.html" data-i18n="footer.privacy">Confidentialité</a>
-          <a href="/legal.html" data-i18n="footer.legal">Mentions légales</a>
+          <a href="/brand" data-i18n="footer.brand">Marque</a>
+          <a href="/privacy" data-i18n="footer.privacy">Confidentialité</a>
+          <a href="/legal" data-i18n="footer.legal">Mentions légales</a>
         </div>
         <div class="footer-col">
           <h4 data-i18n="guides.title">Guides</h4>

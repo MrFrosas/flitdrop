@@ -16,7 +16,8 @@
  * Commit the generated /<lang>/ files (Cloudflare Pages serves site/ raw).
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, relative } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { parse } from 'node-html-parser';
@@ -63,6 +64,72 @@ const LOCALIZED_SLUGS = new Set(PAGES.map((p) => p.slug)); // for internal link 
 const enUrl = (slug) => ORIGIN + '/' + slug;               // home slug '' -> https://flitdrop.com/
 const langUrl = (lang, slug) => ORIGIN + '/' + lang + '/' + (slug ? slug : '');
 const outPath = (lang, slug) => resolve(SITE, lang, slug ? slug + '.html' : 'index.html');
+
+// Version de l'app lue dans son package.json : la version annoncée aux moteurs
+// (JSON-LD softwareVersion) ne peut plus rester en retard sur la release.
+const APP_VERSION = JSON.parse(readFileSync(resolve(ROOT, 'apps', 'desktop', 'package.json'), 'utf8')).version;
+
+function setSoftwareVersion(root) {
+  root.querySelectorAll('script[type="application/ld+json"]').forEach((s) => {
+    let data; try { data = JSON.parse(s.text); } catch { return; }
+    let hit = false;
+    const visit = (o) => {
+      if (Array.isArray(o)) return o.forEach(visit);
+      if (o && typeof o === 'object') {
+        if (o['@type'] === 'SoftwareApplication' && o.softwareVersion !== APP_VERSION) { o.softwareVersion = APP_VERSION; hit = true; }
+        Object.values(o).forEach(visit);
+      }
+    };
+    visit(data);
+    if (hit) s.set_content('\n  ' + JSON.stringify(data, null, 2).replace(/\n/g, '\n  ') + '\n  ');
+  });
+}
+
+// Pages FR/DE : le JSON-LD venait tel quel de la page anglaise (inLanguage "en",
+// url / mainEntityOfPage / @id / fil d'Ariane vers les URL EN), en contradiction
+// avec le canonical et les hreflang. On le rattache à l'URL de la langue.
+// Seules les URL exactes du site (accueil ou page localisée, sans #fragment) sont
+// réécrites, et seulement sous les clés d'adresse ; les @id à fragment
+// (https://flitdrop.com/#website) restent les identifiants uniques du site.
+const URL_KEYS = new Set(['url', '@id', 'item', 'mainEntityOfPage']);
+function localizeJsonLdUrls(root, lang) {
+  const map = (v, key) => {
+    if (typeof v !== 'string') return v;
+    // l'accueil n'est réécrit que dans le fil d'Ariane : ailleurs (author,
+    // publisher) c'est l'adresse de l'entreprise, qui reste l'adresse principale
+    if (v === ORIGIN + '/') return key === 'item' ? langUrl(lang, '') : v;
+    const m = new RegExp('^' + ORIGIN.replace(/[.]/g, '\\.') + '/([a-z0-9-]+)$').exec(v);
+    return m && LOCALIZED_SLUGS.has(m[1]) ? langUrl(lang, m[1]) : v;
+  };
+  root.querySelectorAll('script[type="application/ld+json"]').forEach((s) => {
+    let data; try { data = JSON.parse(s.text); } catch { return; }
+    const visit = (o) => {
+      if (Array.isArray(o)) return o.forEach(visit);
+      if (!o || typeof o !== 'object') return;
+      for (const k of Object.keys(o)) {
+        if (k === 'inLanguage' && o[k] === 'en') o[k] = lang;
+        else if (URL_KEYS.has(k) && typeof o[k] === 'string') o[k] = map(o[k], k);
+        else if (k === 'mainEntityOfPage' && o[k] && typeof o[k] === 'object' && typeof o[k]['@id'] === 'string') o[k]['@id'] = map(o[k]['@id'], '@id');
+        else visit(o[k]);
+      }
+    };
+    visit(data);
+    s.set_content('\n  ' + JSON.stringify(data, null, 2).replace(/\n/g, '\n  ') + '\n  ');
+  });
+}
+
+// Date réelle de dernière modification d'un ensemble de fichiers sources :
+// aujourd'hui s'ils ont des changements non committés, sinon la date du dernier
+// commit qui les touche.
+function lastChange(files) {
+  const rel = files.filter(existsSync).map((f) => relative(ROOT, f));
+  if (!rel.length) return null;
+  try {
+    const dirty = execFileSync('git', ['status', '--porcelain', '--', ...rel], { cwd: ROOT }).toString().trim();
+    if (dirty) return new Date().toISOString().slice(0, 10);
+    return execFileSync('git', ['log', '-1', '--format=%cs', '--', ...rel], { cwd: ROOT }).toString().trim() || null;
+  } catch { return null; }
+}
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 function t(lang, key) {
@@ -133,6 +200,7 @@ for (const page of PAGES) {
   {
     const root = parse(srcHtml, { comment: true });
     setHreflang(root, page.slug);
+    setSoftwareVersion(root);
     writeFileSync(resolve(SITE, page.src), finalize(root.toString()));
   }
 
@@ -162,6 +230,7 @@ for (const page of PAGES) {
       });
       localizeDataI18n(root, lang);       // nav/footer etc. from the dictionary
       rewriteInternalLinks(root, lang);
+      localizeJsonLdUrls(root, lang);
     } else {
       // home: dictionary-driven
       const titleEl = root.querySelector('title'); if (titleEl) titleEl.set_content(esc(t(lang, 'meta.title')));
@@ -172,6 +241,7 @@ for (const page of PAGES) {
       setMeta(root, 'meta[name="twitter:description"]', 'content', t(lang, 'meta.desc'));
       localizeDataI18n(root, lang);
       localizeJsonLdFromDict(root, lang);
+      setSoftwareVersion(root);
       rewriteInternalLinks(root, lang);
     }
 
@@ -183,3 +253,31 @@ for (const page of PAGES) {
   }
 }
 console.log('done:', generated, 'localized page(s)');
+
+// sitemap.xml : <lastmod> réel par URL (il restait figé au jour du lancement).
+{
+  const smPath = resolve(SITE, 'sitemap.xml');
+  let sm = readFileSync(smPath, 'utf8');
+  const dict = resolve(SITE, 'js', 'i18n-data.js');
+  const sources = (loc) => {
+    for (const page of PAGES) {
+      const src = resolve(SITE, page.src);
+      if (loc === enUrl(page.slug)) return page.mapped ? [src] : [src, dict];
+      for (const lang of LANGS) {
+        if (loc === langUrl(lang, page.slug)) return page.mapped ? [src, resolve(TR, lang, page.slug + '.json'), dict] : [src, dict];
+      }
+    }
+    return null;
+  };
+  let touched = 0;
+  sm = sm.replace(/<url>([\s\S]*?)<\/url>/g, (block, inner) => {
+    const loc = (/<loc>([^<]+)<\/loc>/.exec(inner) || [])[1];
+    const files = loc && sources(loc);
+    const date = files && lastChange(files);
+    if (!date) return block;
+    touched++;
+    return block.replace(/<lastmod>[^<]*<\/lastmod>/, '<lastmod>' + date + '</lastmod>');
+  });
+  writeFileSync(smPath, sm);
+  console.log('sitemap: lastmod mis à jour pour', touched, 'URL');
+}

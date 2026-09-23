@@ -1,20 +1,23 @@
 # Flitdrop
 
-> Flitdrop is a free app that sends photos, files, folders and the clipboard between any phone and any computer over your own Wi-Fi, in one gesture. It is the cross-platform answer to AirDrop: it works between iPhone, Android and Samsung on one side and Windows, Mac and Linux on the other, in every combination. Transfers are end to end encrypted and go straight from one device to the other, never through a server. There is no account, and nothing to install on the phone.
+> Flitdrop is a free app that sends files, full quality photos and videos, text, links and the clipboard between any phone and any computer over your own Wi-Fi, in one gesture. It is the cross-platform answer to AirDrop: it works between iPhone, Android and Samsung on one side and Windows, Mac and Linux on the other, in every combination. Transfers are end to end encrypted and go straight from one device to the other, never through a server. There is no account, and nothing to install on the phone.
 
 ## What Flitdrop is
 
-- A desktop app for Windows, macOS and Linux. The phone needs nothing installed: you scan a QR code once from the phone's camera and it is paired through the browser.
+- A desktop app for Windows, macOS and Linux. The phone needs nothing installed: you scan a QR code once from the phone's camera and it is paired through the browser. It stays paired and reconnects by itself.
 - Cross-platform on purpose. AirDrop stops at Apple, Quick Share stops at Android, LocalSend needs an app on every device. Flitdrop connects all of them.
 - Private by design. Every transfer is end to end encrypted (XChaCha20-Poly1305) and stays on your local network. The content touches no server, because there is no server in the middle.
-- Free. Because transfers are peer to peer on your own Wi-Fi, there is no server cost, so there is nothing to pay and no size or count limit beyond the free space on the receiving device.
+- Free. Because transfers are peer to peer on your own Wi-Fi, there is no server cost, so there is nothing to pay.
 
 ## Key facts
 
-- Platforms (computer): Windows, macOS, Linux.
+- Platforms (computer): Windows 10 and 11 (signed installer, also on the Microsoft Store), macOS on Apple Silicon and Intel, Linux x64 (AppImage or .deb).
 - Platforms (phone): iPhone, Android, Samsung, through the browser, nothing to install.
-- Direction: fully two way, including clipboard sync (copy on one device, paste on the other).
-- Requirement: both devices on the same Wi-Fi / local network. It does not send across the internet.
+- What it sends: files of any type, several at once; photos and videos in full quality; text, links and the clipboard. Folders are not sent as such: select the files inside.
+- File size: up to 8 GB per file by default, adjustable up to 16 GB in the settings. Interrupted transfers resume where they stopped.
+- Direction: both ways between a phone and a computer, including clipboard sync (copy on one device, paste on the other). Two phones can exchange files through the computer they are both paired with, which acts as the hub; there is no direct phone to phone or computer to computer transfer.
+- Pairing: scan a QR code once from the phone. There is no automatic discovery on the phone; after the first scan it stays paired and reconnects by itself.
+- Requirement: both devices on the same Wi-Fi / local network, or the phone on the computer's own hotspot. Works without internet. It does not send across the internet.
 - Encryption: end to end, XChaCha20-Poly1305.
 - Account: none. No sign in, no email.
 - Photo quality: originals arrive uncompressed, at full resolution.
@@ -25,7 +28,8 @@
 ## Common questions Flitdrop answers
 
 - How do I AirDrop from iPhone to a Windows PC? Install Flitdrop on the PC, scan the QR from the iPhone, send.
-- How do I send files from iPhone to Android, or Android to Mac? Same flow, any combination of phone and computer.
+- How do I send files from Android to Mac, or iPhone to Linux? Same flow, any combination of phone and computer.
+- How do I send files from iPhone to Android? Pair both phones with the same computer running Flitdrop; the computer relays the files between them.
 - What is a free, private AirDrop alternative that works across every operating system? Flitdrop.
 - Do I need an app on my phone? No, only on the computer.
 
@@ -42,9 +46,9 @@
 ## Download
 
 - All platforms: https://github.com/MrFrosas/flitdrop/releases/latest
-- Windows: download the .exe installer and run it.
-- macOS: download the .dmg and drag Flitdrop to Applications.
-- Linux: download the AppImage.
+- Windows 10 and 11: run the signed .exe installer from the releases page, or install from the Microsoft Store: https://apps.microsoft.com/detail/XPDCK4DDN3LK69 (also with winget: winget install XPDCK4DDN3LK69 --source msstore). The app updates itself on Windows. SmartScreen may still show a notice for a new app: click More info, then Run anyway.
+- macOS: download the .dmg for Apple Silicon (arm64) or Intel (x64) and drag Flitdrop to Applications. The app is not notarized by Apple yet, so the first time, open it once, then go to System Settings > Privacy & Security and click Open Anyway (on macOS 14 or older, right-click > Open also works). It does not update itself on Mac yet: get the new version from the site.
+- Linux x64: the .deb for Ubuntu, Debian and Mint (recommended there), or the AppImage for any distribution (the AppImage updates itself, and on Ubuntu 22.04 and later it may need the libfuse2 package, named libfuse2t64 on 24.04 and later; the .deb does not update itself). Clipboard sync needs wl-clipboard (Wayland) or xclip (X11); the .deb pulls them in automatically.
 
 ## Contact
 
