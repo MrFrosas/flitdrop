@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest'
-import { linuxClipCandidates, readClipboard, writeClipboard } from '../src/clip.js'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { createClipboardText, linuxClipCandidates, readClipboard, runClipTool, runLinux, writeClipboard } from '../src/clip.js'
 
 describe('linuxClipCandidates', () => {
   it('prend xclip puis xsel sous X11, wl-clipboard en dernier recours', () => {
@@ -16,6 +19,78 @@ describe('linuxClipCandidates', () => {
   it('lit sans saut de ligne ajouté par wl-paste', () => {
     const first = linuxClipCandidates('read', { WAYLAND_DISPLAY: 'w' })[0]
     expect(first?.[1]).toContain('--no-newline')
+  })
+
+  it('wl-paste ne demande que du texte (une image copiée ne passe jamais dans le tuyau)', () => {
+    const first = linuxClipCandidates('read', { WAYLAND_DISPLAY: 'w' })[0]
+    const args = first?.[1] ?? []
+    expect(args[args.indexOf('--type') + 1]).toBe('text')
+  })
+})
+
+describe('lecture qui ne répond pas', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it.skipIf(process.platform === 'win32')('le programme est tué et la lecture échoue au lieu de bloquer', { timeout: 5000 }, async () => {
+    const started = Date.now()
+    await expect(runClipTool(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], undefined, 300)).rejects.toThrow()
+    expect(Date.now() - started).toBeLessThan(4000)
+  })
+
+  it('une écriture n’a pas de délai (xclip garde la sélection en fond)', async () => {
+    await expect(runClipTool(process.execPath, ['-e', 'process.stdin.resume(); process.stdin.on("end", () => process.exit(0))'], 'x', 1)).resolves.toBe('')
+  })
+
+  it('lecture fournie par l’hôte qui ne répond jamais : rend vide après le délai', async () => {
+    vi.useFakeTimers()
+    const clip = createClipboardText({ read: () => new Promise<string>(() => {}), write: () => {} }, 1000)
+    const p = clip.read()
+    await vi.advanceTimersByTimeAsync(1000)
+    await expect(p).resolves.toBe('')
+  })
+})
+
+// Faux wl-paste et xclip dans le PATH : on vérifie qui est lancé sous Wayland.
+describe.skipIf(process.platform === 'win32')('lecture sous Wayland', () => {
+  const saved = { PATH: process.env.PATH, WAYLAND_DISPLAY: process.env.WAYLAND_DISPLAY }
+  let dir = ''
+  let log = ''
+
+  const tool = (name: string, body: string) => {
+    const p = path.join(dir, name)
+    fs.writeFileSync(p, `#!/bin/sh\necho ${name} >> "${log}"\n${body}\n`)
+    fs.chmodSync(p, 0o755)
+  }
+
+  afterEach(() => {
+    process.env.PATH = saved.PATH
+    if (saved.WAYLAND_DISPLAY === undefined) delete process.env.WAYLAND_DISPLAY
+    else process.env.WAYLAND_DISPLAY = saved.WAYLAND_DISPLAY
+    fs.rmSync(dir, { recursive: true, force: true })
+  })
+
+  const setup = () => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-wl-'))
+    log = path.join(dir, 'log')
+    process.env.PATH = dir + path.delimiter + '/bin' + path.delimiter + '/usr/bin'
+    process.env.WAYLAND_DISPLAY = 'wayland-test'
+  }
+
+  it('aucun texte copié (image seule) : vide tout de suite, sans lancer xclip ni xsel', async () => {
+    setup()
+    tool('wl-paste', 'exit 1')
+    tool('xclip', 'printf de-xclip')
+    tool('xsel', 'printf de-xsel')
+    expect(await runLinux('read')).toBe('')
+    expect(fs.readFileSync(log, 'utf8').trim().split('\n')).toEqual(['wl-paste'])
+  })
+
+  it('texte copié : lu par wl-paste', async () => {
+    setup()
+    tool('wl-paste', 'printf bonjour')
+    expect(await runLinux('read')).toBe('bonjour')
   })
 })
 

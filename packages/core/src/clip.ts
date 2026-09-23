@@ -9,11 +9,17 @@ type ClipCmd = [cmd: string, args: string[]]
 class ClipError extends Error {
   constructor(
     message: string,
-    readonly code?: string
+    readonly code?: string,
+    // code de sortie : l'outil a bien démarré mais n'a rien rendu
+    readonly exitCode?: number | null
   ) {
     super(message)
   }
 }
+
+/** Une lecture plus longue est abandonnée (programme tué) : l'app qui possède
+ *  la sélection peut ne jamais répondre à xclip ou wl-paste. */
+export const CLIP_READ_TIMEOUT_MS = 10_000
 
 /**
  * Lance une commande presse-papiers.
@@ -23,7 +29,12 @@ class ClipError extends Error {
  *   processus garde les flux hérités ouverts, donc attendre 'close' bloquerait
  *   indéfiniment alors que la copie est faite.
  */
-function run(cmd: string, args: string[], stdinText?: string): Promise<string> {
+export function runClipTool(
+  cmd: string,
+  args: string[],
+  stdinText?: string,
+  timeoutMs = CLIP_READ_TIMEOUT_MS
+): Promise<string> {
   const writing = stdinText !== undefined
   return new Promise((resolve, reject) => {
     let p
@@ -42,15 +53,28 @@ function run(cmd: string, args: string[], stdinText?: string): Promise<string> {
       })
     }
     let settled = false
+    // lecture seulement : une écriture rend la main à 'exit', sans attendre
+    const timer = writing
+      ? undefined
+      : setTimeout(() => {
+          try {
+            p.kill()
+          } catch {
+            // déjà terminé
+          }
+          done(new ClipError(`${cmd} ne répond pas`, 'ETIMEDOUT'))
+        }, timeoutMs)
+    timer?.unref?.()
     const done = (err: Error | null) => {
       if (settled) return
       settled = true
+      if (timer) clearTimeout(timer)
       if (err) reject(err)
       else resolve(out)
     }
     p.on('error', (e: NodeJS.ErrnoException) => done(new ClipError(e.message, e.code)))
     const finish = (code: number | null) =>
-      done(code === 0 ? null : new ClipError(`${cmd} a retourné ${code}`))
+      done(code === 0 ? null : new ClipError(`${cmd} a retourné ${code}`, undefined, code))
     if (writing) p.on('exit', finish)
     else p.on('close', finish)
     // un stdin fermé côté enfant (EPIPE) ne doit pas faire planter le serveur
@@ -66,7 +90,10 @@ function run(cmd: string, args: string[], stdinText?: string): Promise<string> {
  * xsel. Exporté pour les tests.
  */
 export function linuxClipCandidates(mode: 'read' | 'write', env: NodeJS.ProcessEnv = process.env): ClipCmd[] {
-  const wayland: ClipCmd[] = mode === 'write' ? [['wl-copy', []]] : [['wl-paste', ['--no-newline']]]
+  // --type text : sans texte copié (image seule), wl-paste s'arrête aussitôt
+  // au lieu de faire passer toute l'image dans le tuyau
+  const wayland: ClipCmd[] =
+    mode === 'write' ? [['wl-copy', []]] : [['wl-paste', ['--no-newline', '--type', 'text']]]
   const x11: ClipCmd[] =
     mode === 'write'
       ? [
@@ -83,14 +110,18 @@ export function linuxClipCandidates(mode: 'read' | 'write', env: NodeJS.ProcessE
 // outils absents de la machine : on ne les relance pas (le lecteur tourne toutes les 1,5 s)
 const missing = new Set<string>()
 
-async function runLinux(mode: 'read' | 'write', stdinText?: string): Promise<string> {
+/** Exporté pour les tests. */
+export async function runLinux(mode: 'read' | 'write', stdinText?: string): Promise<string> {
   let last: Error = new Error('aucun outil presse-papiers (installer wl-clipboard, xclip ou xsel)')
   for (const [cmd, args] of linuxClipCandidates(mode)) {
     if (missing.has(cmd)) continue
     try {
-      return await run(cmd, args, stdinText)
+      return await runClipTool(cmd, args, stdinText)
     } catch (e) {
       if (e instanceof ClipError && e.code === 'ENOENT') missing.add(cmd)
+      // wl-paste a démarré mais ne trouve aucun texte (vide, image seule) : on
+      // s'arrête là, inutile de lancer xclip puis xsel à chaque vérification
+      if (mode === 'read' && cmd === 'wl-paste' && e instanceof ClipError && typeof e.exitCode === 'number') return ''
       last = e as Error
     }
   }
@@ -100,9 +131,9 @@ async function runLinux(mode: 'read' | 'write', stdinText?: string): Promise<str
 export async function writeClipboard(text: string): Promise<void> {
   if (clipboardDisabled()) return
   if (process.platform === 'darwin') {
-    await run('pbcopy', [], text)
+    await runClipTool('pbcopy', [], text)
   } else if (process.platform === 'win32') {
-    await run(
+    await runClipTool(
       'powershell',
       ['-NoProfile', '-Command', '[Console]::InputEncoding=[System.Text.Encoding]::UTF8; Set-Clipboard -Value ([Console]::In.ReadToEnd())'],
       text
@@ -115,9 +146,9 @@ export async function writeClipboard(text: string): Promise<void> {
 export async function readClipboard(): Promise<string> {
   if (clipboardDisabled()) return ''
   if (process.platform === 'darwin') {
-    return run('pbpaste', [])
+    return runClipTool('pbpaste', [])
   } else if (process.platform === 'win32') {
-    return run('powershell', [
+    return runClipTool('powershell', [
       '-NoProfile',
       '-Command',
       '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Get-Clipboard -Raw',
@@ -132,7 +163,7 @@ export async function readClipboard(): Promise<string> {
  * sans lancer pbpaste ou PowerShell à chaque vérification.
  */
 export interface ClipboardTextBackend {
-  read: () => string
+  read: () => string | Promise<string>
   write: (text: string) => void
 }
 
@@ -146,12 +177,28 @@ export interface ClipboardText {
  * aucun processus n'est lancé ; sans lui (coeur seul en ligne de commande,
  * tests), on garde pbpaste, PowerShell ou xclip. FLITDROP_NO_CLIP coupe tout.
  */
-export function createClipboardText(backend?: ClipboardTextBackend): ClipboardText {
+export function createClipboardText(backend?: ClipboardTextBackend, timeoutMs = CLIP_READ_TIMEOUT_MS): ClipboardText {
   if (!backend) return { read: readClipboard, write: writeClipboard }
   return {
     read: async () => {
       if (clipboardDisabled()) return ''
-      const text = backend.read()
+      // une lecture qui ne répond jamais rend '' : la vérification suivante repart
+      const text = await new Promise<unknown>((resolve, reject) => {
+        const t = setTimeout(() => resolve(''), timeoutMs)
+        t.unref?.()
+        Promise.resolve()
+          .then(() => backend.read())
+          .then(
+            (v) => {
+              clearTimeout(t)
+              resolve(v)
+            },
+            (e) => {
+              clearTimeout(t)
+              reject(e)
+            }
+          )
+      })
       return typeof text === 'string' ? text : ''
     },
     write: async (text: string) => {

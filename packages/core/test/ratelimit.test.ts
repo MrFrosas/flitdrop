@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import fs from 'node:fs'
+import http from 'node:http'
+import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import crypto from 'node:crypto'
@@ -7,8 +9,8 @@ import { startServer, type RunningServer } from '../src/server.js'
 import { seal, sealJSON, openJSON, randomToken } from '../src/crypto.js'
 import { b64u } from '../src/util.js'
 
-// Serveur à part : le compteur par adresse est partagé par tous les tests d'un
-// même serveur, on veut ici une minute « propre ».
+// Serveur à part (un par bloc) : le compteur par adresse est partagé par tous
+// les tests d'un même serveur, on veut une minute « propre ».
 let srv: RunningServer
 let base = ''
 let home = ''
@@ -59,21 +61,82 @@ function chunk(phone: Phone, tid: string, n: number, data: Buffer): Promise<Resp
   })
 }
 
-beforeAll(async () => {
-  home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-rate-'))
-  dl = path.join(home, 'dl')
-  process.env.FLITDROP_DOWNLOADS = dl
-  srv = await startServer({ port: 0, home, disableClipboard: true, quiet: true })
-  base = `http://127.0.0.1:${srv.port}`
-})
+function useServer(): void {
+  beforeAll(async () => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-rate-'))
+    dl = path.join(home, 'dl')
+    process.env.FLITDROP_DOWNLOADS = dl
+    srv = await startServer({ port: 0, home, disableClipboard: true, quiet: true })
+    base = `http://127.0.0.1:${srv.port}`
+  })
 
-afterAll(async () => {
-  await srv.close()
-  delete process.env.FLITDROP_DOWNLOADS
-  fs.rmSync(home, { recursive: true, force: true })
-})
+  afterAll(async () => {
+    await srv.close()
+    delete process.env.FLITDROP_DOWNLOADS
+    fs.rmSync(home, { recursive: true, force: true })
+  })
+}
+
+/** Requêtes en boucle ; rend les statuts HTTP. */
+async function hammer(n: number, make: () => Promise<Response>): Promise<number[]> {
+  const statuses: number[] = []
+  for (let i = 0; i < n; i++) {
+    const r = await make()
+    statuses.push(r.status)
+    await r.arrayBuffer()
+  }
+  return statuses
+}
+
+const chunkWithId = (id: string, tid = 'abc') =>
+  fetch(`${base}/api/phone/transfer/${tid}/chunk/0`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/octet-stream', 'x-wd-device': id },
+    body: 'x',
+  })
+
+const statusWithId = (id: string, tid = 'abc') => fetch(`${base}/api/phone/transfer/${tid}/status`, { headers: { 'x-wd-device': id } })
+
+// Une autre adresse que 127.0.0.1 pour joindre le serveur : l'adresse wifi de
+// la machine, sinon 127.0.0.2 (Linux). Sans aucune, le test est sauté.
+function lanIPv4(): string | undefined {
+  for (const list of Object.values(os.networkInterfaces()))
+    for (const a of list ?? []) if (a.family === 'IPv4' && !a.internal) return a.address
+  return undefined
+}
+async function canBind(addr: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const s = net.createServer()
+    s.once('error', () => resolve(false))
+    s.listen(0, addr, () => s.close(() => resolve(true)))
+  })
+}
+const other: { host?: string; localAddress?: string } = {}
+const lan = lanIPv4()
+if (lan) other.host = lan
+else if (await canBind('127.0.0.2')) {
+  other.host = '127.0.0.1'
+  other.localAddress = '127.0.0.2'
+}
+const otherAgent = new http.Agent({ keepAlive: true, maxSockets: 1 })
+
+function postFromOther(p: string, headers: Record<string, string>, body: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      { host: other.host, localAddress: other.localAddress, port: srv.port, path: p, method: 'POST', headers, agent: otherAgent },
+      (res) => {
+        res.resume()
+        res.on('end', () => resolve(res.statusCode ?? 0))
+      }
+    )
+    req.on('error', reject)
+    req.end(body)
+  })
+}
 
 describe('limite de débit des transferts', () => {
+  useServer()
+
   it('un téléphone appairé envoie 300 morceaux dans la minute sans aucun refus', { timeout: 30_000 }, async () => {
     const phone = await pairPhone()
     const chunkSize = 64
@@ -133,5 +196,89 @@ describe('limite de débit des transferts', () => {
     // les appairages des tests précédents (hello) comptent aussi dans cette limite
     expect(statuses.slice(0, 200).every((s) => s === 403)).toBe(true)
     expect(statuses.at(-1)).toBe(429)
+  })
+})
+
+describe('identifiant du téléphone réutilisé depuis une autre adresse', () => {
+  useServer()
+
+  it.runIf(!!other.host)(
+    'remplir le budget depuis une autre machine ne bloque pas le vrai téléphone',
+    { timeout: 120_000 },
+    async () => {
+      const phone = await pairPhone()
+      const data = crypto.randomBytes(128)
+      const { status, tid } = await init(phone, 'apres.bin', data.length, 64)
+      expect(status).toBe(200)
+      // l'identifiant a été vu passer en clair sur le wifi
+      let refused = 0
+      for (let i = 0; i < 6010; i++) {
+        const s = await postFromOther(
+          '/api/phone/transfer/nexistepas/chunk/0',
+          { 'content-type': 'application/octet-stream', 'x-wd-device': phone.id },
+          'x'
+        )
+        if (s === 429) refused++
+      }
+      // l'autre machine a bien vidé SON compteur...
+      expect(refused).toBeGreaterThan(0)
+      // ...mais le vrai téléphone continue d'envoyer
+      const c0 = await chunk(phone, tid!, 0, data.subarray(0, 64))
+      expect(c0.status).toBe(200)
+      const c1 = await chunk(phone, tid!, 1, data.subarray(64))
+      expect(c1.status).toBe(200)
+      const fin = await phone.post(`/api/phone/transfer/${tid}/finish`, 'finish', { transferId: tid })
+      expect(fin.status).toBe(200)
+    }
+  )
+})
+
+describe('qui garde la limite stricte (240 par minute et par adresse)', () => {
+  describe('téléphone appairé hors transferts', () => {
+    useServer()
+    it('file d’envoi : la 241e requête de la minute est refusée', { timeout: 30_000 }, async () => {
+      const phone = await pairPhone() // hello : 1 requête
+      const statuses = await hammer(245, () => phone.post('/api/phone/outbox', 'outbox', {}))
+      expect(statuses.slice(0, 239).every((s) => s === 200)).toBe(true)
+      expect(statuses.slice(239).every((s) => s === 429)).toBe(true)
+    })
+  })
+
+  describe('statut d’un transfert (sans authentification)', () => {
+    useServer()
+    it('même avec l’identifiant d’un téléphone appairé', { timeout: 30_000 }, async () => {
+      const phone = await pairPhone()
+      const statuses = await hammer(245, () => statusWithId(phone.id))
+      expect(statuses.slice(0, 239).every((s) => s === 404)).toBe(true)
+      expect(statuses.at(-1)).toBe(429)
+    })
+  })
+
+  describe('appareil en attente (QR affiché, jamais scanné)', () => {
+    useServer()
+    it('morceaux et statut refusés, puis limités', { timeout: 30_000 }, async () => {
+      const res = await fetch(base + '/api/admin/pair/new', { method: 'POST', headers: { 'x-admin-token': srv.adminToken } })
+      const { url } = (await res.json()) as { url: string }
+      const id = (url.split('#')[1] as string).split('.')[0] as string
+      const statuses = [...(await hammer(120, () => chunkWithId(id))), ...(await hammer(125, () => statusWithId(id)))]
+      // jamais accepté ; refusé par la limite dès la 241e requête
+      expect(statuses.every((s) => s !== 200)).toBe(true)
+      expect(statuses.slice(0, 240).every((s) => s !== 429)).toBe(true)
+      expect(statuses.slice(240).every((s) => s === 429)).toBe(true)
+    })
+  })
+
+  describe('téléphone retiré', () => {
+    useServer()
+    it('morceaux et statut refusés (403), puis limités', { timeout: 30_000 }, async () => {
+      const phone = await pairPhone()
+      const { tid } = await init(phone, 'retire.bin', 64, 64)
+      const rv = await fetch(`${base}/api/admin/device/${phone.id}/revoke`, { method: 'POST', headers: { 'x-admin-token': srv.adminToken } })
+      expect(rv.status).toBe(200)
+      const statuses = [...(await hammer(120, () => chunkWithId(phone.id, tid))), ...(await hammer(125, () => statusWithId(phone.id, tid)))]
+      // hello et init comptent déjà : 238 requêtes passent la limite, toutes refusées
+      expect(statuses.slice(0, 238).every((s) => s === 403)).toBe(true)
+      expect(statuses.at(-1)).toBe(429)
+    })
   })
 })

@@ -57,13 +57,16 @@ process.on('unhandledRejection', (reason) => {
 // Surveillance UNIQUE du presse-papiers : une minuterie pour le texte (lu par
 // Electron et confié au coeur, sans lancer pbpaste ni PowerShell) et pour les
 // images (ce que la page web ne peut pas lire). Une image restée copiée n'est
-// plus réencodée : on compare d'abord une empreinte de ses octets bruts.
-// Ralentie après une minute sans activité, en pause écran verrouillé ou en
-// veille, avec une vérification immédiate au retour.
+// plus réencodée ni relue en entier sans signe de nouvelle copie.
+// Ralentie après une minute sans activité ou quand tout est coupé, en pause
+// écran verrouillé ou en veille, avec une vérification immédiate au retour.
 function watchClipboard(ClipboardWatcher) {
   clipWatcher = new ClipboardWatcher({
     clipboard,
     checkText: () => (core ? core.pollClipboard() : undefined),
+    // Linux sous Wayland : le texte passe encore par wl-paste, qu'on ne lance
+    // pas quand le presse-papiers ne contient qu'une image
+    textNeedsTextFormat: usesExternalTextRead(),
     imagesEnabled: () => !!core && core.cfg.clipHistoryEnabled,
     anyEnabled: () => !!core && (core.cfg.clipHistoryEnabled || core.cfg.clipboardAutoPush),
     onImage: (png, thumb, w, h) => {
@@ -72,11 +75,18 @@ function watchClipboard(ClipboardWatcher) {
     idleSeconds: () => powerMonitor.getSystemIdleTime(),
   })
   clipWatcher.start()
-  // verrouillage : macOS et Windows seulement ; la veille partout
-  powerMonitor.on('lock-screen', () => clipWatcher && clipWatcher.pause())
-  powerMonitor.on('suspend', () => clipWatcher && clipWatcher.pause())
-  powerMonitor.on('unlock-screen', () => clipWatcher && clipWatcher.resume())
-  powerMonitor.on('resume', () => clipWatcher && clipWatcher.resume())
+  // verrouillage : macOS et Windows seulement ; la veille partout. Deux causes
+  // distinctes : un réveil derrière l'écran verrouillé reste en pause.
+  powerMonitor.on('lock-screen', () => clipWatcher && clipWatcher.lock())
+  powerMonitor.on('unlock-screen', () => clipWatcher && clipWatcher.unlock())
+  powerMonitor.on('suspend', () => clipWatcher && clipWatcher.suspend())
+  powerMonitor.on('resume', () => clipWatcher && clipWatcher.wake())
+}
+
+// Linux sous Wayland : on garde wl-paste tant que la lecture par Electron n'est
+// pas testée sur Ubuntu.
+function usesExternalTextRead() {
+  return process.platform === 'linux' && !!process.env.WAYLAND_DISPLAY
 }
 
 // fichiers passés en argument : clic-droit "Envoyer vers > Flitdrop" dans
@@ -163,14 +173,15 @@ if (!gotLock) {
           // non critique
         }
       },
-      // texte lu et écrit dans le processus, sans lancer de programme externe.
-      // Linux sous Wayland : on garde wl-paste tant que ce n'est pas testé sur Ubuntu.
-      clipboardText:
-        process.platform === 'linux' && process.env.WAYLAND_DISPLAY
-          ? undefined
-          : { read: () => clipboard.readText(), write: (text) => clipboard.writeText(text) },
+      // texte lu et écrit dans le processus, sans lancer de programme externe
+      // (sauf Linux sous Wayland, voir usesExternalTextRead)
+      clipboardText: usesExternalTextRead()
+        ? undefined
+        : { read: () => clipboard.readText(), write: (text) => clipboard.writeText(text) },
       // la surveillance unique ci-dessous appelle core.pollClipboard()
       manualClipboardPoll: true,
+      // une fonction presse-papiers rallumée : vérification tout de suite
+      onSettingsChanged: () => clipWatcher && clipWatcher.poke(),
     })
     watchClipboard(ClipboardWatcher)
     // auto-update : vérifie/télécharge la dernière version publiée sur GitHub,

@@ -99,6 +99,9 @@ export interface StartOptions {
   // l'app de bureau fait tourner UNE seule surveillance (texte et images) et
   // appelle pollClipboard() elle-même : le coeur ne lance pas sa minuterie.
   manualClipboardPoll?: boolean
+  // prévenu après chaque enregistrement des réglages (l'app de bureau réveille
+  // sa surveillance du presse-papiers quand une fonction est rallumée)
+  onSettingsChanged?: () => void
   // fourni par l'app de bureau uniquement : version, canal d'installation et
   // langue du système. Sans lui (CLI, tests), la télémétrie reste éteinte.
   telemetry?: TelemetryOptions
@@ -117,8 +120,8 @@ export interface RunningServer {
    *  (appelé par l'app de bureau qui lit l'image via Electron). */
   addClipboardImage: (png: Buffer, thumb: string, w: number, h: number) => void
   /** Vérifie une fois le texte du presse-papiers (surveillance pilotée par
-   *  l'app de bureau quand manualClipboardPoll est vrai). */
-  pollClipboard: () => Promise<void>
+   *  l'app de bureau quand manualClipboardPoll est vrai). `true` : nouveau texte. */
+  pollClipboard: () => Promise<boolean>
   /** Statistiques et rapports d'erreur (no-op sans opts.telemetry). */
   telemetry: Telemetry
   close: () => Promise<void>
@@ -152,8 +155,10 @@ function rateLimit(max: number, windowMs: number, keyOf?: (req: Request) => stri
 // 100 par seconde, bien au-delà de ce que le wifi permet (morceaux de 8 Mo),
 // et assez pour 2 000 petites photos par minute.
 const TRANSFER_RATE_PER_MIN = 6000
-// chemins (sous /api/phone) comptés dans ce budget
-const PHONE_TRANSFER_ROUTE = /^\/(?:transfer\/(?:init|[^/]+\/(?:chunk\/\d+|status|finish))|outbox\/[^/]+\/download)$/
+// chemins (sous /api/phone) comptés dans ce budget. Le statut n'en fait pas
+// partie : sans authentification, il reste à la limite stricte par adresse
+// (le téléphone ne le demande qu'après une coupure).
+const PHONE_TRANSFER_ROUTE = /^\/(?:transfer\/(?:init|[^/]+\/(?:chunk\/\d+|finish))|outbox\/[^/]+\/download)$/
 
 export async function startServer(opts: StartOptions = {}): Promise<RunningServer> {
   if (opts.disableClipboard) process.env.FLITDROP_NO_CLIP = '1'
@@ -195,10 +200,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const clip = createClipboardText(opts.clipboardText)
   clip.read().then((t) => (lastClip = t)).catch(() => {})
   // une lecture à la fois : un PowerShell lent (antivirus, disque) ne doit pas
-  // empiler les processus d'une vérification à l'autre.
+  // empiler les processus d'une vérification à l'autre. clip.read() rend
+  // toujours la main (délai max, programme tué) : `polling` ne reste pas coincé.
   let polling = false
-  const pollClipboard = async (): Promise<void> => {
-    if (polling || (!cfg.clipboardAutoPush && !cfg.clipHistoryEnabled)) return
+  const pollClipboard = async (): Promise<boolean> => {
+    if (polling || (!cfg.clipboardAutoPush && !cfg.clipHistoryEnabled)) return false
     polling = true
     let text = ''
     try {
@@ -206,7 +212,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     } finally {
       polling = false
     }
-    if (!text || text === lastClip || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) return
+    if (!text || text === lastClip || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) return false
     lastClip = text
     if (cfg.clipHistoryEnabled && clipHistory.add(text, 'pc', cfg)) {
       hub.broadcast('cliphistory-changed', {})
@@ -216,6 +222,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       hub.broadcast('outbox-changed', {})
       hub.broadcast('clip-autopushed', { preview: text.slice(0, 120) })
     }
+    return true
   }
   const clipTimer = opts.manualClipboardPoll ? undefined : setInterval(() => void pollClipboard(), 1500)
   clipTimer?.unref?.()
@@ -350,7 +357,14 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // des centaines par minute. Chaque morceau est de toute façon authentifié
   // (déchiffrement refusé s'il est forgé). Tout le reste, et surtout les
   // appareils inconnus, garde la limite stricte par adresse.
-  const transferRate = rateLimit(TRANSFER_RATE_PER_MIN, 60_000, (req) => 'dev:' + String(req.headers['x-wd-device'] ?? ''))
+  // Clé = appareil ET adresse : l'identifiant circule en clair sur le wifi,
+  // quelqu'un qui l'a vu passer ne remplit que son propre compteur, jamais
+  // celui du vrai téléphone.
+  const transferRate = rateLimit(
+    TRANSFER_RATE_PER_MIN,
+    60_000,
+    (req) => `dev:${String(req.headers['x-wd-device'] ?? '')}|${req.socket.remoteAddress ?? '?'}`
+  )
   app.use('/api/phone', (req, res, next) => {
     const id = String(req.headers['x-wd-device'] ?? '')
     const dev = id ? devices.get(id) : undefined
@@ -1091,6 +1105,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (cfg.basicNoticeShown) telemetry.noticeShown()
     for (const k of SETTINGS_KEYS) if (before[k] !== (cfg as unknown as Record<string, unknown>)[k]) telemetry.track('settings_changed', { key: k })
     hub.broadcast('settings-changed', {})
+    try {
+      opts.onSettingsChanged?.()
+    } catch {
+      // non critique
+    }
     res.json({ ok: true })
   })
 

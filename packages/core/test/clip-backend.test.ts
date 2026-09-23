@@ -96,4 +96,61 @@ describe('presse-papiers fourni par l’hôte (Electron)', () => {
       expect(spawned).toEqual([])
     })
   })
+  describe('lecture qui ne répond jamais', () => {
+    let srv: Srv
+    let home = ''
+    let hang = false
+    let clipText = ''
+    let settingsCalls = 0
+
+    beforeAll(async () => {
+      delete process.env.FLITDROP_NO_CLIP
+      home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-clip-hang-'))
+      process.env.FLITDROP_DOWNLOADS = path.join(home, 'dl')
+      srv = await startServer({
+        port: 0,
+        home,
+        quiet: true,
+        manualClipboardPoll: true,
+        clipboardText: {
+          read: () => (hang ? new Promise<string>(() => {}) : clipText),
+          write: (t) => {
+            clipText = t
+          },
+        },
+        onSettingsChanged: () => settingsCalls++,
+      })
+    })
+
+    afterAll(async () => {
+      vi.useRealTimers()
+      await srv.close()
+      delete process.env.FLITDROP_DOWNLOADS
+      fs.rmSync(home, { recursive: true, force: true })
+    })
+
+    it('n’arrête pas la synchro : la vérification suivante repart', async () => {
+      hang = true
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      const first = srv.pollClipboard()
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(await first).toBe(false)
+      vi.useRealTimers()
+      hang = false
+      clipText = 'reprise après blocage'
+      expect(await srv.pollClipboard()).toBe(true)
+      const r = await fetch(`http://127.0.0.1:${srv.port}/api/admin/state`, { headers: { 'x-admin-token': srv.adminToken } })
+      const st = (await r.json()) as { clipHistory?: Array<{ text?: string }> }
+      expect((st.clipHistory ?? []).some((i) => i.text === 'reprise après blocage')).toBe(true)
+    })
+    it('prévient l’app après un changement de réglage (réveil de la surveillance)', async () => {
+      const r = await fetch(`http://127.0.0.1:${srv.port}/api/admin/settings`, {
+        method: 'POST',
+        headers: { 'x-admin-token': srv.adminToken, 'content-type': 'application/json' },
+        body: JSON.stringify({ clipboardAutoPush: true }),
+      })
+      expect(r.status).toBe(200)
+      expect(settingsCalls).toBe(1)
+    })
+  })
 })

@@ -4,7 +4,7 @@ import { ClipboardWatcher, rawImageFormats, type WatchedClipboard, type WatchedI
 // Faux presse-papiers : compte les décodages (readImage) et les réencodages
 // (toPNG), le vrai coût mesuré sur Mac quand une capture reste copiée.
 function fakeClipboard(opts: { raw?: Record<string, Buffer>; pixels?: Buffer; formats?: string[] } = {}) {
-  const count = { readImage: 0, toPNG: 0, readBuffer: 0 }
+  const count = { readImage: 0, toPNG: 0, readBuffer: 0, toBitmap: 0 }
   const state = { raw: opts.raw ?? {}, pixels: opts.pixels ?? Buffer.alloc(0), formats: opts.formats ?? ['image/png'] }
   const makeImage = (): WatchedImage => ({
     isEmpty: () => state.pixels.length === 0,
@@ -13,7 +13,10 @@ function fakeClipboard(opts: { raw?: Record<string, Buffer>; pixels?: Buffer; fo
       count.toPNG++
       return Buffer.concat([Buffer.from('png:'), state.pixels])
     },
-    toBitmap: () => Buffer.from(state.pixels),
+    toBitmap: () => {
+      count.toBitmap++
+      return Buffer.from(state.pixels)
+    },
     resize: () => makeImage(),
     toDataURL: () => 'data:image/png;base64,AAAA',
   })
@@ -111,6 +114,127 @@ describe('ClipboardWatcher : images', () => {
     expect(none.checkText).not.toHaveBeenCalled()
   })
 
+  it('gros TIFF resté copié, personne au clavier : ni lecture ni hachage à chaque passage', async () => {
+    let clock = 1_000_000
+    let idle = 30 // copié puis laissé là
+    const tiff = Buffer.alloc(8 * 1024 * 1024, 7) // une capture Retina en TIFF
+    const f = fakeClipboard({ raw: { 'public.tiff': tiff }, pixels: Buffer.from('pix-1'), formats: ['image/tiff', 'image/png'] })
+    const { w, images } = watcher(f.clipboard, { idleSeconds: () => idle, now: () => clock })
+    await w.tick()
+    expect(images).toHaveLength(1)
+    const reads = f.count.readBuffer
+    // personne au clavier : 5 passages, formats identiques, inactivité qui grandit
+    for (let i = 0; i < 5; i++) {
+      clock += 5000
+      idle += 5
+      await w.tick()
+    }
+    expect(f.count.readBuffer).toBe(reads)
+    expect(f.count.readImage).toBe(1)
+    expect(f.count.toBitmap).toBe(0)
+    // filet de sécurité : 30 s plus tard, une relecture complète quand même
+    clock += 5000
+    idle += 5
+    await w.tick()
+    expect(f.count.readBuffer).toBeGreaterThan(reads)
+    const after = f.count.readBuffer
+    clock += 5000
+    idle += 5
+    await w.tick()
+    expect(f.count.readBuffer).toBe(after)
+    // une action au clavier (copier) : relecture au passage suivant
+    clock += 1500
+    idle = 0
+    f.state.raw['public.tiff'] = Buffer.alloc(8 * 1024 * 1024, 9)
+    f.state.pixels = Buffer.from('pix-2')
+    await w.tick()
+    expect(images).toHaveLength(2)
+  })
+
+  it('bitmap Windows seul resté copié : ni readImage ni toBitmap sans signal', async () => {
+    let clock = 1_000_000
+    let idle = 100
+    const f = fakeClipboard({ pixels: Buffer.alloc(1024 * 1024, 3), formats: ['image/png'] })
+    const { w, images } = watcher(f.clipboard, { platform: 'win32', idleSeconds: () => idle, now: () => clock })
+    await w.tick()
+    expect(images).toHaveLength(1)
+    expect(f.count.readImage).toBe(1)
+    expect(f.count.toBitmap).toBe(1)
+    for (let i = 0; i < 5; i++) {
+      clock += 5000
+      idle += 5
+      await w.tick()
+    }
+    expect(f.count.readImage).toBe(1)
+    expect(f.count.toBitmap).toBe(1)
+    expect(f.count.readBuffer).toBe(1)
+    // la liste des formats change (nouvelle copie par un autre programme) : relecture
+    clock += 1500
+    idle += 1
+    f.state.formats = ['text/plain', 'image/png']
+    f.state.pixels = Buffer.alloc(1024 * 1024, 4)
+    await w.tick()
+    expect(f.count.readImage).toBe(2)
+    expect(images).toHaveLength(2)
+  })
+
+  it('un nouveau texte vu déclenche aussi la relecture de l’image', async () => {
+    let clock = 1_000_000
+    let idle = 100
+    const f = fakeClipboard({ raw: { 'public.png': Buffer.from('c-1') }, pixels: Buffer.from('p-1'), formats: ['text/plain', 'image/png'] })
+    let fresh = false
+    const { w, images } = watcher(f.clipboard, { idleSeconds: () => idle, now: () => clock, checkText: async () => fresh })
+    await w.tick()
+    const reads = f.count.readBuffer
+    clock += 5000
+    idle += 5
+    await w.tick()
+    expect(f.count.readBuffer).toBe(reads)
+    fresh = true
+    f.state.raw['public.png'] = Buffer.from('c-2')
+    f.state.pixels = Buffer.from('p-2')
+    clock += 5000
+    idle += 5
+    await w.tick()
+    expect(images).toHaveLength(2)
+  })
+
+  it('inactivité inconnue : on relit à chaque passage, comme avant', async () => {
+    let clock = 1_000_000
+    const f = fakeClipboard({ raw: { 'public.tiff': Buffer.from('t') }, pixels: Buffer.from('p') })
+    const { w } = watcher(f.clipboard, {
+      now: () => clock,
+      idleSeconds: () => {
+        throw new Error('indisponible')
+      },
+    })
+    for (let i = 0; i < 4; i++) {
+      clock += 5000
+      await w.tick()
+    }
+    expect(f.count.readBuffer).toBeGreaterThanOrEqual(4)
+    expect(f.count.toPNG).toBe(1)
+  })
+
+  it('texte lu par un programme externe : pas de lecture quand seule une image est copiée', async () => {
+    const f = fakeClipboard({ formats: ['image/png'], raw: { 'image/png': Buffer.from('i') }, pixels: Buffer.from('p') })
+    const { w, checkText } = watcher(f.clipboard, { platform: 'linux', textNeedsTextFormat: true })
+    await w.tick()
+    expect(checkText).not.toHaveBeenCalled()
+    f.state.formats = ['text/plain', 'image/png']
+    await w.tick()
+    expect(checkText).toHaveBeenCalledTimes(1)
+    // formats inconnus (liste vide) : on lit quand même
+    f.state.formats = []
+    await w.tick()
+    expect(checkText).toHaveBeenCalledTimes(2)
+    // lecture dans le processus (cas par défaut) : toujours lue
+    const inProc = watcher(f.clipboard, { platform: 'linux' })
+    f.state.formats = ['image/png']
+    await inProc.w.tick()
+    expect(inProc.checkText).toHaveBeenCalledTimes(1)
+  })
+
   it('noms bruts par système', () => {
     expect(rawImageFormats('darwin')).toEqual(['public.png', 'public.tiff'])
     expect(rawImageFormats('win32')).toEqual(['PNG'])
@@ -143,7 +267,7 @@ describe('ClipboardWatcher : rythme', () => {
     w.start()
     await vi.advanceTimersByTimeAsync(1500)
     expect(checkText).toHaveBeenCalledTimes(1)
-    w.pause()
+    w.lock()
     checkText.mockClear()
     await vi.advanceTimersByTimeAsync(30_000)
     expect(checkText).not.toHaveBeenCalled()
@@ -151,7 +275,7 @@ describe('ClipboardWatcher : rythme', () => {
     await vi.advanceTimersByTimeAsync(30_000)
     expect(checkText).toHaveBeenCalledTimes(1)
     checkText.mockClear()
-    w.resume()
+    w.unlock()
     await vi.advanceTimersByTimeAsync(0)
     expect(checkText).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(1500)
@@ -160,6 +284,131 @@ describe('ClipboardWatcher : rythme', () => {
     checkText.mockClear()
     await vi.advanceTimersByTimeAsync(60_000)
     expect(checkText).not.toHaveBeenCalled()
+  })
+
+  it('verrouillé, mis en veille puis réveillé : reste en pause jusqu’au déverrouillage', async () => {
+    vi.useFakeTimers()
+    const f = fakeClipboard({ formats: [] })
+    const { w, checkText } = watcher(f.clipboard)
+    w.start()
+    await vi.advanceTimersByTimeAsync(1500)
+    w.lock()
+    w.suspend()
+    checkText.mockClear()
+    // réveil de maintenance ou couvercle ouvert, écran toujours verrouillé
+    w.wake()
+    expect(w.isPaused).toBe(true)
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(checkText).not.toHaveBeenCalled()
+    w.unlock()
+    expect(w.isPaused).toBe(false)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(checkText).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1500 * 2)
+    expect(checkText).toHaveBeenCalledTimes(3)
+    w.stop()
+  })
+
+  it('veille seule : le réveil relance tout de suite', async () => {
+    vi.useFakeTimers()
+    const f = fakeClipboard({ formats: [] })
+    const { w, checkText } = watcher(f.clipboard)
+    w.start()
+    await vi.advanceTimersByTimeAsync(1500)
+    w.suspend()
+    checkText.mockClear()
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(checkText).not.toHaveBeenCalled()
+    w.wake()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(checkText).toHaveBeenCalledTimes(1)
+    w.stop()
+  })
+
+  it('tout coupé : un réveil par minute seulement, et poke() relance aussitôt', async () => {
+    vi.useFakeTimers()
+    let on = false
+    const f = fakeClipboard({ formats: [] })
+    const anyEnabled = vi.fn(() => on)
+    const { w, checkText } = watcher(f.clipboard, { anyEnabled })
+    w.start()
+    await vi.advanceTimersByTimeAsync(1500)
+    anyEnabled.mockClear()
+    await vi.advanceTimersByTimeAsync(59_000)
+    // plus aucun passage toutes les 1,5 s
+    expect(anyEnabled).not.toHaveBeenCalled()
+    expect(checkText).not.toHaveBeenCalled()
+    on = true
+    w.poke()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(checkText).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(checkText).toHaveBeenCalledTimes(2)
+    w.stop()
+  })
+
+  it('une erreur imprévue pendant un passage n’arrête pas la surveillance', async () => {
+    vi.useFakeTimers()
+    const f = fakeClipboard({ pixels: Buffer.from('dib-1') })
+    let boom = true
+    const readImage = f.clipboard.readImage
+    f.clipboard.readImage = () => {
+      const img = readImage()
+      if (boom) {
+        boom = false
+        img.toBitmap = () => {
+          throw new RangeError('Array buffer allocation failed')
+        }
+      }
+      return img
+    }
+    const { w, checkText, images } = watcher(f.clipboard, { platform: 'win32' })
+    w.start()
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(checkText).toHaveBeenCalledTimes(1)
+    f.state.formats = ['image/png', 'text/plain'] // nouvelle copie
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(checkText).toHaveBeenCalledTimes(2)
+    expect(images).toHaveLength(1)
+    w.stop()
+  })
+
+  it('un réglage illisible qui lève ne bloque pas non plus la minuterie', async () => {
+    vi.useFakeTimers()
+    const f = fakeClipboard({ formats: [] })
+    let n = 0
+    const { w, checkText } = watcher(f.clipboard, {
+      anyEnabled: () => {
+        if (n++ === 0) throw new Error('config illisible')
+        return true
+      },
+      imagesEnabled: () => {
+        throw new Error('config illisible')
+      },
+    })
+    w.start()
+    await vi.advanceTimersByTimeAsync(1500 * 3)
+    expect(checkText).toHaveBeenCalledTimes(2)
+    w.stop()
+  })
+
+  it('une lecture du texte qui ne répond jamais ne bloque pas les suivantes', async () => {
+    vi.useFakeTimers()
+    const f = fakeClipboard({ formats: [] })
+    let calls = 0
+    const checkText = vi.fn(() => {
+      calls++
+      return calls === 1 ? new Promise<void>(() => {}) : Promise.resolve()
+    })
+    const { w } = watcher(f.clipboard, { checkText })
+    w.start()
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(calls).toBe(1)
+    await vi.advanceTimersByTimeAsync(15_000 + 1500)
+    expect(calls).toBe(2)
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(calls).toBe(3)
+    w.stop()
   })
 
   it('une idleSeconds qui échoue (Wayland) garde le rythme normal', async () => {
