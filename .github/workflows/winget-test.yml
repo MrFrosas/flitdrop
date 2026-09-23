@@ -17,6 +17,7 @@ jobs:
     env:
       MANIFEST: packaging/winget/manifests/c/CCsGlobal/Flitdrop/0.6.3
       GUID: 13d66c6d-ea8b-5233-a385-4233ab80b29d
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,7 +26,8 @@ jobs:
       - name: winget a jour
         shell: pwsh
         run: |
-          $rel = Invoke-RestMethod https://api.github.com/repos/microsoft/winget-cli/releases/latest
+          # jeton du workflow : l'API anonyme est limitee par IP (runners partages)
+          $rel = Invoke-RestMethod https://api.github.com/repos/microsoft/winget-cli/releases/latest -Headers @{ Authorization = "Bearer $env:GH_TOKEN" }
           $bundle = $rel.assets | Where-Object name -like '*.msixbundle' | Select-Object -First 1
           $deps = $rel.assets | Where-Object name -eq 'DesktopAppInstaller_Dependencies.zip' | Select-Object -First 1
           Invoke-WebRequest $bundle.browser_download_url -OutFile winget.msixbundle
