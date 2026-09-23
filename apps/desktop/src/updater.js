@@ -19,11 +19,17 @@ function setupAutoUpdate(opts) {
   const { app, dialog, Notification, tr, isEnabled, getWin } = opts
   // pas de mise a jour en developpement (app non empaquetee)
   if (!app.isPackaged) return { checkNow: () => {} }
+  // macOS : l'app n'est pas notarisee, electron-updater n'y installerait rien
+  // (Apple refuse une mise a jour non signee) et interrogerait GitHub pour
+  // rien toutes les 6 h. main.cjs n'appelle pas ce module sur Mac : il lit
+  // lui-meme la derniere version et montre la carte « Nouvelle version
+  // disponible » (packages/core/src/host.ts). Garde-fou si on l'appelait quand
+  // meme : rien ne tourne. A retirer le jour ou l'app Mac sera notarisee.
+  if (process.platform === 'darwin') return { checkNow: () => {} }
 
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true
-  // Windows fonctionne des maintenant ; macOS n'appliquera les MAJ qu'une fois
-  // l'app signee + notarisee (Apple refuse une mise a jour non signee).
+  // Windows et Linux (AppImage) ; macOS : voir plus haut.
   autoUpdater.on('error', () => {
     // silencieux : hors-ligne, pas de release, etc. ne doivent rien casser
   })

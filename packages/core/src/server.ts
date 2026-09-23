@@ -29,6 +29,7 @@ import { NonceCache, open, seal, openFreshJSON, sealJSON, randomToken } from './
 import { createClipboardText, type ClipboardTextBackend } from './clip.js'
 import { ClipHistory } from './cliphistory.js'
 import { TransferActivity } from './activity.js'
+import { HOST_ACTIONS, type HostAction, type HostState } from './host.js'
 import { saveMultipartFiles } from './uploads.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
 import { t as tr, resolveLang, langFrom, acceptLang } from './i18n.js'
@@ -47,6 +48,20 @@ import {
 export { t, resolveLang, langFrom } from './i18n.js'
 export { ClipboardWatcher } from './clipwatch.js'
 export { TransferActivity, type TransferActivityState } from './activity.js'
+export {
+  TransferKeepAwake,
+  checkMacUpdate,
+  macDownloadArch,
+  MacUpdateWatch,
+  MAC_RELEASE_PAGE,
+  linuxAutostartFile,
+  linuxExecTarget,
+  isLinuxAutostart,
+  setLinuxAutostart,
+  refreshLinuxAutostart,
+  type HostState,
+  type HostAction,
+} from './host.js'
 
 // réglages dont le NOM (jamais la valeur) peut remonter dans settings_changed
 const SETTINGS_KEYS = [
@@ -104,6 +119,9 @@ export interface StartOptions {
   // prévenu après chaque enregistrement des réglages (l'app de bureau réveille
   // sa surveillance du presse-papiers quand une fonction est rallumée)
   onSettingsChanged?: () => void
+  // fourni par l'app de bureau : la page demande une action du système
+  // (ouvrir le .dmg d'une nouvelle version, les réglages de démarrage de macOS)
+  onHostAction?: (action: HostAction) => void
   // fourni par l'app de bureau uniquement : version, canal d'installation et
   // langue du système. Sans lui (CLI, tests), la télémétrie reste éteinte.
   telemetry?: TelemetryOptions
@@ -119,8 +137,9 @@ export interface RunningServer {
    *  « Envoyer vers », glisser sur l'icône, ligne de commande). */
   addLocalFiles: (paths: string[]) => Promise<number>
   /** Enregistre une image copiée sur le PC dans l'historique du presse-papiers
-   *  (appelé par l'app de bureau qui lit l'image via Electron). */
-  addClipboardImage: (png: Buffer, thumb: string, w: number, h: number) => void
+   *  (appelé par l'app de bureau qui lit l'image via Electron). `fp` :
+   *  empreinte de la copie, pour ne pas ajouter deux fois la même image. */
+  addClipboardImage: (png: Buffer, thumb: string, w: number, h: number, fp?: string) => void
   /** Vérifie une fois le texte du presse-papiers (surveillance pilotée par
    *  l'app de bureau quand manualClipboardPoll est vrai). `true` : nouveau texte. */
   pollClipboard: () => Promise<boolean>
@@ -132,6 +151,9 @@ export interface RunningServer {
    *  progression globale quand elle est connue, sinon null. Au plus 2
    *  annonces par seconde. */
   activity: TransferActivity
+  /** L'app de bureau signale un état du système à la page (nouvelle version
+   *  sur Mac, démarrage automatique à autoriser) : la page se redessine. */
+  setHost: (patch: Partial<HostState>) => void
   close: () => Promise<void>
 }
 
@@ -927,6 +949,36 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // la clé et l'instanceId voyagent dans le FRAGMENT (#), jamais envoyé au réseau
   const pairUrl = (d: Device) => `http://${bestIp() ?? '127.0.0.1'}:${actualPort}/s/#${d.id}.${d.keyB64}.${cfg.instanceId}`
 
+  // état du système signalé par l'app de bureau (vide en CLI et en tests)
+  const host: HostState = { macUpdate: null, loginItemNeedsApproval: false }
+  const setHost = (patch: Partial<HostState>): void => {
+    let changed = false
+    if (patch.macUpdate !== undefined) {
+      const v = patch.macUpdate && typeof patch.macUpdate.version === 'string' ? { version: patch.macUpdate.version.slice(0, 40) } : null
+      if (JSON.stringify(v) !== JSON.stringify(host.macUpdate)) {
+        host.macUpdate = v
+        changed = true
+      }
+    }
+    if (typeof patch.loginItemNeedsApproval === 'boolean' && patch.loginItemNeedsApproval !== host.loginItemNeedsApproval) {
+      host.loginItemNeedsApproval = patch.loginItemNeedsApproval
+      changed = true
+    }
+    if (changed) hub.broadcast('host-changed', {})
+  }
+
+  admin.post('/host/action', jsonSmall, (req, res) => {
+    const action = (req.body as { action?: unknown })?.action
+    if (typeof action !== 'string' || !(HOST_ACTIONS as readonly string[]).includes(action)) return res.status(400).json({ code: 'internal' })
+    if (!opts.onHostAction) return res.status(400).json({ code: 'internal' })
+    try {
+      opts.onHostAction(action as HostAction)
+    } catch {
+      return res.status(500).json({ code: 'internal' })
+    }
+    res.json({ ok: true })
+  })
+
   admin.get('/state', (_req, res) => {
     res.json({
       product: PRODUCT_NAME,
@@ -952,6 +1004,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         port: actualPort,
       },
       hostname: os.hostname(),
+      host,
       ips: localIPv4s(),
       devices: devices.listPublic(),
       history: history.list(),
@@ -1339,12 +1392,17 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     return added
   }
 
-  const addClipboardImage = (png: Buffer, thumb: string, w: number, h: number): void => {
+  const addClipboardImage = (png: Buffer, thumb: string, w: number, h: number, fp?: string): void => {
     if (!cfg.clipHistoryEnabled || !png || png.length === 0) return
     const hash = imageHash(png)
-    if (hash === lastImageHash) return // image qu'on vient de recopier soi-même
+    if (hash === lastImageHash) {
+      // image qu'on vient de recopier soi-même : l'entrée remontée en tête
+      // retient son empreinte de presse-papiers
+      if (typeof fp === 'string') clipHistory.adoptFingerprint(fp)
+      return
+    }
     lastImageHash = hash
-    const entry = clipHistory.addImage(png, thumb, w, h, 'pc', cfg)
+    const entry = clipHistory.addImage(png, thumb, w, h, 'pc', cfg, typeof fp === 'string' && fp.length > 0 ? fp.slice(0, 200) : undefined)
     if (entry) hub.broadcast('cliphistory-changed', {})
   }
 
@@ -1359,6 +1417,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     pollClipboard,
     telemetry,
     activity,
+    setHost,
     close: async () => {
       telemetry.stop()
       activity.close()

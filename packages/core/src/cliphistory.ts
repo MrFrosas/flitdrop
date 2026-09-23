@@ -10,6 +10,10 @@ export interface ClipImage {
   thumb: string
   w: number
   h: number
+  /** empreinte de l'image telle qu'elle était dans le presse-papiers (usage
+   *  interne, jamais envoyée) : la même image encore copiée au redémarrage
+   *  n'est pas ajoutée une deuxième fois. Absente des entrées d'avant 0.6.6. */
+  fp?: string
 }
 
 export interface ClipEntry {
@@ -68,9 +72,11 @@ export class ClipHistory {
   }
 
   /** Ajoute une image copiée sur le PC. `png` est écrit sur le disque, `thumb`
-   *  (data URL) sert d'aperçu. */
-  addImage(png: Buffer, thumb: string, w: number, h: number, source: string, cfg: Config): ClipEntry | null {
+   *  (data URL) sert d'aperçu. Refusée si c'est la même image que l'entrée la
+   *  plus récente (image restée copiée d'un lancement à l'autre). */
+  addImage(png: Buffer, thumb: string, w: number, h: number, source: string, cfg: Config, fp?: string): ClipEntry | null {
     if (!png || png.length === 0) return null
+    if (this.sameAsTop(png, w, h, fp)) return null
     const id = randomToken(6)
     const file = path.join(this.imgDir, `${id}.png`)
     try {
@@ -84,12 +90,43 @@ export class ClipHistory {
       text: `Image ${w}×${h}`,
       kind: 'image',
       source: source.slice(0, 40),
-      image: { path: file, thumb, w, h },
+      image: fp ? { path: file, thumb, w, h, fp } : { path: file, thumb, w, h },
     }
     this.entries.unshift(entry)
     this.purge(cfg)
     this.persist()
     return entry
+  }
+
+  /** Même image que l'entrée la plus récente ? Par l'empreinte quand elle est
+   *  connue, sinon (entrée d'une version précédente) en comparant le PNG
+   *  enregistré : il est alors complété de l'empreinte pour la fois suivante. */
+  private sameAsTop(png: Buffer, w: number, h: number, fp?: string): boolean {
+    const top = this.entries[0]
+    if (!top || top.kind !== 'image' || !top.image) return false
+    if (fp && top.image.fp) return top.image.fp === fp
+    if (top.image.w !== w || top.image.h !== h) return false
+    try {
+      if (fs.statSync(top.image.path).size !== png.length) return false
+      if (!fs.readFileSync(top.image.path).equals(png)) return false
+    } catch {
+      return false
+    }
+    if (fp) {
+      top.image.fp = fp
+      this.save()
+    }
+    return true
+  }
+
+  /** L'image qu'on vient de recopier depuis l'historique (entrée remontée en
+   *  tête) est désormais dans le presse-papiers sous cette empreinte : on la
+   *  retient, pour ne pas la rajouter au prochain lancement. */
+  adoptFingerprint(fp: string): void {
+    const top = this.entries[0]
+    if (!fp || !top || top.kind !== 'image' || !top.image || top.image.fp === fp) return
+    top.image.fp = fp
+    this.save()
   }
 
   /** Remonte une entrée existante en tête (re-copie depuis l'historique). */
@@ -142,8 +179,8 @@ export class ClipHistory {
     }
   }
 
-  /** Vue publique : sans le chemin disque (usage interne seulement). */
-  list(n = 300): (Omit<ClipEntry, 'image'> & { image?: Omit<ClipImage, 'path'> })[] {
+  /** Vue publique : sans le chemin disque ni l'empreinte (usage interne seulement). */
+  list(n = 300): (Omit<ClipEntry, 'image'> & { image?: Omit<ClipImage, 'path' | 'fp'> })[] {
     return this.entries.slice(0, n).map((e) =>
       e.kind === 'image' && e.image
         ? { ...e, image: { thumb: e.image.thumb, w: e.image.w, h: e.image.h } }
@@ -157,6 +194,12 @@ export class ClipHistory {
 
   private persist(): void {
     this.version++
+    this.save()
+  }
+
+  /** Écriture différée sur le disque, sans changer la version de la liste
+   *  (une empreinte ajoutée ne change rien à ce que voit le téléphone). */
+  private save(): void {
     if (this.timer) return
     this.timer = setTimeout(() => {
       this.timer = null

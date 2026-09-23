@@ -13,7 +13,12 @@ export interface WatchedImage {
   toBitmap(): Buffer
   resize(opts: { width: number }): WatchedImage
   toDataURL(): string
+  /** JPEG (Electron) : miniature bien plus légère qu'un PNG. */
+  toJPEG?(quality: number): Buffer
 }
+
+/** Fabrique une image à partir de pixels bruts (nativeImage.createFromBitmap). */
+export type BitmapFactory = (bitmap: Buffer, size: { width: number; height: number }) => WatchedImage
 
 /** Ce dont on se sert du module `clipboard` d'Electron. */
 export interface WatchedClipboard {
@@ -34,8 +39,14 @@ export interface ClipboardWatcherOptions {
   imagesEnabled: () => boolean
   /** Au moins une fonction presse-papiers active (historique ou envoi auto). */
   anyEnabled: () => boolean
-  /** Nouvelle image copiée : PNG complet + miniature (data URL). */
-  onImage: (png: Buffer, thumb: string, width: number, height: number) => void
+  /** Nouvelle image copiée : PNG complet, miniature (data URL) et empreinte de
+   *  l'image copiée (la même tant que la copie ne change pas, même après un
+   *  redémarrage : l'historique s'en sert pour ne pas l'ajouter deux fois). */
+  onImage: (png: Buffer, thumb: string, width: number, height: number, fingerprint: string) => void
+  /** Pour aplatir une miniature transparente sur du blanc avant le JPEG
+   *  (nativeImage.createFromBitmap). Sans elle, une image transparente garde
+   *  une miniature PNG. */
+  fromBitmap?: BitmapFactory
   /** Secondes sans clavier ni souris (powerMonitor.getSystemIdleTime). */
   idleSeconds?: () => number
   /** Rythme normal, rythme après une minute sans activité, rythme en pause. */
@@ -65,8 +76,68 @@ export function rawImageFormats(platform: NodeJS.Platform): string[] {
 
 const sha1 = (buf: Buffer): string => createHash('sha1').update(buf).digest('hex')
 
+// qualité JPEG des miniatures : nette à 256 px, 5 à 10 fois plus légère qu'un PNG
+export const THUMB_JPEG_QUALITY = 80
+
+/**
+ * Pose une image transparente sur un fond blanc. `bitmap` : pixels bruts
+ * d'Electron (4 octets par pixel, alpha en 4e position, couleurs déjà
+ * multipliées par l'alpha). `null` : l'image est déjà opaque, rien à faire.
+ * Sans ça, le JPEG (qui n'a pas de transparence) rendrait le fond noir.
+ */
+export function flattenOnWhite(bitmap: Buffer): Buffer | null {
+  let transparent = false
+  for (let i = 3; i < bitmap.length; i += 4) {
+    if (bitmap[i] !== 255) {
+      transparent = true
+      break
+    }
+  }
+  if (!transparent) return null
+  const out = Buffer.from(bitmap)
+  for (let i = 0; i + 3 < out.length; i += 4) {
+    const rest = 255 - out[i + 3]!
+    if (rest === 0) continue
+    out[i] = Math.min(255, out[i]! + rest)
+    out[i + 1] = Math.min(255, out[i + 1]! + rest)
+    out[i + 2] = Math.min(255, out[i + 2]! + rest)
+    out[i + 3] = 255
+  }
+  return out
+}
+
+/**
+ * Miniature en JPEG (qualité 80), transparence posée sur du blanc. Repli sur
+ * le PNG d'avant si le JPEG n'est pas disponible ou échoue : on ne perd jamais
+ * l'aperçu.
+ */
+export function thumbDataURL(img: WatchedImage, fromBitmap?: BitmapFactory): string {
+  try {
+    if (typeof img.toJPEG === 'function') {
+      let src: WatchedImage | null = img
+      const size = img.getSize()
+      const bmp = img.toBitmap()
+      if (bmp.length === size.width * size.height * 4) {
+        const flat = flattenOnWhite(bmp)
+        if (flat) src = fromBitmap ? fromBitmap(flat, size) : null
+      } else {
+        // pixels illisibles : transparence inconnue, on garde le PNG
+        src = null
+      }
+      const jpg = src && !src.isEmpty() ? src.toJPEG!(THUMB_JPEG_QUALITY) : null
+      if (jpg && jpg.length > 0) return `data:image/jpeg;base64,${jpg.toString('base64')}`
+    }
+  } catch {
+    // repli PNG ci-dessous
+  }
+  return img.toDataURL()
+}
+
 export class ClipboardWatcher {
-  private readonly o: Required<Omit<ClipboardWatcherOptions, 'platform'>> & { platform: NodeJS.Platform }
+  private readonly o: Required<Omit<ClipboardWatcherOptions, 'platform' | 'fromBitmap'>> & {
+    platform: NodeJS.Platform
+    fromBitmap?: BitmapFactory
+  }
   private timer: ReturnType<typeof setTimeout> | null = null
   private running = false
   private stopped = true
@@ -332,7 +403,7 @@ export class ClipboardWatcher {
     // miniature 256px de large max pour l'aperçu
     const thumbImg = size.width > 256 ? img.resize({ width: 256 }) : img
     try {
-      this.o.onImage(png, thumbImg.toDataURL(), size.width, size.height)
+      this.o.onImage(png, thumbDataURL(thumbImg, this.o.fromBitmap), size.width, size.height, seen.fp)
     } catch {
       // non critique
     }

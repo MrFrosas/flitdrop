@@ -136,3 +136,69 @@ describe('ClipHistory : version de la liste (téléphone)', () => {
     expect(h.version).toBeGreaterThan(v5)
   })
 })
+
+describe('ClipHistory : images en double', () => {
+  const pause = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+  it('la même image (même empreinte) n’est pas ajoutée deux fois, même après un redémarrage', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-ch-'))
+    const cfg = cfgWith(200, 7)
+    const h = new ClipHistory(home)
+    expect(h.addImage(Buffer.from('png-1'), 'data:image/jpeg;base64,AA', 10, 10, 'pc', cfg, 'raw:a')).not.toBeNull()
+    expect(h.addImage(Buffer.from('png-1-bis'), 'data:image/jpeg;base64,AA', 10, 10, 'pc', cfg, 'raw:a')).toBeNull()
+    expect(h.size()).toBe(1)
+    // l'empreinte ne sort jamais (ni vers la page, ni vers le téléphone)
+    expect(JSON.stringify(h.list())).not.toContain('raw:a')
+    await pause(600)
+    // redémarrage : l'image encore copiée revient avec la même empreinte
+    const h2 = new ClipHistory(home)
+    const v = h2.version
+    expect(h2.addImage(Buffer.from('png-1'), 'x', 10, 10, 'pc', cfg, 'raw:a')).toBeNull()
+    expect(h2.size()).toBe(1)
+    expect(h2.version).toBe(v)
+    // une autre image passe
+    expect(h2.addImage(Buffer.from('png-2'), 'x', 10, 10, 'pc', cfg, 'raw:b')).not.toBeNull()
+    expect(h2.size()).toBe(2)
+  })
+
+  it('seule l’entrée la plus récente compte : une image recopiée plus tard revient en tête', () => {
+    const h = freshHistory()
+    const cfg = cfgWith(200, 7)
+    h.addImage(Buffer.from('p1'), 'x', 1, 1, 'pc', cfg, 'raw:a')
+    h.add('un texte', 'pc', cfg)
+    expect(h.addImage(Buffer.from('p1'), 'x', 1, 1, 'pc', cfg, 'raw:a')).not.toBeNull()
+    expect(h.size()).toBe(3)
+  })
+
+  it('entrée d’une version précédente (sans empreinte) : comparée au PNG enregistré, puis complétée', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-ch-'))
+    const cfg = cfgWith(200, 7)
+    const h = new ClipHistory(home)
+    // ancienne entrée : miniature PNG, pas d'empreinte
+    const old = h.addImage(Buffer.from('ancien-png'), 'data:image/png;base64,AAAA', 20, 10, 'pc', cfg)
+    expect(old?.image?.fp).toBeUndefined()
+    const v = h.version
+    // même PNG, mêmes dimensions : refusé, et l'empreinte est retenue
+    expect(h.addImage(Buffer.from('ancien-png'), 'x', 20, 10, 'pc', cfg, 'raw:z')).toBeNull()
+    expect(h.version).toBe(v)
+    expect(h.addImage(Buffer.from('autre'), 'x', 20, 10, 'pc', cfg, 'raw:z')).toBeNull()
+    // l'ancienne miniature PNG reste lisible telle quelle
+    expect(h.list()[0]?.image?.thumb).toBe('data:image/png;base64,AAAA')
+    // PNG différent : c'est une autre image
+    expect(h.addImage(Buffer.from('nouveau-png'), 'x', 20, 10, 'pc', cfg, 'raw:y')).not.toBeNull()
+    await pause(600)
+    const saved = JSON.parse(fs.readFileSync(path.join(home, 'cliphistory.json'), 'utf8')) as { image?: { fp?: string } }[]
+    expect(saved.map((e) => e.image?.fp)).toEqual(['raw:y', 'raw:z'])
+  })
+
+  it('image recopiée depuis l’historique : l’entrée remontée retient la nouvelle empreinte', () => {
+    const h = freshHistory()
+    const cfg = cfgWith(200, 7)
+    const a = h.addImage(Buffer.from('p1'), 'x', 1, 1, 'pc', cfg, 'raw:a')!
+    h.addImage(Buffer.from('p2'), 'x', 1, 1, 'pc', cfg, 'raw:b')
+    h.bump(a.id)
+    h.adoptFingerprint('raw:a2')
+    expect(h.addImage(Buffer.from('p1-relu'), 'x', 1, 1, 'pc', cfg, 'raw:a2')).toBeNull()
+    expect(h.size()).toBe(2)
+  })
+})

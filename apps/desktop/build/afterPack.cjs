@@ -3,8 +3,10 @@
 // macOS : signature ad-hoc de l'app. Sans aucune signature, macOS sur Apple
 // Silicon refuse d'ouvrir l'app téléchargée avec « Flitdrop est endommagé et ne
 // peut pas être ouvert ». Une signature ad-hoc (codesign -s -) suffit à la rendre
-// lançable : il restera l'avertissement « développeur non identifié »
-// (clic-droit > Ouvrir), ce qui est normal tant que l'app n'est pas notariée.
+// lançable : il restera l'avertissement « développeur non identifié », normal
+// tant que l'app n'est pas notariée. Depuis macOS 15, le clic droit > Ouvrir ne
+// suffit plus : on ouvre l'app une fois, puis Réglages Système >
+// Confidentialité et sécurité > Ouvrir quand même.
 //
 // Linux : lanceur pour l'AppImage. Dans une AppImage, l'assistant de bac à sable
 // de Chromium (chrome-sandbox) ne peut pas être setuid root, et Ubuntu 24.04+
@@ -53,6 +55,9 @@ exports.default = async function afterPack(context) {
       stdio: 'inherit',
     })
     console.log(`  • signature ad-hoc appliquée à ${appName}.app`)
+    console.log(
+      '  • 1er lancement (app non notariée) : ouvrir l’app une fois, puis Réglages Système > Confidentialité et sécurité > Ouvrir quand même'
+    )
   } catch (e) {
     console.warn('  ⚠ signature ad-hoc échouée :', e.message)
   }

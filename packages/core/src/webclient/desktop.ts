@@ -69,6 +69,8 @@ interface State {
     port: number
   }
   hostname: string
+  /** signalé par l'app de bureau (absent d'un coeur plus ancien) */
+  host?: { macUpdate: { version: string } | null; loginItemNeedsApproval: boolean }
   ips: string[]
   devices: DevicePub[]
   history: HistEntry[]
@@ -477,6 +479,7 @@ function renderAll() {
   renderOutbox()
   renderClipHistory()
   renderSettings()
+  renderHost()
 }
 
 // Fenêtre cachée (barre des tâches, démarrage caché) : on ne redessine rien
@@ -493,6 +496,21 @@ async function refresh() {
   renderAll()
   renderConsentCard()
 }
+
+// ---------- état du système (app de bureau) ----------
+
+// « Plus tard » : la carte se cache pour cette version jusqu'au prochain lancement
+let macUpdateLater = ''
+function renderHost() {
+  const host = state?.host
+  const upd = host?.macUpdate ?? null
+  $('macUpdateCard').classList.toggle('hidden', !upd || upd.version === macUpdateLater)
+  if (upd) $('macUpdateBody').textContent = t('macupd.body', { v: upd.version })
+  $('loginApproval').classList.toggle('hidden', !host?.loginItemNeedsApproval)
+}
+
+const hostAction = (action: 'openMacUpdate' | 'openLoginItems') =>
+  postJSON('/host/action', { action }).catch((e) => toast((e as Error).message))
 
 // animations du radar en pause tant que la fenêtre est cachée
 function syncVisibility() {
@@ -659,6 +677,7 @@ function connectWS() {
       case 'device-online':
       case 'device-revoked':
       case 'settings-changed':
+      case 'host-changed':
         void refresh()
         break
       case 'transfer-start':
@@ -962,6 +981,12 @@ function initUI() {
     }
     void refresh()
   }
+  $('btnMacUpdate').onclick = () => void hostAction('openMacUpdate')
+  $('btnMacUpdateLater').onclick = () => {
+    macUpdateLater = state?.host?.macUpdate?.version ?? ''
+    renderHost()
+  }
+  $('btnLoginItems').onclick = () => void hostAction('openLoginItems')
   $('btnConsentYes').onclick = answerCard('full')
   $('btnConsentNo').onclick = answerCard('basic_only')
   for (const b of document.querySelectorAll<HTMLElement>('[data-privacy-link]')) b.onclick = openPrivacy

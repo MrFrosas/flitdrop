@@ -58,6 +58,17 @@
       <button class="consent-more" type="button" data-privacy-link data-i18n="consent.more">En savoir plus</button>
     </div>
 
+    <!-- Mac : nouvelle version publiée (l'app ne s'installe pas seule tant
+         qu'elle n'est pas notarisée). Discrète, jamais une fenêtre. -->
+    <div class="card consent-card hidden" id="macUpdateCard">
+      <b class="consent-title" data-i18n="macupd.title">Nouvelle version disponible</b>
+      <p class="cardhint" id="macUpdateBody"></p>
+      <div class="consent-actions">
+        <button class="btn" id="btnMacUpdate" data-i18n="macupd.download">Télécharger</button>
+        <button class="btn" id="btnMacUpdateLater" data-i18n="macupd.later">Plus tard</button>
+      </div>
+    </div>
+
     <!-- RADAR -->
     <section class="view" id="view-radar">
       <div class="radar-wrap">
@@ -196,6 +207,10 @@
           <input type="checkbox" id="setAutoUpdate">
           <span data-i18n="set.autoUpdate">Installer les mises à jour automatiquement</span>
         </label>
+        <div class="host-note hidden" id="loginApproval">
+          <p class="cardhint" data-i18n="login.needsApproval">macOS attend encore ton accord pour lancer Flitdrop à l’ouverture de ta session. Ouvre les réglages et active Flitdrop dans la liste.</p>
+          <button class="btn" id="btnLoginItems" type="button" data-i18n="login.openSettings">Ouvrir les réglages</button>
+        </div>
         <div class="row">
           <label class="grow"><span data-i18n="set.keepMax">Garder au maximum</span>
             <select id="setClipMax">

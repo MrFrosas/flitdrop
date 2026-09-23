@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ClipboardWatcher, rawImageFormats, type WatchedClipboard, type WatchedImage } from '../src/clipwatch.js'
+import {
+  ClipboardWatcher,
+  flattenOnWhite,
+  rawImageFormats,
+  thumbDataURL,
+  type WatchedClipboard,
+  type WatchedImage,
+} from '../src/clipwatch.js'
 
 // Faux presse-papiers : compte les décodages (readImage) et les réencodages
 // (toPNG), le vrai coût mesuré sur Mac quand une capture reste copiée.
@@ -35,7 +42,7 @@ function fakeClipboard(opts: { raw?: Record<string, Buffer>; pixels?: Buffer; fo
 }
 
 function watcher(clipboard: WatchedClipboard, extra: Partial<ConstructorParameters<typeof ClipboardWatcher>[0]> = {}) {
-  const images: Array<{ png: Buffer; w: number }> = []
+  const images: Array<{ png: Buffer; w: number; fp: string; thumb: string }> = []
   const checkText = vi.fn(async () => {})
   const w = new ClipboardWatcher({
     clipboard,
@@ -43,7 +50,7 @@ function watcher(clipboard: WatchedClipboard, extra: Partial<ConstructorParamete
     checkText,
     imagesEnabled: () => true,
     anyEnabled: () => true,
-    onImage: (png, _thumb, width) => images.push({ png, w: width }),
+    onImage: (png, thumb, width, _h, fp) => images.push({ png, w: width, fp, thumb }),
     ...extra,
   })
   return { w, images, checkText }
@@ -423,5 +430,93 @@ describe('ClipboardWatcher : rythme', () => {
     await vi.advanceTimersByTimeAsync(1500 * 3)
     expect(checkText).toHaveBeenCalledTimes(3)
     w.stop()
+  })
+})
+
+describe('ClipboardWatcher : empreinte et miniature', () => {
+  it('l’empreinte transmise est la même d’un lancement à l’autre pour la même copie', async () => {
+    const f = fakeClipboard({ raw: { 'public.png': Buffer.from('capture-1') }, pixels: Buffer.from('pix-1') })
+    const a = watcher(f.clipboard)
+    await a.w.tick()
+    // « redémarrage » : une nouvelle surveillance relit la même image
+    const b = watcher(f.clipboard)
+    await b.w.tick()
+    expect(a.images[0]?.fp).toMatch(/^raw:public\.png:/)
+    expect(b.images[0]?.fp).toBe(a.images[0]?.fp)
+    f.state.raw['public.png'] = Buffer.from('capture-2')
+    await b.w.tick()
+    expect(b.images[1]?.fp).not.toBe(a.images[0]?.fp)
+  })
+
+  // image 2x1 au format d'Electron : 4 octets par pixel, alpha en dernier,
+  // couleurs déjà multipliées par l'alpha
+  function img(bitmap: Buffer, extra: Partial<WatchedImage> = {}): WatchedImage & { jpegFrom: Buffer[] } {
+    const jpegFrom: Buffer[] = []
+    const self: WatchedImage & { jpegFrom: Buffer[] } = {
+      jpegFrom,
+      isEmpty: () => false,
+      getSize: () => ({ width: 2, height: 1 }),
+      toPNG: () => Buffer.from('png'),
+      toBitmap: () => Buffer.from(bitmap),
+      resize: () => self,
+      toDataURL: () => 'data:image/png;base64,UE5H',
+      toJPEG: (q: number) => {
+        expect(q).toBe(80)
+        jpegFrom.push(Buffer.from(bitmap))
+        return Buffer.from('jpg')
+      },
+      ...extra,
+    }
+    return self
+  }
+
+  it('image opaque : miniature JPEG', () => {
+    const i = img(Buffer.from([10, 20, 30, 255, 40, 50, 60, 255]))
+    expect(thumbDataURL(i)).toBe(`data:image/jpeg;base64,${Buffer.from('jpg').toString('base64')}`)
+  })
+
+  it('image transparente : posée sur du blanc avant le JPEG', () => {
+    const made: Buffer[] = []
+    const src = img(Buffer.from([0, 0, 128, 128, 0, 0, 0, 0]))
+    const url = thumbDataURL(src, (bmp, size) => {
+      expect(size).toEqual({ width: 2, height: 1 })
+      made.push(bmp)
+      return img(bmp)
+    })
+    expect(url.startsWith('data:image/jpeg;base64,')).toBe(true)
+    // rouge à moitié transparent -> rose clair ; transparent -> blanc
+    expect([...made[0]!]).toEqual([127, 127, 255, 255, 255, 255, 255, 255])
+    // on n'encode jamais la version transparente (fond noir en JPEG)
+    expect(src.jpegFrom).toHaveLength(0)
+  })
+
+  it('repli PNG : transparence sans moyen d’aplatir, JPEG absent ou en échec', () => {
+    expect(thumbDataURL(img(Buffer.from([0, 0, 0, 0, 0, 0, 0, 0])))).toBe('data:image/png;base64,UE5H')
+    expect(thumbDataURL(img(Buffer.from([1, 1, 1, 255, 1, 1, 1, 255]), { toJPEG: undefined }))).toBe('data:image/png;base64,UE5H')
+    expect(
+      thumbDataURL(
+        img(Buffer.from([1, 1, 1, 255, 1, 1, 1, 255]), {
+          toJPEG: () => {
+            throw new Error('encodeur absent')
+          },
+        })
+      )
+    ).toBe('data:image/png;base64,UE5H')
+    // pixels de taille inattendue (écran Retina) : transparence inconnue, PNG
+    expect(thumbDataURL(img(Buffer.from([1, 1, 1, 255])))).toBe('data:image/png;base64,UE5H')
+  })
+
+  it('flattenOnWhite : rien à faire sur une image opaque', () => {
+    expect(flattenOnWhite(Buffer.from([1, 2, 3, 255]))).toBeNull()
+    expect([...flattenOnWhite(Buffer.from([0, 0, 0, 0]))!]).toEqual([255, 255, 255, 255])
+  })
+
+  it('la surveillance transmet une miniature JPEG', async () => {
+    const f = fakeClipboard({ raw: { 'public.png': Buffer.from('c') }, pixels: Buffer.from('p') })
+    const opaque = img(Buffer.from([1, 1, 1, 255, 1, 1, 1, 255]))
+    const clipboard: WatchedClipboard = { ...f.clipboard, readImage: () => ({ ...opaque, getSize: () => ({ width: 2, height: 1 }) }) }
+    const { w, images } = watcher(clipboard)
+    await w.tick()
+    expect(images[0]?.thumb.startsWith('data:image/jpeg;base64,')).toBe(true)
   })
 })
