@@ -4,6 +4,7 @@
   "private": true,
   "description": "Flitdrop pour le bureau : l'AirDrop de Windows, chiffre de bout en bout.",
   "author": "Flitdrop",
+  "homepage": "https://flitdrop.com",
   "main": "main.cjs",
   "scripts": {
     "prepare:app": "node gen-icon.mjs && node prepare.mjs",
