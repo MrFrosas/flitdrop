@@ -39,11 +39,6 @@
   <link rel="stylesheet" href="/vendor/lenis/lenis.css">
   <link rel="stylesheet" href="/style.css">
 
-  <!-- PostHog product analytics: cookieless (memory = zero device storage, no banner needed), no session recording, US-hosted, client IP discarded server-side -->
-  <script>
-    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
-    posthog.init('phc_Bex8SoGTP3KQyVriFMzVChHugFgtkF6LYmjgJbYi6min',{api_host:'https://us.i.posthog.com',persistence:'memory',person_profiles:'identified_only',disable_session_recording:true,capture_pageview:true,autocapture:true});
-  </script>
   <script defer src="/vendor/gsap/gsap.min.js"></script>
   <script defer src="/vendor/gsap/ScrollTrigger.min.js"></script>
   <script defer src="/vendor/lenis/lenis.min.js"></script>
@@ -73,7 +68,7 @@
         "url": "https://flitdrop.com/",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Windows, macOS, Linux",
-        "softwareVersion": "0.6.3",
+        "softwareVersion": "0.6.4",
         "downloadUrl": "https://github.com/MrFrosas/flitdrop/releases/latest",
         "softwareHelp": "https://flitdrop.com/#faq",
         "screenshot": "https://flitdrop.com/assets/og.jpg",
@@ -164,7 +159,7 @@
             "name": "Do both devices need to be on the same Wi-Fi?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes, or the phone can join a hotspot shared by the computer. Flitdrop goes straight from one device to the other on your local network, so it works even without internet. Nothing travels over the internet."
+              "text": "Yes, or the phone can join a hotspot shared by the computer. Flitdrop goes straight from one device to the other on your local network, so it works even without internet. Your files never travel over the internet."
             }
           },
           {
@@ -597,7 +592,7 @@
         </details>
         <details>
           <summary data-i18n="faq.q5">Do both devices need to be on the same Wi-Fi?</summary>
-          <p data-i18n="faq.a5">Yes, or the phone can join a hotspot shared by the computer. Flitdrop goes straight from one device to the other on your local network, so it works even without internet. Nothing travels over the internet.</p>
+          <p data-i18n="faq.a5">Yes, or the phone can join a hotspot shared by the computer. Flitdrop goes straight from one device to the other on your local network, so it works even without internet. Your files never travel over the internet.</p>
         </details>
         <details>
           <summary data-i18n="faq.q6">Is there a size or number limit?</summary>

@@ -1,5 +1,8 @@
 # Cloudflare Pages headers: long-cache the fingerprint-free static assets,
 # always revalidate HTML, and set a sane baseline of security headers.
+# CSP (report only) allows exactly what js/analytics.js loads. PostHog goes through
+# the same-origin /ph relay (functions/ph), so 'self' covers it; blob: and data: are for the
+# session replay workers.
 
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
@@ -16,4 +19,4 @@
   X-Frame-Options: SAMEORIGIN
   Permissions-Policy: geolocation=(), camera=(), microphone=(), interest-cohort=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com https://static.cloudflareinsights.com; connect-src 'self' https://us.i.posthog.com https://us-assets.i.posthog.com https://cloudflareinsights.com https://api.github.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; base-uri 'self'; frame-ancestors 'none'
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://*.clarity.ms https://static.cloudflareinsights.com; connect-src 'self' https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://www.clarity.ms https://*.clarity.ms https://c.bing.com https://cloudflareinsights.com https://api.github.com; img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://www.clarity.ms https://*.clarity.ms https://c.bing.com; worker-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; font-src 'self'; base-uri 'self'; frame-ancestors 'none'

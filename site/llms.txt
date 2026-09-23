@@ -20,6 +20,7 @@
 - Requirement: both devices on the same Wi-Fi / local network, or the phone on the computer's own hotspot. Works without internet. It does not send across the internet.
 - Encryption: end to end, XChaCha20-Poly1305.
 - Account: none. No sign in, no email.
+- Usage statistics: the app sends basic anonymous statistics, on by default (whether the app was used that day, pairings with the phone type, transfer success or failure with direction, type and a size range, app version, operating system) with no identifier and never any file content, file name or clipboard; they can be turned off in Settings. Detailed statistics and error reports are sent only if the user agrees. The website uses Cloudflare Web Analytics (no cookies) for everyone. In the EU, EEA, UK and Switzerland, Google Analytics, Microsoft Clarity and PostHog with cookies run only after consent; until the visitor chooses, PostHog only counts pages and download clicks without cookies, and after a refusal it stops. Elsewhere these tools run by default until the visitor refuses. Nothing is used for advertising or sold.
 - Photo quality: originals arrive uncompressed, at full resolution.
 - Price: free.
 - License: source-available (Functional Source License). It is not "open source" in the OSI sense.
@@ -41,7 +42,7 @@
 - [iPhone to Android](https://flitdrop.com/airdrop-iphone-android): moving files across the two phone ecosystems.
 - [Send files from iPhone to PC](https://flitdrop.com/send-files-iphone-to-pc): step by step iPhone to computer transfer.
 - [AirDrop alternative](https://flitdrop.com/alternative-airdrop): how Flitdrop compares to AirDrop, Quick Share, LocalSend and cloud tools.
-- [Privacy](https://flitdrop.com/privacy): what is and is not collected.
+- [Privacy](https://flitdrop.com/privacy): what is and is not collected, every tracker listed, and how to refuse.
 
 ## Download
 

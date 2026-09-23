@@ -92,7 +92,7 @@
     "cmp.note": "Flitdrop is the only one here that needs nothing on your phone, keeps every file on your own network, and still crosses every operating system. Honest trade off: like AirDrop, Quick Share and LocalSend, it works on the same Wi-Fi, not across the internet.",
     "security.eyebrow": "Private by design",
     "security.title": "Your files stay yours",
-    "security.blurb": "Everything is end to end encrypted and travels over your local network. Nothing is stored on our servers, because there is no server in the middle.",
+    "security.blurb": "Everything is end to end encrypted and travels over your local network. Your files are never stored on our servers, because there is no server in the middle.",
     "security.point.e2e.title": "End to end encryption",
     "security.point.e2e.body": "Only you and the receiving device can read what goes across. No one else, ever.",
     "security.point.local.title": "On your Wi-Fi",
@@ -165,7 +165,7 @@
     "faq.q4": "Which devices does it work between?",
     "faq.a4": "iPhone, Android, Samsung on one side, Windows, Mac, Linux on the other, in every combination. You just need to be on the same Wi-Fi.",
     "faq.q5": "Do both devices need to be on the same Wi-Fi?",
-    "faq.a5": "Yes, or the phone can join a hotspot shared by the computer. Flitdrop goes straight from one device to the other on your local network, so it works even without internet. Nothing travels over the internet.",
+    "faq.a5": "Yes, or the phone can join a hotspot shared by the computer. Flitdrop goes straight from one device to the other on your local network, so it works even without internet. Your files never travel over the internet.",
     "faq.q6": "Is there a size or number limit?",
     "faq.a6": "Each file can be up to 8 GB by default, and you can raise that to 16 GB in the settings. You can send several files at once, and an interrupted transfer picks up where it left off.",
     "faq.q7": "Which computers can I install it on?",
@@ -226,7 +226,14 @@
     "guides.vsairdrop": "vs AirDrop",
     "guides.vslocalsend": "vs LocalSend",
     "guides.vssnapdrop": "vs Snapdrop",
-    "guides.vsnearby": "vs Quick Share"
+    "guides.vsnearby": "vs Quick Share",
+    "consent.title": "Your privacy choice",
+    "consent.text": "We would like to use cookies (Google Analytics, Microsoft Clarity, PostHog) to measure visits and replay how the site is used, with typed text hidden. Until you choose, PostHog only counts visits, anonymously and without cookies. Refuse stops that count too.",
+    "consent.more": "Learn more",
+    "consent.accept": "Accept",
+    "consent.refuse": "Refuse",
+    "consent.link": "Cookies",
+    "consent.change": "Change my cookie choice"
   },
   "fr": {
     "meta.title": "Flitdrop, envoyez vos fichiers entre téléphone et ordinateur comme un AirDrop universel",
@@ -312,7 +319,7 @@
     "cmp.note": "Flitdrop est le seul ici à ne rien installer sur votre téléphone, à garder chaque fichier sur votre réseau, et à relier quand même tous les systèmes. En toute honnêteté : comme AirDrop, Quick Share et LocalSend, il marche sur le même Wi-Fi, pas à distance.",
     "security.eyebrow": "La confidentialité par conception",
     "security.title": "Vos fichiers restent chez vous",
-    "security.blurb": "Tout est chiffré de bout en bout et voyage sur votre réseau local. Rien n'est stocké sur nos serveurs, parce qu'il n'y a pas de serveur au milieu.",
+    "security.blurb": "Tout est chiffré de bout en bout et voyage sur votre réseau local. Vos fichiers ne sont jamais stockés sur nos serveurs, parce qu'il n'y a pas de serveur au milieu.",
     "security.point.e2e.title": "Chiffrement de bout en bout",
     "security.point.e2e.body": "Seuls vous et l'appareil qui reçoit pouvez lire ce qui passe. Personne d'autre, jamais.",
     "security.point.local.title": "Sur votre Wi-Fi",
@@ -385,7 +392,7 @@
     "faq.q4": "Ça marche entre quels appareils ?",
     "faq.a4": "iPhone, Android, Samsung d'un côté, Windows, Mac, Linux de l'autre, dans toutes les combinaisons. Il suffit d'être sur le même Wi-Fi.",
     "faq.q5": "Les deux appareils doivent-ils être sur le même Wi-Fi ?",
-    "faq.a5": "Oui, ou le téléphone peut rejoindre un point d'accès partagé par l'ordinateur. Flitdrop va directement d'un appareil à l'autre sur votre réseau local, donc il marche même sans internet. Rien ne passe par internet.",
+    "faq.a5": "Oui, ou le téléphone peut rejoindre un point d'accès partagé par l'ordinateur. Flitdrop va directement d'un appareil à l'autre sur votre réseau local, donc il marche même sans internet. Vos fichiers ne passent jamais par internet.",
     "faq.q6": "Y a-t-il une limite de taille ou de nombre ?",
     "faq.a6": "Chaque fichier peut peser jusqu'à 8 Go par défaut, et vous pouvez monter à 16 Go dans les réglages. Vous pouvez envoyer plusieurs fichiers d'un coup, et un transfert interrompu reprend là où il s'était arrêté.",
     "faq.q7": "Sur quels ordinateurs puis-je l'installer ?",
@@ -446,7 +453,14 @@
     "guides.vsairdrop": "vs AirDrop",
     "guides.vslocalsend": "vs LocalSend",
     "guides.vssnapdrop": "vs Snapdrop",
-    "guides.vsnearby": "vs Quick Share"
+    "guides.vsnearby": "vs Quick Share",
+    "consent.title": "Votre choix de confidentialité",
+    "consent.text": "Nous aimerions utiliser des cookies (Google Analytics, Microsoft Clarity, PostHog) pour mesurer les visites et revoir comment le site est utilisé, le texte saisi restant masqué. En attendant votre choix, PostHog compte seulement les visites, sans cookie et de façon anonyme. Refuser arrête aussi ce comptage.",
+    "consent.more": "En savoir plus",
+    "consent.accept": "Accepter",
+    "consent.refuse": "Refuser",
+    "consent.link": "Cookies",
+    "consent.change": "Modifier mon choix de cookies"
   },
   "de": {
     "meta.title": "Flitdrop, Dateien zwischen Handy und Computer senden wie AirDrop, überall",
@@ -532,7 +546,7 @@
     "cmp.note": "Flitdrop ist hier das Einzige, das nichts auf deinem Handy braucht, jede Datei in deinem eigenen Netzwerk behält und trotzdem jedes Betriebssystem überbrückt. Ehrlicher Kompromiss: wie AirDrop, Quick Share und LocalSend läuft es im selben WLAN, nicht über das Internet.",
     "security.eyebrow": "Privat von Grund auf",
     "security.title": "Deine Dateien bleiben deine",
-    "security.blurb": "Alles ist Ende-zu-Ende-verschlüsselt und reist über dein lokales Netzwerk. Nichts wird auf unseren Servern gespeichert, weil es keinen Server in der Mitte gibt.",
+    "security.blurb": "Alles ist Ende-zu-Ende-verschlüsselt und reist über dein lokales Netzwerk. Deine Dateien werden nie auf unseren Servern gespeichert, weil es keinen Server in der Mitte gibt.",
     "security.point.e2e.title": "Ende-zu-Ende-Verschlüsselung",
     "security.point.e2e.body": "Nur du und das empfangende Gerät können lesen, was übergeht. Niemand sonst, nie.",
     "security.point.local.title": "In deinem WLAN",
@@ -605,7 +619,7 @@
     "faq.q4": "Zwischen welchen Geräten funktioniert es?",
     "faq.a4": "iPhone, Android, Samsung auf der einen Seite, Windows, Mac, Linux auf der anderen, in jeder Kombination. Ihr müsst nur im selben WLAN sein.",
     "faq.q5": "Müssen beide Geräte im selben WLAN sein?",
-    "faq.a5": "Ja, oder das Handy verbindet sich mit einem Hotspot, den der Computer teilt. Flitdrop geht direkt von einem Gerät zum anderen in deinem lokalen Netzwerk, es funktioniert also sogar ohne Internet. Nichts läuft über das Internet.",
+    "faq.a5": "Ja, oder das Handy verbindet sich mit einem Hotspot, den der Computer teilt. Flitdrop geht direkt von einem Gerät zum anderen in deinem lokalen Netzwerk, es funktioniert also sogar ohne Internet. Deine Dateien laufen nie über das Internet.",
     "faq.q6": "Gibt es eine Größen- oder Anzahlgrenze?",
     "faq.a6": "Jede Datei darf standardmäßig bis zu 8 GB groß sein, in den Einstellungen kannst du das auf 16 GB erhöhen. Du kannst mehrere Dateien auf einmal senden, und eine unterbrochene Übertragung macht dort weiter, wo sie aufgehört hat.",
     "faq.q7": "Auf welchen Computern kann ich es installieren?",
@@ -666,7 +680,14 @@
     "guides.vsairdrop": "vs AirDrop",
     "guides.vslocalsend": "vs LocalSend",
     "guides.vssnapdrop": "vs Snapdrop",
-    "guides.vsnearby": "vs Quick Share"
+    "guides.vsnearby": "vs Quick Share",
+    "consent.title": "Deine Datenschutz-Auswahl",
+    "consent.text": "Wir würden gern Cookies nutzen (Google Analytics, Microsoft Clarity, PostHog), um Besuche zu messen und nachzuvollziehen, wie die Website genutzt wird. Getippter Text bleibt dabei verborgen. Bis du wählst, zählt PostHog nur die Besuche, anonym und ohne Cookies. Ablehnen stoppt auch diese Zählung.",
+    "consent.more": "Mehr erfahren",
+    "consent.accept": "Akzeptieren",
+    "consent.refuse": "Ablehnen",
+    "consent.link": "Cookies",
+    "consent.change": "Meine Cookie-Wahl ändern"
   }
 };
 });

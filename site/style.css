@@ -557,6 +557,29 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
 }
 @media (max-width: 420px) { .footer-bottom { flex-direction: column; align-items: flex-start; gap: 12px; } }
 
+/* ---------- cookie choice (banner injected by js/analytics.js) ---------- */
+/* Accept and Refuse share one style: same weight, same size, same colour. */
+.consent { position: fixed; z-index: 60; left: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: min(420px, calc(100% - 32px));
+  display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; background: #fff; color: var(--ink);
+  border: 1px solid var(--stroke-2); border-radius: 16px; box-shadow: var(--glow); font-size: 14px; line-height: 1.5;
+  transition: opacity 0.25s ease, transform 0.25s var(--ease); }
+.consent[hidden] { display: none; }
+.consent:not(.is-in) { opacity: 0; transform: translateY(10px); }
+.consent-text a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 2px; }
+.consent-actions { display: flex; gap: 10px; }
+.consent-btn { flex: 1 1 0; min-height: 44px; padding: 10px 16px; border-radius: 999px; border: 1px solid var(--stroke-2);
+  background: var(--bg-2); color: var(--ink); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s ease; }
+.consent-btn:hover { background: #e8e8ed; }
+@media (max-width: 560px) {
+  .consent { left: 12px; right: 12px; width: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); padding: 14px; gap: 10px; font-size: 13.5px; }
+  /* moved up when it would hide the main download button */
+  .consent.consent--top { top: calc(56px + env(safe-area-inset-top, 0px)); bottom: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .consent { transition: none; }
+  .consent:not(.is-in) { transform: none; }
+}
+
 /* ---------- legal docs (privacy / legal) ---------- */
 .doc { max-width: 760px; margin: 0 auto; padding: 120px 24px 90px; }
 .doc h1 { font-size: clamp(30px, 5vw, 40px); font-weight: 700; margin-bottom: 10px; }
@@ -567,6 +590,12 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
 .doc a { color: var(--cyan); }
 .back { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 14px; margin-bottom: 26px; }
 .back:hover { color: var(--ink); }
+/* pied de page court des pages annexes (confidentialité, mentions, marque, 404) :
+   garde le lien « Cookies » à portée de main partout */
+.mini-foot { max-width: 760px; margin: 0 auto; padding: 22px 24px 40px; border-top: 1px solid var(--stroke); display: flex; flex-wrap: wrap; justify-content: center; gap: 0 22px; }
+.mini-foot a { display: inline-flex; align-items: center; min-height: 40px; color: var(--muted); font-size: 14px; }
+.mini-foot a:hover { color: var(--ink); }
+.doc .consent-open { margin: 4px 0 12px; }
 
 /* ---------- support / contact ---------- */
 .support-grid { display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(32px, 6vw, 72px); align-items: start; max-width: 980px; margin: 0 auto; }

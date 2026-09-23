@@ -4,12 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Privacy · Flitdrop</title>
-  <meta name="description" content="How Flitdrop handles your data: transfers stay directly between your devices, there is no cloud and no account, and the app collects no personal data.">
+  <meta name="description" content="How Flitdrop handles your data: transfers stay between your devices, the app sends anonymous statistics you can turn off, and the website asks before using cookies in Europe.">
   <meta name="robots" content="index,follow">
   <link rel="canonical" href="https://flitdrop.com/privacy">
   <link rel="icon" href="/assets/icon.svg">
   <link rel="stylesheet" href="/style.css">
   <script async src="/js/analytics.js"></script>
+  <style>
+    /* propre à cette page : sous-titres et fiches de la liste des traceurs */
+    .doc h3 { font-size: 17px; font-weight: 650; margin: 24px 0 8px; }
+    .doc .trk { border: 1px solid var(--stroke-2); border-radius: 14px; background: var(--panel); padding: 14px 16px 4px; margin: 0 0 12px; }
+    .doc .trk h3 { margin: 0 0 8px; }
+    .doc .trk ul { padding-left: 18px; }
+    .doc code { font-size: 14px; overflow-wrap: anywhere; }
+  </style>
 </head>
 <body>
   <div class="bg" aria-hidden="true"><div class="bg-aurora"></div></div>
@@ -19,61 +27,525 @@
   </header>
 
   <main class="doc">
-    <a class="back" href="/">← <span data-i18n="foot.home" data-en="Home" data-fr="Accueil">Home</span></a>
+    <a class="back" href="/">← <span data-i18n="foot.home" data-en="Home" data-fr="Accueil" data-de="Startseite">Home</span></a>
 
     <div class="lang-en">
       <h1>Privacy Policy</h1>
-      <p class="updated">Last updated: 5 July 2026</p>
-      <p>Flitdrop is built to need as little of your data as possible. Transfers happen directly between your devices on your own Wi-Fi. There is no cloud, no account, and no server that receives your files, photos, texts or clipboard.</p>
-      <h2>What we do not collect</h2>
+      <p class="updated">Last updated: 23 September 2026</p>
+      <p>Flitdrop is built to need as little of your data as possible. Your transfers go directly between your devices on your own Wi-Fi: there is no cloud, no account, and no server ever receives your files, photos, texts or clipboard. To understand how the app and this website are used, and to fix what breaks, we do measure a few things. This page says exactly what, why, and how to say no.</p>
+
+      <h2>In short</h2>
       <ul>
-        <li>We never receive the content of your files, photos, messages or clipboard. It stays on your devices.</li>
-        <li>We do not require an account, an email, or any personal identifier to use Flitdrop.</li>
-        <li>We do not track you across the web and we do not sell any data.</li>
+        <li>Your files, photos, messages and clipboard never reach us. Transfers are end to end encrypted and stay on your network.</li>
+        <li>The app sends basic anonymous statistics (for example "the app was opened" or "a transfer worked"), with no identifier. You can turn them off in Settings.</li>
+        <li>Detailed statistics and error reports are sent only if you say yes.</li>
+        <li>On this website, visitors in the EU, the EEA, the UK and Switzerland choose whether to accept cookies. Until they choose, only anonymous measurement without cookies runs, and refusing stops it too, apart from the basic visit count of our host, Cloudflare.</li>
+        <li>Nothing is used for advertising and nothing is sold.</li>
       </ul>
-      <h2>Optional, anonymous usage data</h2>
-      <p>Inside the app there is an <strong>opt-in</strong> setting (turned <strong>off by default</strong>) to help improve Flitdrop. If, and only if, you enable it, the app sends anonymous technical events: a random identifier generated locally on your device, the app version, the operating system, and event types such as "a transfer succeeded" or "a transfer failed". These events never contain the content of your files or clipboard, your name, your IP-based location, or any personal data. You can turn this off at any time in the settings, and it stays off unless you choose otherwise.</p>
-      <h2>Website</h2>
-      <p>This website uses analytics provided by PostHog (US-hosted), which is cookieless (memory persistence, no session recording, and the client IP is discarded), does not identify you, and does not require a cookie banner. It sets no advertising or tracking cookies and is used only to improve the site.</p>
-      <h2>Legal basis and retention</h2>
-      <p>The optional, anonymous usage events are processed only on the basis of your explicit consent (the setting is off by default). They contain no personal data and are kept only in aggregate, for as long as needed to improve the app. You can withdraw your consent at any time by turning the setting off, after which no further events are sent.</p>
+
+      <h2>What we never collect</h2>
+      <ul>
+        <li>The content or the names of your files, photos, videos or messages.</li>
+        <li>What you copy to your clipboard.</li>
+        <li>The names of your devices, your folders, or file paths that contain your user name.</li>
+        <li>Your IP address: we never store it. Our providers use it briefly, as any website or server does, to deliver the service; PostHog also uses it, without storing it, to work out the daily visit code and the country described below.</li>
+        <li>An account, an email address or anything else that tells us who you are.</li>
+      </ul>
+
+      <h2>In the Flitdrop app</h2>
+      <h3>Basic anonymous statistics (on by default)</h3>
+      <p>To know whether Flitdrop really works for people, the app sends small anonymous counts:</p>
+      <ul>
+        <li>whether the app was used that day and how many phones are paired (0, 1, 2 or more), its first launch and its updates;</li>
+        <li>when a phone is paired successfully, with the phone type (iPhone, Android, other);</li>
+        <li>when a transfer succeeds or fails, with its direction (phone to computer or computer to phone), its type (file, photo, text, clipboard) and an approximate size range, never the file itself, its name or where it is stored; when a transfer fails, a short error code;</li>
+        <li>whether it is the first pairing or the first transfer on this computer;</li>
+        <li>technical context: app version, operating system, processor type, how the app was installed (for example Microsoft Store or installer), interface language, the month of the first launch and a rough install age (same day, first week, first month, older).</li>
+      </ul>
+      <p>These events carry no identifier of any kind: they cannot be linked to each other or to a person. Our collector works out the country from the connection and keeps only the country; the IP address is never stored.</p>
+      <p><strong>Your choice:</strong> you can turn these statistics off at any time in Settings, and nothing more is sent. Legal basis: our legitimate interest in measuring how the app is used, following the rules of the CNIL (the French data protection authority) for audience measurement that does not require consent. The switch in Settings is your right to object.</p>
+
+      <h3>Detailed statistics and error reports (only if you say yes)</h3>
+      <p>On first launch, or after an update, the app asks you once whether you want to share more to help improve Flitdrop. Nothing extra is sent unless you say yes. If you do, the app also sends:</p>
+      <ul>
+        <li>a random install identifier, created on your computer and not linked to you, so we can see whether a problem keeps coming back on the same install;</li>
+        <li>which screens and buttons were used during setup (welcome screen, pairing code shown, link copied) and your answer to this question, to find where people get stuck;</li>
+        <li>when a paired phone reconnects (at most once an hour), with the phone type;</li>
+        <li>when the history screen is opened;</li>
+        <li>which settings were changed;</li>
+        <li>error reports: the type of error, its message and the technical trace, with the name of your user folder removed.</li>
+      </ul>
+      <p>Legal basis: your consent. You can withdraw it at any time in Settings, and nothing more is sent afterwards.</p>
+
+      <h3>Where app data goes and how long it is kept</h3>
+      <p>App statistics go to our collector hosted by Cloudflare (telemetry.flitdrop.com), which keeps only the country and passes the events on to PostHog, where they are stored in the European Union (Frankfurt). Individual events are kept there for 12 months at most; after that, only overall totals (for example the number of transfers per month) are kept. So that we can count them quickly, the collector also keeps a copy of the main details of each event (never more than what is listed above) in Cloudflare Workers Analytics Engine, which deletes it after about 3 months.</p>
+
+      <h2>On this website</h2>
+      <h3>If you are in the EU, the EEA, the UK or Switzerland</h3>
+      <p>You see a banner with two equal buttons, Accept and Refuse. Until you accept, or if you refuse, no cookie is set and neither Google Analytics nor Microsoft Clarity is loaded. While you have not chosen, only anonymous measurement without cookies runs:</p>
+      <ul>
+        <li><strong>Cloudflare Web Analytics</strong> counts visits, with no cookie and no personal data.</li>
+        <li><strong>PostHog without cookies</strong> counts pages viewed, clicks on the download buttons and the answer given to this banner. It does not record other clicks, heatmaps or sessions. To tell visits apart during a day, PostHog's servers compute a one way code from the connection, and this code is renewed every day. No cookie is set (after a refusal, PostHog only remembers that you refused) and the IP address is not kept.</li>
+      </ul>
+      <p>If you refuse, PostHog counts that refusal once, anonymously, then stops and counts nothing more. Only Cloudflare's visit count remains, because it is part of the hosting and has no cookie and no personal data.</p>
+      <p>If you accept, the site also uses Google Analytics 4, Microsoft Clarity and PostHog with its cookie (details below), including recordings of how pages are used (clicks, scrolling, where the pointer goes), heatmaps, time spent on each page and errors on the site, with anything typed into fields hidden.</p>
+      <p>Your choice is saved in your browser (under the name <code>fd_consent</code>) and we ask again after 6 months. You can change it at any time with the "Cookies" link at the bottom of every page, or with this button:</p>
+      <p class="consent-open"><button type="button" class="btn btn-ghost btn-lg" data-consent-open>Change my cookie choice</button></p>
+
+      <h3>Everywhere else</h3>
+      <p>The same tools run by default. You can refuse at any time with the "Cookies" link at the bottom of every page; after that, only Cloudflare's visit count without cookies runs.</p>
+
+      <h3>What these tools see</h3>
+      <p>The pages you visit, the site you came from, your clicks and scrolling, the type of browser, system and screen, and your approximate country (worked out from the connection). Never your name or your email, and we do not try to find out who you are. Advertising signals are always refused and Google's advertising features are off: nothing is used for advertising or sold.</p>
+
+      <h3>Microsoft Store links</h3>
+      <p>Links to Flitdrop on the Microsoft Store carry a short campaign code (<code>cid</code>) so that the Store statistics can tell us how many installs came from this website. The code is the same for everyone and says nothing about you.</p>
+
+      <h3>Hosting and security</h3>
+      <p>The website is hosted by Cloudflare, which processes technical data such as your IP address to deliver the pages and protect the site against attacks. We do not keep these logs ourselves.</p>
+
+      <h2>Every tracker, one by one</h2>
+      <div class="trk">
+        <h3>Cloudflare Web Analytics</h3>
+        <ul>
+          <li>Provider: Cloudflare, Inc.</li>
+          <li>Purpose: count visits and measure page speed.</li>
+          <li>On your device: nothing, no cookie.</li>
+          <li>When it runs: always, for every visitor.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>PostHog without cookies</h3>
+        <ul>
+          <li>Provider: PostHog Inc., data stored in the EU (Frankfurt).</li>
+          <li>Purpose: count pages viewed, download clicks and answers to the cookie banner.</li>
+          <li>On your device: no cookie, only the entry that remembers a refusal (see "Your settings on this site"). A code computed on PostHog's servers, renewed every day; the IP address is not stored.</li>
+          <li>When it runs: in the EU, the EEA, the UK and Switzerland, until you make a choice. If you refuse, it counts that refusal once, then stops completely.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Google Analytics 4</h3>
+        <ul>
+          <li>Provider: Google Ireland Limited.</li>
+          <li>Purpose: audience statistics (visits, pages, where visitors come from).</li>
+          <li>On your device: cookies <code>_ga</code> and <code>_ga_6D1N284CCF</code>, up to 13 months.</li>
+          <li>When it runs: in the EU, the EEA, the UK and Switzerland only if you accept; elsewhere by default, until you refuse.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Microsoft Clarity</h3>
+        <ul>
+          <li>Provider: Microsoft.</li>
+          <li>Purpose: recordings of how pages are used and heatmaps, to see where visitors get stuck. Text typed into fields is hidden.</li>
+          <li>On your device: cookies <code>_clck</code> (up to 1 year) and <code>_clsk</code> (1 day). Microsoft may also set its own cookies on its clarity.ms domain (such as <code>MUID</code>, up to 1 year).</li>
+          <li>When it runs: in the EU, the EEA, the UK and Switzerland only if you accept; elsewhere by default, until you refuse.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>PostHog with cookie</h3>
+        <ul>
+          <li>Provider: PostHog Inc., data stored in the EU (Frankfurt).</li>
+          <li>Purpose: detailed statistics (every click and where it happens on the page, time spent on each page, page speed, errors on the site) and recordings of how pages are used, with anything typed into fields hidden.</li>
+          <li>On your device: a cookie and a browser storage entry named <code>ph_&lt;project key&gt;_posthog</code>, up to 1 year.</li>
+          <li>When it runs: in the EU, the EEA, the UK and Switzerland only if you accept; elsewhere by default, until you refuse.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Your settings on this site</h3>
+        <ul>
+          <li>Provider: none, they stay in your browser and are never sent to us.</li>
+          <li>Purpose: remember your cookie choice (<code>fd_consent</code>, 6 months) and your language (<code>flitdrop_lang</code>); remember during the visit whether you are in a region where we ask first (<code>fd_geo</code>, only a yes or a no, cleared when you close the tab); keep the list of the latest download files for one hour (<code>fd_rel</code>, cleared when you close the tab); and let PostHog remember whether it may use its cookie (<code>__ph_opt_in_out_&lt;project key&gt;</code>, kept until your choice changes).</li>
+          <li>When it runs: always, because the site needs them to work as you asked.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Flitdrop app statistics</h3>
+        <ul>
+          <li>Provider: Cloudflare (collector, and a copy kept about 3 months) and PostHog (storage in the EU, Frankfurt).</li>
+          <li>Purpose: know whether the app works and where it fails.</li>
+          <li>On your computer, in the app settings file: the date of first launch (to count days since install), the last version launched, the last day the daily count was sent, whether a first pairing and a first transfer already happened, and a random install identifier. This identifier is created on every install but is sent only if you accepted detailed statistics.</li>
+          <li>When it runs: basic statistics by default, until you turn them off in Settings; detailed statistics and error reports only if you say yes.</li>
+        </ul>
+      </div>
+
+      <h2>Who receives the data, and transfers outside the EU</h2>
+      <p>We never sell data and never share it for advertising. The only providers that process data for us are Cloudflare (hosting, measurement without cookies, app statistics collector and its copy of app statistics), PostHog (statistics, stored in the European Union, in Frankfurt), Google (Google Analytics), Microsoft (Clarity) and GitHub (the download buttons ask GitHub for the list of the latest files, and the files are downloaded from GitHub, which sees your IP address as any server does). Google, Microsoft, GitHub and Cloudflare may process data in the United States; they are certified under the EU-US Data Privacy Framework, which the European Commission recognises as offering an adequate level of protection. PostHog stores our data in the European Union.</p>
+
+      <h2>How long data is kept</h2>
+      <ul>
+        <li>App statistics: 12 months at most for individual events in PostHog, then only overall totals; about 3 months for the copy kept by Cloudflare.</li>
+        <li>PostHog (website): 12 months at most; its cookie lasts up to 1 year.</li>
+        <li>Google Analytics: cookies up to 13 months; detailed data kept 14 months at most.</li>
+        <li>Microsoft Clarity: cookies up to 1 year; Microsoft keeps recordings about 30 days and statistics up to 13 months.</li>
+        <li>Your cookie choice: 6 months, then we ask again.</li>
+      </ul>
+
+      <h2>Legal basis</h2>
+      <ul>
+        <li>Basic app statistics and the measurement without cookies on the site: our legitimate interest in knowing how Flitdrop is used, as audience measurement that the CNIL allows without consent. You can object with the switch in the app Settings and, on the site, with the Refuse button of the banner, which the "Cookies" link at the bottom of every page opens again.</li>
+        <li>Detailed app statistics and error reports, and, for visitors in the EU, the EEA, the UK and Switzerland, Google Analytics, Microsoft Clarity and PostHog with cookie: your consent, which you can withdraw at any time.</li>
+        <li>The same site tools for visitors elsewhere: our legitimate interest in improving the site. You can object at any time with the "Cookies" link.</li>
+        <li>Hosting and security logs: our legitimate interest in keeping the site available and safe.</li>
+      </ul>
+
       <h2>Your rights (GDPR)</h2>
-      <p>Under the GDPR you have the right of access, rectification, erasure, restriction, objection and portability over any personal data an organisation holds about you. Because Flitdrop holds no personal data about you, there is normally nothing to access, correct or delete. If you believe we hold data about you, contact us at <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a> and we will reply within one month. You also have the right to lodge a complaint with your data protection authority (in France, the CNIL, <a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+      <p>Under the GDPR you have the right of access, rectification, erasure, restriction, objection and portability over your personal data, and the right to withdraw your consent at any time. Because the statistics we collect do not identify you, we usually cannot tell which data are yours; the simplest way to stop any collection is the switch in the app Settings and the "Cookies" link on the site. For any question or request, contact us at <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a> and we will reply within one month. You also have the right to lodge a complaint with your data protection authority (in France, the CNIL, <a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+
       <h2>Data controller</h2>
-      <p>Flitdrop (Thomas Bidault), sole trader, France. Contact: <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>.</p>
+      <p>Flitdrop (Thomas Bidault), sole trader (entrepreneur individuel), France. Contact: <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>.</p>
     </div>
 
     <div class="lang-fr" hidden>
       <h1>Politique de confidentialité</h1>
-      <p class="updated">Dernière mise à jour : 5 juillet 2026</p>
-      <p>Flitdrop est conçu pour avoir besoin du moins de données possible. Les transferts se font directement entre vos appareils, sur votre propre Wi-Fi. Il n'y a aucun cloud, aucun compte, et aucun serveur qui reçoit vos fichiers, photos, textes ou presse-papiers.</p>
-      <h2>Ce que nous ne collectons pas</h2>
+      <p class="updated">Dernière mise à jour : 23 septembre 2026</p>
+      <p>Flitdrop est conçu pour avoir besoin du moins de données possible. Vos transferts passent directement d'un appareil à l'autre, sur votre propre Wi-Fi : pas de cloud, pas de compte, et aucun serveur ne reçoit jamais vos fichiers, photos, textes ou presse-papiers. En revanche, pour comprendre comment l'application et ce site sont utilisés, et pour réparer ce qui ne marche pas, nous mesurons certaines choses. Cette page dit exactement quoi, pourquoi, et comment refuser.</p>
+
+      <h2>En bref</h2>
       <ul>
-        <li>Nous ne recevons jamais le contenu de vos fichiers, photos, messages ou presse-papiers. Il reste sur vos appareils.</li>
-        <li>Nous n'exigeons ni compte, ni e-mail, ni identifiant personnel pour utiliser Flitdrop.</li>
-        <li>Nous ne vous pistons pas sur le web et nous ne vendons aucune donnée.</li>
+        <li>Vos fichiers, photos, messages et presse-papiers ne nous parviennent jamais. Les transferts sont chiffrés de bout en bout et restent sur votre réseau.</li>
+        <li>L'application envoie des statistiques de base anonymes (par exemple « l'app a été ouverte » ou « un transfert a réussi »), sans aucun identifiant. Vous pouvez les couper dans les Réglages.</li>
+        <li>Les statistiques détaillées et les rapports d'erreur ne sont envoyés que si vous dites oui.</li>
+        <li>Sur ce site, les visiteurs de l'Union européenne, de l'EEE, du Royaume-Uni et de Suisse choisissent d'accepter ou non les cookies. Tant qu'ils n'ont pas choisi, seule une mesure d'audience anonyme, sans cookie, fonctionne, et un refus l'arrête aussi, hormis le simple comptage des visites de notre hébergeur, Cloudflare.</li>
+        <li>Rien ne sert à la publicité et rien n'est vendu.</li>
       </ul>
-      <h2>Données d'usage anonymes et facultatives</h2>
-      <p>Dans l'application, il existe un réglage <strong>opt-in</strong> (<strong>décoché par défaut</strong>) pour aider à améliorer Flitdrop. Si, et seulement si, vous l'activez, l'application envoie des événements techniques anonymes : un identifiant aléatoire généré localement sur votre appareil, la version de l'app, le système d'exploitation, et des types d'événements comme « un transfert a réussi » ou « un transfert a échoué ». Ces événements ne contiennent jamais le contenu de vos fichiers ni de votre presse-papiers, ni votre nom, ni votre localisation basée sur l'adresse IP, ni aucune donnée personnelle. Vous pouvez le désactiver à tout moment dans les réglages, et il reste désactivé sauf si vous en décidez autrement.</p>
-      <h2>Site internet</h2>
-      <p>Ce site utilise une mesure d'audience fournie par PostHog (hébergée aux États-Unis), sans cookie (persistance en mémoire, aucun enregistrement de session, et l'adresse IP du client est écartée), qui ne vous identifie pas et ne nécessite pas de bandeau cookies. Il ne dépose aucun cookie publicitaire ou de pistage et sert uniquement à améliorer le site.</p>
-      <h2>Base légale et conservation</h2>
-      <p>Les événements d'usage anonymes et facultatifs ne sont traités que sur la base de votre consentement explicite (le réglage est désactivé par défaut). Ils ne contiennent aucune donnée personnelle et ne sont conservés que de façon agrégée, le temps nécessaire à l'amélioration de l'application. Vous pouvez retirer votre consentement à tout moment en désactivant le réglage : plus aucun événement n'est alors envoyé.</p>
+
+      <h2>Ce que nous ne collectons jamais</h2>
+      <ul>
+        <li>Le contenu ou le nom de vos fichiers, photos, vidéos ou messages.</li>
+        <li>Ce que vous copiez dans le presse-papiers.</li>
+        <li>Le nom de vos appareils, de vos dossiers, ni les chemins de fichiers qui contiennent votre nom d'utilisateur.</li>
+        <li>Votre adresse IP : nous ne la conservons jamais. Nos prestataires s'en servent un court instant, comme n'importe quel site ou serveur, pour fournir le service ; PostHog s'en sert aussi, sans la conserver, pour calculer le code de visite du jour et le pays décrits plus bas.</li>
+        <li>Un compte, une adresse e-mail, ou quoi que ce soit qui nous dise qui vous êtes.</li>
+      </ul>
+
+      <h2>Dans l'application Flitdrop</h2>
+      <h3>Statistiques de base anonymes (activées par défaut)</h3>
+      <p>Pour savoir si Flitdrop marche vraiment chez les gens, l'application envoie de petits comptages anonymes :</p>
+      <ul>
+        <li>si l'app a servi dans la journée et combien de téléphones sont associés (0, 1, 2 ou plus), son premier lancement et ses mises à jour ;</li>
+        <li>l'association réussie d'un téléphone, avec son type (iPhone, Android, autre) ;</li>
+        <li>la réussite ou l'échec d'un transfert, avec son sens (du téléphone vers l'ordinateur ou de l'ordinateur vers le téléphone), son type (fichier, photo, texte, presse-papiers) et une tranche de taille approximative, jamais le fichier lui-même, son nom ou son emplacement ; en cas d'échec, un court code d'erreur ;</li>
+        <li>s'il s'agit de la première association ou du premier transfert sur cet ordinateur ;</li>
+        <li>le contexte technique : version de l'app, système d'exploitation, type de processeur, mode d'installation (par exemple Microsoft Store ou installeur), langue de l'interface, mois du premier lancement et ancienneté approximative de l'installation (le jour même, première semaine, premier mois, plus ancien).</li>
+      </ul>
+      <p>Ces événements ne portent aucun identifiant, quel qu'il soit : impossible de les relier entre eux ou à une personne. Notre collecteur déduit le pays à partir de la connexion et ne garde que le pays ; l'adresse IP n'est jamais enregistrée.</p>
+      <p><strong>Votre choix :</strong> vous pouvez couper ces statistiques à tout moment dans les Réglages, et plus rien n'est envoyé. Base légale : notre intérêt légitime à mesurer l'usage de l'application, dans le respect des règles de la CNIL sur la mesure d'audience exemptée de consentement. L'interrupteur des Réglages est votre droit d'opposition.</p>
+
+      <h3>Statistiques détaillées et rapports d'erreur (seulement si vous dites oui)</h3>
+      <p>Au premier lancement, ou après une mise à jour, l'application vous demande une seule fois si vous voulez partager davantage pour aider à améliorer Flitdrop. Rien de plus n'est envoyé sans votre accord. Si vous acceptez, l'application envoie en plus :</p>
+      <ul>
+        <li>un identifiant d'installation aléatoire, créé sur votre ordinateur et sans lien avec vous, pour voir si un problème revient sur la même installation ;</li>
+        <li>les écrans et boutons utilisés pendant la prise en main (écran d'accueil, code d'association affiché, lien copié) et votre réponse à cette question, pour repérer où les gens bloquent ;</li>
+        <li>la reconnexion d'un téléphone déjà associé (au plus une fois par heure), avec son type ;</li>
+        <li>l'ouverture de l'historique ;</li>
+        <li>les réglages modifiés ;</li>
+        <li>les rapports d'erreur : type d'erreur, message et trace technique, dont le nom de votre dossier utilisateur est retiré.</li>
+      </ul>
+      <p>Base légale : votre consentement. Vous pouvez le retirer à tout moment dans les Réglages, et plus rien n'est envoyé ensuite.</p>
+
+      <h3>Où vont les données de l'app et combien de temps</h3>
+      <p>Les statistiques de l'application partent vers notre collecteur hébergé chez Cloudflare (telemetry.flitdrop.com), qui ne garde que le pays et transmet les événements à PostHog, où ils sont stockés dans l'Union européenne (Francfort). Les événements individuels y sont conservés 12 mois au maximum ; au-delà, seuls des totaux (par exemple le nombre de transferts par mois) sont gardés. Pour pouvoir les compter rapidement, le collecteur garde aussi une copie des principaux détails de chaque événement (jamais plus que ce qui est listé plus haut) dans Cloudflare Workers Analytics Engine, qui l'efface au bout d'environ 3 mois.</p>
+
+      <h2>Sur ce site</h2>
+      <h3>Si vous êtes dans l'Union européenne, l'EEE, au Royaume-Uni ou en Suisse</h3>
+      <p>Un bandeau vous propose deux boutons équivalents, Accepter et Refuser. Tant que vous n'avez pas accepté, ou si vous refusez, aucun cookie n'est déposé et ni Google Analytics ni Microsoft Clarity ne sont chargés. Tant que vous n'avez pas choisi, seule une mesure d'audience anonyme, sans cookie, fonctionne :</p>
+      <ul>
+        <li><strong>Cloudflare Web Analytics</strong> compte les visites, sans cookie et sans donnée personnelle.</li>
+        <li><strong>PostHog sans cookie</strong> compte les pages vues, les clics sur les boutons de téléchargement et la réponse donnée à ce bandeau. Il n'enregistre ni les autres clics, ni les cartes de chaleur, ni les sessions. Pour distinguer les visites d'une même journée, les serveurs de PostHog calculent à partir de la connexion un code à sens unique, renouvelé chaque jour. Aucun cookie n'est déposé (après un refus, PostHog retient seulement que vous avez refusé) et l'adresse IP n'est pas conservée.</li>
+      </ul>
+      <p>Si vous refusez, PostHog compte ce refus une seule fois, de façon anonyme, puis s'arrête et ne compte plus rien. Seul reste le comptage des visites de Cloudflare, qui fait partie de l'hébergement, sans cookie ni donnée personnelle.</p>
+      <p>Si vous acceptez, le site utilise en plus Google Analytics 4, Microsoft Clarity et PostHog avec son cookie (détails plus bas), y compris des enregistrements de navigation (clics, défilement, déplacements du pointeur), des cartes de chaleur, le temps passé sur chaque page et les erreurs du site, où tout ce que vous tapez dans un champ est masqué.</p>
+      <p>Votre choix est enregistré dans votre navigateur (sous le nom <code>fd_consent</code>) et nous vous reposons la question au bout de 6 mois. Vous pouvez le modifier à tout moment grâce au lien « Cookies » en bas de chaque page, ou avec ce bouton :</p>
+      <p class="consent-open"><button type="button" class="btn btn-ghost btn-lg" data-consent-open>Modifier mon choix de cookies</button></p>
+
+      <h3>Partout ailleurs</h3>
+      <p>Les mêmes outils fonctionnent par défaut. Vous pouvez refuser à tout moment grâce au lien « Cookies » en bas de chaque page ; ensuite, seul le comptage des visites de Cloudflare, sans cookie, continue.</p>
+
+      <h3>Ce que ces outils voient</h3>
+      <p>Les pages que vous visitez, le site d'où vous venez, vos clics et votre défilement, le type de navigateur, de système et d'écran, et votre pays approximatif (déduit de la connexion). Jamais votre nom ni votre e-mail, et nous ne cherchons pas à savoir qui vous êtes. Les signaux publicitaires sont toujours refusés et les fonctions publicitaires de Google sont désactivées : rien ne sert à la publicité ni n'est vendu.</p>
+
+      <h3>Liens vers le Microsoft Store</h3>
+      <p>Les liens vers Flitdrop sur le Microsoft Store portent un court code de campagne (<code>cid</code>) pour que les statistiques du Store nous disent combien d'installations viennent de ce site. Ce code est le même pour tout le monde et ne dit rien de vous.</p>
+
+      <h3>Hébergement et sécurité</h3>
+      <p>Le site est hébergé par Cloudflare, qui traite des données techniques comme votre adresse IP pour afficher les pages et protéger le site contre les attaques. Nous ne conservons pas nous-mêmes ces journaux.</p>
+
+      <h2>Tous les traceurs, un par un</h2>
+      <div class="trk">
+        <h3>Cloudflare Web Analytics</h3>
+        <ul>
+          <li>Prestataire : Cloudflare, Inc.</li>
+          <li>Finalité : compter les visites et mesurer la vitesse des pages.</li>
+          <li>Sur votre appareil : rien, aucun cookie.</li>
+          <li>Quand : toujours, pour tous les visiteurs.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>PostHog sans cookie</h3>
+        <ul>
+          <li>Prestataire : PostHog Inc., données stockées dans l'UE (Francfort).</li>
+          <li>Finalité : compter les pages vues, les clics sur les téléchargements et les réponses au bandeau cookies.</li>
+          <li>Sur votre appareil : aucun cookie, seulement l'entrée qui retient un refus (voir « Vos préférences sur ce site »). Un code calculé sur les serveurs de PostHog, renouvelé chaque jour ; l'adresse IP n'est pas conservée.</li>
+          <li>Quand : dans l'UE, l'EEE, au Royaume-Uni et en Suisse, tant que vous n'avez pas choisi. Si vous refusez, il compte ce refus une seule fois, puis s'arrête complètement.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Google Analytics 4</h3>
+        <ul>
+          <li>Prestataire : Google Ireland Limited.</li>
+          <li>Finalité : statistiques d'audience (visites, pages, provenance des visiteurs).</li>
+          <li>Sur votre appareil : cookies <code>_ga</code> et <code>_ga_6D1N284CCF</code>, jusqu'à 13 mois.</li>
+          <li>Quand : dans l'UE, l'EEE, au Royaume-Uni et en Suisse, seulement si vous acceptez ; ailleurs par défaut, jusqu'à ce que vous refusiez.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Microsoft Clarity</h3>
+        <ul>
+          <li>Prestataire : Microsoft.</li>
+          <li>Finalité : enregistrements de navigation et cartes de chaleur, pour voir où les visiteurs bloquent. Le texte tapé dans les champs est masqué.</li>
+          <li>Sur votre appareil : cookies <code>_clck</code> (jusqu'à 1 an) et <code>_clsk</code> (1 jour). Microsoft peut aussi déposer ses propres cookies sur son domaine clarity.ms (comme <code>MUID</code>, jusqu'à 1 an).</li>
+          <li>Quand : dans l'UE, l'EEE, au Royaume-Uni et en Suisse, seulement si vous acceptez ; ailleurs par défaut, jusqu'à ce que vous refusiez.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>PostHog avec cookie</h3>
+        <ul>
+          <li>Prestataire : PostHog Inc., données stockées dans l'UE (Francfort).</li>
+          <li>Finalité : statistiques détaillées (chaque clic et son emplacement sur la page, temps passé sur chaque page, vitesse des pages, erreurs du site) et enregistrements de navigation, où tout ce qui est tapé dans un champ est masqué.</li>
+          <li>Sur votre appareil : un cookie et une entrée de stockage du navigateur nommés <code>ph_&lt;clé du projet&gt;_posthog</code>, jusqu'à 1 an.</li>
+          <li>Quand : dans l'UE, l'EEE, au Royaume-Uni et en Suisse, seulement si vous acceptez ; ailleurs par défaut, jusqu'à ce que vous refusiez.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Vos préférences sur ce site</h3>
+        <ul>
+          <li>Prestataire : aucun, elles restent dans votre navigateur et ne nous sont jamais envoyées.</li>
+          <li>Finalité : retenir votre choix sur les cookies (<code>fd_consent</code>, 6 mois) et votre langue (<code>flitdrop_lang</code>) ; retenir le temps de la visite si vous êtes dans une région où nous demandons d'abord (<code>fd_geo</code>, seulement un oui ou un non, effacé à la fermeture de l'onglet) ; garder une heure la liste des derniers fichiers à télécharger (<code>fd_rel</code>, effacée à la fermeture de l'onglet) ; et permettre à PostHog de retenir s'il peut utiliser son cookie (<code>__ph_opt_in_out_&lt;clé du projet&gt;</code>, gardé jusqu'à ce que votre choix change).</li>
+          <li>Quand : toujours, car le site en a besoin pour fonctionner comme vous l'avez demandé.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Statistiques de l'application Flitdrop</h3>
+        <ul>
+          <li>Prestataires : Cloudflare (collecteur, et une copie gardée environ 3 mois) et PostHog (stockage dans l'UE, à Francfort).</li>
+          <li>Finalité : savoir si l'application marche et où elle échoue.</li>
+          <li>Sur votre ordinateur, dans le fichier de réglages de l'app : la date du premier lancement (pour compter les jours depuis l'installation), la dernière version lancée, le dernier jour où le comptage quotidien est parti, si une première association et un premier transfert ont déjà eu lieu, et un identifiant d'installation aléatoire. Cet identifiant est créé sur chaque installation mais n'est envoyé que si vous avez accepté les statistiques détaillées.</li>
+          <li>Quand : statistiques de base par défaut, jusqu'à ce que vous les coupiez dans les Réglages ; statistiques détaillées et rapports d'erreur seulement si vous dites oui.</li>
+        </ul>
+      </div>
+
+      <h2>Qui reçoit les données, et transferts hors de l'UE</h2>
+      <p>Nous ne vendons aucune donnée et ne la partageons jamais à des fins publicitaires. Les seuls prestataires qui traitent des données pour nous sont Cloudflare (hébergement, mesure sans cookie, collecteur des statistiques de l'app et sa copie de ces statistiques), PostHog (statistiques, stockées dans l'Union européenne, à Francfort), Google (Google Analytics), Microsoft (Clarity) et GitHub (les boutons de téléchargement demandent à GitHub la liste des derniers fichiers, et les fichiers sont téléchargés depuis GitHub, qui voit votre adresse IP comme n'importe quel serveur). Google, Microsoft, GitHub et Cloudflare peuvent traiter des données aux États-Unis ; ils sont certifiés au titre du Data Privacy Framework UE-États-Unis, que la Commission européenne reconnaît comme offrant un niveau de protection adéquat. PostHog stocke nos données dans l'Union européenne.</p>
+
+      <h2>Durées de conservation</h2>
+      <ul>
+        <li>Statistiques de l'application : 12 mois au maximum pour les événements individuels dans PostHog, puis seulement des totaux ; environ 3 mois pour la copie gardée par Cloudflare.</li>
+        <li>PostHog (site) : 12 mois au maximum ; son cookie dure jusqu'à 1 an.</li>
+        <li>Google Analytics : cookies jusqu'à 13 mois ; données détaillées conservées 14 mois au maximum.</li>
+        <li>Microsoft Clarity : cookies jusqu'à 1 an ; Microsoft garde les enregistrements environ 30 jours et les statistiques jusqu'à 13 mois.</li>
+        <li>Votre choix sur les cookies : 6 mois, puis nous vous reposons la question.</li>
+      </ul>
+
+      <h2>Bases légales</h2>
+      <ul>
+        <li>Statistiques de base de l'application et mesure sans cookie sur le site : notre intérêt légitime à savoir comment Flitdrop est utilisé, au titre de la mesure d'audience que la CNIL dispense de consentement. Vous pouvez vous y opposer avec l'interrupteur des Réglages de l'app et, sur le site, avec le bouton Refuser du bandeau, que le lien « Cookies » en bas de chaque page rouvre.</li>
+        <li>Statistiques détaillées et rapports d'erreur de l'application, et, pour les visiteurs de l'UE, de l'EEE, du Royaume-Uni et de Suisse, Google Analytics, Microsoft Clarity et PostHog avec cookie : votre consentement, que vous pouvez retirer à tout moment.</li>
+        <li>Ces mêmes outils du site pour les visiteurs d'ailleurs : notre intérêt légitime à améliorer le site. Vous pouvez vous y opposer à tout moment avec le lien « Cookies ».</li>
+        <li>Journaux d'hébergement et de sécurité : notre intérêt légitime à garder le site disponible et sûr.</li>
+      </ul>
+
       <h2>Vos droits (RGPD)</h2>
-      <p>Le RGPD vous donne un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité sur les données personnelles qu'une organisation détiendrait sur vous. Comme Flitdrop ne détient aucune donnée personnelle à votre sujet, il n'y a normalement rien à consulter, corriger ou supprimer. Si vous pensez que nous détenons des données vous concernant, écrivez-nous à <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a> et nous répondrons sous un mois. Vous avez aussi le droit d'introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+      <p>Le RGPD vous donne un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité sur vos données personnelles, ainsi que le droit de retirer votre consentement à tout moment. Comme les statistiques que nous collectons ne vous identifient pas, nous ne pouvons généralement pas savoir lesquelles vous concernent ; le plus simple pour tout arrêter reste l'interrupteur des Réglages de l'app et le lien « Cookies » du site. Pour toute question ou demande, écrivez-nous à <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a> et nous répondrons sous un mois. Vous avez aussi le droit d'introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+
       <h2>Responsable du traitement</h2>
       <p>Flitdrop (Thomas Bidault), entrepreneur individuel, France. Contact : <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>.</p>
     </div>
+
+    <div class="lang-de" hidden>
+      <h1>Datenschutzerklärung</h1>
+      <p class="updated">Zuletzt aktualisiert: 23. September 2026</p>
+      <p>Flitdrop ist so gebaut, dass es so wenig Daten wie möglich braucht. Deine Übertragungen laufen direkt zwischen deinen Geräten in deinem eigenen WLAN: keine Cloud, kein Konto, und kein Server bekommt jemals deine Dateien, Fotos, Texte oder deine Zwischenablage. Um zu verstehen, wie die App und diese Website genutzt werden, und um Fehler zu beheben, messen wir allerdings einiges. Hier steht genau, was, warum und wie du ablehnen kannst.</p>
+
+      <h2>Kurz gesagt</h2>
+      <ul>
+        <li>Deine Dateien, Fotos, Nachrichten und deine Zwischenablage erreichen uns nie. Übertragungen sind Ende-zu-Ende-verschlüsselt und bleiben in deinem Netzwerk.</li>
+        <li>Die App sendet einfache anonyme Statistiken (zum Beispiel „App geöffnet“ oder „Übertragung geklappt“), ganz ohne Kennung. Du kannst sie in den Einstellungen ausschalten.</li>
+        <li>Ausführliche Statistiken und Fehlerberichte werden nur gesendet, wenn du zustimmst.</li>
+        <li>Auf dieser Website entscheiden Besucher aus der EU, dem EWR, dem Vereinigten Königreich und der Schweiz, ob sie Cookies akzeptieren. Solange sie nicht gewählt haben, läuft nur eine anonyme Messung ohne Cookies, und eine Ablehnung stoppt auch diese, bis auf die einfache Besuchszählung unseres Hosters Cloudflare.</li>
+        <li>Nichts wird für Werbung genutzt und nichts wird verkauft.</li>
+      </ul>
+
+      <h2>Was wir nie erheben</h2>
+      <ul>
+        <li>Den Inhalt oder die Namen deiner Dateien, Fotos, Videos oder Nachrichten.</li>
+        <li>Was du in die Zwischenablage kopierst.</li>
+        <li>Die Namen deiner Geräte oder Ordner und keine Dateipfade, die deinen Benutzernamen enthalten.</li>
+        <li>Deine IP-Adresse: Wir speichern sie nie. Unsere Dienstleister nutzen sie kurz, wie jede Website und jeder Server, um den Dienst bereitzustellen; PostHog nutzt sie außerdem, ohne sie zu speichern, um den unten beschriebenen Tagescode für Besuche und das Land zu berechnen.</li>
+        <li>Ein Konto, eine E-Mail-Adresse oder sonst irgendetwas, das uns verrät, wer du bist.</li>
+      </ul>
+
+      <h2>In der Flitdrop-App</h2>
+      <h3>Einfache anonyme Statistiken (standardmäßig an)</h3>
+      <p>Damit wir wissen, ob Flitdrop bei den Leuten wirklich funktioniert, sendet die App kleine anonyme Zählungen:</p>
+      <ul>
+        <li>ob die App an diesem Tag benutzt wurde und wie viele Handys gekoppelt sind (0, 1, 2 oder mehr), ihren ersten Start und ihre Updates;</li>
+        <li>wenn ein Handy erfolgreich gekoppelt wurde, mit der Art des Handys (iPhone, Android, anderes);</li>
+        <li>wenn eine Übertragung klappt oder fehlschlägt, mit ihrer Richtung (vom Handy zum Computer oder vom Computer zum Handy), ihrer Art (Datei, Foto, Text, Zwischenablage) und einer ungefähren Größenklasse, nie die Datei selbst, ihren Namen oder ihren Speicherort; bei einem Fehlschlag einen kurzen Fehlercode;</li>
+        <li>ob es die erste Kopplung oder die erste Übertragung auf diesem Computer ist;</li>
+        <li>technische Angaben: App-Version, Betriebssystem, Prozessortyp, wie die App installiert wurde (zum Beispiel Microsoft Store oder Installer), Sprache der Oberfläche, der Monat des ersten Starts und ein grobes Installationsalter (am selben Tag, erste Woche, erster Monat, älter).</li>
+      </ul>
+      <p>Diese Ereignisse tragen keinerlei Kennung: Sie lassen sich weder miteinander noch mit einer Person verknüpfen. Unser Sammeldienst leitet das Land aus der Verbindung ab und behält nur das Land; die IP-Adresse wird nie gespeichert.</p>
+      <p><strong>Deine Wahl:</strong> Du kannst diese Statistiken jederzeit in den Einstellungen ausschalten, danach wird nichts mehr gesendet. Rechtsgrundlage: unser berechtigtes Interesse, die Nutzung der App zu messen, nach den Regeln der CNIL (der französischen Datenschutzbehörde) für Reichweitenmessung ohne Einwilligung. Der Schalter in den Einstellungen ist dein Widerspruchsrecht.</p>
+
+      <h3>Ausführliche Statistiken und Fehlerberichte (nur wenn du zustimmst)</h3>
+      <p>Beim ersten Start oder nach einem Update fragt die App dich einmal, ob du mehr teilen möchtest, um Flitdrop zu verbessern. Ohne dein Ja wird nichts zusätzlich gesendet. Wenn du zustimmst, sendet die App außerdem:</p>
+      <ul>
+        <li>eine zufällige Installationskennung, die auf deinem Computer erzeugt wird und nicht mit dir verknüpft ist, damit wir sehen, ob ein Problem bei derselben Installation wiederkommt;</li>
+        <li>welche Bildschirme und Schaltflächen bei der Einrichtung benutzt wurden (Willkommensbildschirm, angezeigter Kopplungscode, kopierter Link) und deine Antwort auf diese Frage, um zu sehen, wo Leute hängen bleiben;</li>
+        <li>wenn sich ein gekoppeltes Handy wieder verbindet (höchstens einmal pro Stunde), mit der Art des Handys;</li>
+        <li>wenn der Verlauf geöffnet wird;</li>
+        <li>welche Einstellungen geändert wurden;</li>
+        <li>Fehlerberichte: Art des Fehlers, Fehlermeldung und technischer Ablauf, wobei der Name deines Benutzerordners entfernt wird.</li>
+      </ul>
+      <p>Rechtsgrundlage: deine Einwilligung. Du kannst sie jederzeit in den Einstellungen widerrufen, danach wird nichts mehr gesendet.</p>
+
+      <h3>Wohin die App-Daten gehen und wie lange sie bleiben</h3>
+      <p>Die App-Statistiken gehen an unseren Sammeldienst bei Cloudflare (telemetry.flitdrop.com), der nur das Land behält und die Ereignisse an PostHog weitergibt, wo sie in der Europäischen Union (Frankfurt) gespeichert werden. Einzelne Ereignisse werden dort höchstens 12 Monate aufbewahrt; danach bleiben nur Gesamtzahlen (zum Beispiel die Zahl der Übertragungen pro Monat). Damit wir sie schnell zählen können, legt der Sammeldienst außerdem eine Kopie der wichtigsten Angaben jedes Ereignisses (nie mehr als oben aufgeführt) in Cloudflare Workers Analytics Engine ab, das sie nach etwa 3 Monaten löscht.</p>
+
+      <h2>Auf dieser Website</h2>
+      <h3>Wenn du in der EU, im EWR, im Vereinigten Königreich oder in der Schweiz bist</h3>
+      <p>Du siehst ein Banner mit zwei gleichwertigen Schaltflächen, Akzeptieren und Ablehnen. Solange du nicht zustimmst, oder wenn du ablehnst, wird kein Cookie gesetzt und weder Google Analytics noch Microsoft Clarity werden geladen. Solange du nicht gewählt hast, läuft nur eine anonyme Messung ohne Cookies:</p>
+      <ul>
+        <li><strong>Cloudflare Web Analytics</strong> zählt Besuche, ohne Cookie und ohne personenbezogene Daten.</li>
+        <li><strong>PostHog ohne Cookies</strong> zählt aufgerufene Seiten, Klicks auf die Download-Schaltflächen und die Antwort auf dieses Banner. Andere Klicks, Heatmaps oder Sitzungen zeichnet es nicht auf. Um Besuche innerhalb eines Tages auseinanderzuhalten, berechnen die Server von PostHog aus der Verbindung einen nicht umkehrbaren Code, der jeden Tag erneuert wird. Es wird kein Cookie gesetzt (nach einer Ablehnung merkt sich PostHog nur, dass du abgelehnt hast), und die IP-Adresse wird nicht aufbewahrt.</li>
+      </ul>
+      <p>Wenn du ablehnst, zählt PostHog diese Ablehnung einmal, anonym, und stoppt dann und zählt nichts mehr. Es bleibt nur die Besuchszählung von Cloudflare, die zum Hosting gehört, ohne Cookie und ohne personenbezogene Daten.</p>
+      <p>Wenn du zustimmst, nutzt die Website zusätzlich Google Analytics 4, Microsoft Clarity und PostHog mit Cookie (Details unten), einschließlich Aufzeichnungen, wie Seiten benutzt werden (Klicks, Scrollen, Bewegungen des Mauszeigers), Heatmaps, der Verweildauer auf jeder Seite und Fehlern der Website, wobei alles, was du in Felder tippst, verborgen bleibt.</p>
+      <p>Deine Wahl wird in deinem Browser gespeichert (unter dem Namen <code>fd_consent</code>), und nach 6 Monaten fragen wir erneut. Du kannst sie jederzeit über den Link „Cookies“ unten auf jeder Seite ändern, oder mit dieser Schaltfläche:</p>
+      <p class="consent-open"><button type="button" class="btn btn-ghost btn-lg" data-consent-open>Meine Cookie-Wahl ändern</button></p>
+
+      <h3>Überall sonst</h3>
+      <p>Dieselben Werkzeuge laufen standardmäßig. Du kannst jederzeit über den Link „Cookies“ unten auf jeder Seite ablehnen; danach läuft nur noch die Besuchszählung von Cloudflare ohne Cookies.</p>
+
+      <h3>Was diese Werkzeuge sehen</h3>
+      <p>Die Seiten, die du besuchst, die Website, von der du kommst, deine Klicks und dein Scrollen, die Art von Browser, System und Bildschirm sowie dein ungefähres Land (aus der Verbindung abgeleitet). Nie deinen Namen oder deine E-Mail-Adresse, und wir versuchen nicht herauszufinden, wer du bist. Werbesignale werden immer abgelehnt und die Werbefunktionen von Google sind abgeschaltet: Nichts wird für Werbung genutzt oder verkauft.</p>
+
+      <h3>Links zum Microsoft Store</h3>
+      <p>Links zu Flitdrop im Microsoft Store enthalten einen kurzen Kampagnencode (<code>cid</code>), damit uns die Store-Statistik sagen kann, wie viele Installationen von dieser Website kommen. Der Code ist für alle gleich und sagt nichts über dich aus.</p>
+
+      <h3>Hosting und Sicherheit</h3>
+      <p>Die Website wird von Cloudflare gehostet. Cloudflare verarbeitet technische Daten wie deine IP-Adresse, um die Seiten auszuliefern und die Website vor Angriffen zu schützen. Wir selbst bewahren diese Protokolle nicht auf.</p>
+
+      <h2>Alle Tracker im Einzelnen</h2>
+      <div class="trk">
+        <h3>Cloudflare Web Analytics</h3>
+        <ul>
+          <li>Anbieter: Cloudflare, Inc.</li>
+          <li>Zweck: Besuche zählen und die Ladezeit der Seiten messen.</li>
+          <li>Auf deinem Gerät: nichts, kein Cookie.</li>
+          <li>Wann: immer, für alle Besucher.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>PostHog ohne Cookies</h3>
+        <ul>
+          <li>Anbieter: PostHog Inc., Daten in der EU gespeichert (Frankfurt).</li>
+          <li>Zweck: aufgerufene Seiten, Download-Klicks und Antworten auf das Cookie-Banner zählen.</li>
+          <li>Auf deinem Gerät: kein Cookie, nur der Eintrag, der eine Ablehnung merkt (siehe „Deine Einstellungen auf dieser Website“). Ein Code, der auf den Servern von PostHog berechnet und jeden Tag erneuert wird; die IP-Adresse wird nicht gespeichert.</li>
+          <li>Wann: in der EU, im EWR, im Vereinigten Königreich und in der Schweiz, solange du nicht gewählt hast. Wenn du ablehnst, zählt es diese Ablehnung einmal und stoppt dann ganz.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Google Analytics 4</h3>
+        <ul>
+          <li>Anbieter: Google Ireland Limited.</li>
+          <li>Zweck: Reichweitenstatistik (Besuche, Seiten, woher die Besucher kommen).</li>
+          <li>Auf deinem Gerät: Cookies <code>_ga</code> und <code>_ga_6D1N284CCF</code>, bis zu 13 Monate.</li>
+          <li>Wann: in der EU, im EWR, im Vereinigten Königreich und in der Schweiz nur, wenn du zustimmst; anderswo standardmäßig, bis du ablehnst.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Microsoft Clarity</h3>
+        <ul>
+          <li>Anbieter: Microsoft.</li>
+          <li>Zweck: Aufzeichnungen, wie Seiten benutzt werden, und Heatmaps, um zu sehen, wo Besucher hängen bleiben. In Felder getippter Text bleibt verborgen.</li>
+          <li>Auf deinem Gerät: Cookies <code>_clck</code> (bis zu 1 Jahr) und <code>_clsk</code> (1 Tag). Microsoft kann außerdem eigene Cookies auf seiner Domain clarity.ms setzen (etwa <code>MUID</code>, bis zu 1 Jahr).</li>
+          <li>Wann: in der EU, im EWR, im Vereinigten Königreich und in der Schweiz nur, wenn du zustimmst; anderswo standardmäßig, bis du ablehnst.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>PostHog mit Cookie</h3>
+        <ul>
+          <li>Anbieter: PostHog Inc., Daten in der EU gespeichert (Frankfurt).</li>
+          <li>Zweck: ausführliche Statistiken (jeder Klick und wo auf der Seite er passiert, Verweildauer auf jeder Seite, Ladezeit, Fehler der Website) und Aufzeichnungen, wie Seiten benutzt werden, wobei alles, was in Felder getippt wird, verborgen bleibt.</li>
+          <li>Auf deinem Gerät: ein Cookie und ein Eintrag im Browserspeicher namens <code>ph_&lt;Projektschlüssel&gt;_posthog</code>, bis zu 1 Jahr.</li>
+          <li>Wann: in der EU, im EWR, im Vereinigten Königreich und in der Schweiz nur, wenn du zustimmst; anderswo standardmäßig, bis du ablehnst.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Deine Einstellungen auf dieser Website</h3>
+        <ul>
+          <li>Anbieter: keiner, sie bleiben in deinem Browser und werden nie an uns gesendet.</li>
+          <li>Zweck: deine Cookie-Wahl (<code>fd_consent</code>, 6 Monate) und deine Sprache (<code>flitdrop_lang</code>) merken; für die Dauer des Besuchs merken, ob du in einer Region bist, in der wir zuerst fragen (<code>fd_geo</code>, nur ein Ja oder Nein, wird beim Schließen des Tabs gelöscht); die Liste der neuesten Download-Dateien eine Stunde lang vorhalten (<code>fd_rel</code>, wird beim Schließen des Tabs gelöscht); und PostHog merken lassen, ob es sein Cookie verwenden darf (<code>__ph_opt_in_out_&lt;Projektschlüssel&gt;</code>, bleibt, bis sich deine Wahl ändert).</li>
+          <li>Wann: immer, weil die Website sie braucht, um so zu funktionieren, wie du es möchtest.</li>
+        </ul>
+      </div>
+      <div class="trk">
+        <h3>Statistiken der Flitdrop-App</h3>
+        <ul>
+          <li>Anbieter: Cloudflare (Sammeldienst, und eine Kopie, die etwa 3 Monate bleibt) und PostHog (Speicherung in der EU, Frankfurt).</li>
+          <li>Zweck: wissen, ob die App funktioniert und wo sie scheitert.</li>
+          <li>Auf deinem Computer, in der Einstellungsdatei der App: das Datum des ersten Starts (um die Tage seit der Installation zu zählen), die zuletzt gestartete Version, der letzte Tag, an dem die tägliche Zählung gesendet wurde, ob schon eine erste Kopplung und eine erste Übertragung stattgefunden haben, und eine zufällige Installationskennung. Diese Kennung wird bei jeder Installation erzeugt, aber nur gesendet, wenn du den ausführlichen Statistiken zugestimmt hast.</li>
+          <li>Wann: einfache Statistiken standardmäßig, bis du sie in den Einstellungen ausschaltest; ausführliche Statistiken und Fehlerberichte nur, wenn du zustimmst.</li>
+        </ul>
+      </div>
+
+      <h2>Wer die Daten bekommt, und Übermittlungen außerhalb der EU</h2>
+      <p>Wir verkaufen keine Daten und geben sie nie für Werbung weiter. Die einzigen Dienstleister, die Daten für uns verarbeiten, sind Cloudflare (Hosting, Messung ohne Cookies, Sammeldienst für App-Statistiken und dessen Kopie dieser Statistiken), PostHog (Statistik, gespeichert in der Europäischen Union, in Frankfurt), Google (Google Analytics), Microsoft (Clarity) und GitHub (die Download-Schaltflächen fragen bei GitHub die Liste der neuesten Dateien ab, und die Dateien werden von GitHub heruntergeladen, das deine IP-Adresse wie jeder Server sieht). Google, Microsoft, GitHub und Cloudflare können Daten in den USA verarbeiten; sie sind nach dem EU-US Data Privacy Framework zertifiziert, für das die Europäische Kommission ein angemessenes Schutzniveau anerkannt hat. PostHog speichert unsere Daten in der Europäischen Union.</p>
+
+      <h2>Wie lange Daten aufbewahrt werden</h2>
+      <ul>
+        <li>App-Statistiken: einzelne Ereignisse in PostHog höchstens 12 Monate, danach nur Gesamtzahlen; etwa 3 Monate für die Kopie bei Cloudflare.</li>
+        <li>PostHog (Website): höchstens 12 Monate; sein Cookie gilt bis zu 1 Jahr.</li>
+        <li>Google Analytics: Cookies bis zu 13 Monate; ausführliche Daten höchstens 14 Monate.</li>
+        <li>Microsoft Clarity: Cookies bis zu 1 Jahr; Microsoft bewahrt Aufzeichnungen etwa 30 Tage und Statistiken bis zu 13 Monate auf.</li>
+        <li>Deine Cookie-Wahl: 6 Monate, dann fragen wir erneut.</li>
+      </ul>
+
+      <h2>Rechtsgrundlagen</h2>
+      <ul>
+        <li>Einfache App-Statistiken und die Messung ohne Cookies auf der Website: unser berechtigtes Interesse zu wissen, wie Flitdrop genutzt wird, als Reichweitenmessung, die nach der CNIL keine Einwilligung braucht. Du kannst über den Schalter in den App-Einstellungen widersprechen und auf der Website über die Schaltfläche Ablehnen im Banner, das der Link „Cookies“ unten auf jeder Seite wieder öffnet.</li>
+        <li>Ausführliche App-Statistiken und Fehlerberichte sowie, für Besucher aus der EU, dem EWR, dem Vereinigten Königreich und der Schweiz, Google Analytics, Microsoft Clarity und PostHog mit Cookie: deine Einwilligung, die du jederzeit widerrufen kannst.</li>
+        <li>Dieselben Werkzeuge der Website für Besucher aus anderen Ländern: unser berechtigtes Interesse, die Website zu verbessern. Du kannst jederzeit über den Link „Cookies“ widersprechen.</li>
+        <li>Hosting- und Sicherheitsprotokolle: unser berechtigtes Interesse, die Website erreichbar und sicher zu halten.</li>
+      </ul>
+
+      <h2>Deine Rechte (DSGVO)</h2>
+      <p>Nach der DSGVO hast du das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Widerspruch und Datenübertragbarkeit in Bezug auf deine personenbezogenen Daten sowie das Recht, eine Einwilligung jederzeit zu widerrufen. Da die Statistiken, die wir erheben, dich nicht identifizieren, können wir meist nicht erkennen, welche Daten zu dir gehören; am einfachsten stoppst du jede Erhebung über den Schalter in den App-Einstellungen und den Link „Cookies“ auf der Website. Für Fragen oder Anliegen schreib uns an <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>, wir antworten innerhalb eines Monats. Du hast außerdem das Recht, dich bei einer Datenschutzaufsichtsbehörde zu beschweren, etwa bei der Behörde deines Landes oder in Frankreich bei der CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+
+      <h2>Verantwortlicher</h2>
+      <p>Flitdrop (Thomas Bidault), Einzelunternehmer (entrepreneur individuel), Frankreich. Kontakt: <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>.</p>
+    </div>
   </main>
+
+  <footer class="mini-foot">
+    <a href="/" data-i18n="foot.home">Home</a>
+    <a href="/privacy" data-i18n="footer.privacy">Privacy</a>
+    <a href="/legal" data-i18n="footer.legal">Legal</a>
+    <a href="#cookies" role="button" data-consent-open data-consent-link data-i18n="consent.link">Cookies</a>
+  </footer>
 
   <script src="/js/i18n-data.js"></script>
   <script src="/js/i18n.js"></script>
   <script>
     (function () {
+      // un bloc par langue ; l'anglais sert de repli si la langue n'a pas de bloc
       function applyDoc() {
         var l = window.FDI18N ? window.FDI18N.lang : 'en'
-        document.querySelectorAll('.lang-en').forEach(function (e) { e.hidden = l !== 'en' })
-        document.querySelectorAll('.lang-fr').forEach(function (e) { e.hidden = l !== 'fr' })
+        if (!document.querySelector('.lang-' + l)) l = 'en'
+        ;['en', 'fr', 'de'].forEach(function (k) {
+          document.querySelectorAll('.lang-' + k).forEach(function (e) { e.hidden = l !== k })
+        })
         document.querySelectorAll('[data-en]').forEach(function (e) { var v = e.getAttribute('data-' + l); if (v != null) e.textContent = v })
       }
       document.addEventListener('DOMContentLoaded', applyDoc)

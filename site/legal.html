@@ -19,7 +19,7 @@
   </header>
 
   <main class="doc">
-    <a class="back" href="/">← <span data-en="Home" data-fr="Accueil">Home</span></a>
+    <a class="back" href="/">← <span data-en="Home" data-fr="Accueil" data-de="Startseite">Home</span></a>
 
     <div class="lang-en">
       <h1>Legal notice</h1>
@@ -48,16 +48,40 @@
       <h2>Responsabilité</h2>
       <p>Flitdrop est fourni « en l'état », sans garantie d'aucune sorte, dans les limites permises par la loi. Vous restez responsable des fichiers que vous choisissez d'envoyer et des appareils que vous associez.</p>
     </div>
+
+    <div class="lang-de" hidden>
+      <h1>Impressum</h1>
+      <h2>Herausgeber</h2>
+      <p>Diese Website und die App Flitdrop werden von Thomas Bidault herausgegeben, Einzelunternehmer (auto-entrepreneur), Frankreich. Kontakt: <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>.</p>
+      <h2>Hosting</h2>
+      <p>Diese Website wird von Cloudflare, Inc., 101 Townsend Street, San Francisco, CA 94107, USA, gehostet.</p>
+      <h2>Softwarelizenz</h2>
+      <p>Flitdrop wird unter der Functional Source License (FSL-1.1-ALv2) verbreitet. Der Quellcode ist öffentlich und frei nutzbar, auch in einem Unternehmen, darf aber weder weiterverkauft noch für ein Konkurrenzprodukt verwendet werden. Zwei Jahre nach jeder Veröffentlichung steht die jeweilige Version unter der Lizenz Apache 2.0 zur Verfügung. Die vollständigen Bedingungen stehen in der Datei LICENSE im Repository.</p>
+      <h2>Marken</h2>
+      <p>AirDrop ist eine Marke von Apple Inc. Quick Share ist eine Marke von Samsung und Google. Flitdrop ist ein unabhängiges Projekt, das mit diesen Unternehmen nicht verbunden ist und von ihnen weder unterstützt noch gesponsert wird. Diese Namen werden nur verwendet, um Kompatibilität und Vergleiche zu beschreiben.</p>
+      <h2>Haftung</h2>
+      <p>Flitdrop wird „wie besehen“ bereitgestellt, ohne jede Gewährleistung, soweit gesetzlich zulässig. Du bleibst verantwortlich für die Dateien, die du sendest, und für die Geräte, die du koppelst.</p>
+    </div>
   </main>
+
+  <footer class="mini-foot">
+    <a href="/" data-i18n="foot.home">Home</a>
+    <a href="/privacy" data-i18n="footer.privacy">Privacy</a>
+    <a href="/legal" data-i18n="footer.legal">Legal</a>
+    <a href="#cookies" role="button" data-consent-open data-consent-link data-i18n="consent.link">Cookies</a>
+  </footer>
 
   <script src="/js/i18n-data.js"></script>
   <script src="/js/i18n.js"></script>
   <script>
     (function () {
+      // un bloc par langue ; l'anglais sert de repli si la langue n'a pas de bloc
       function applyDoc() {
         var l = window.FDI18N ? window.FDI18N.lang : 'en'
-        document.querySelectorAll('.lang-en').forEach(function (e) { e.hidden = l !== 'en' })
-        document.querySelectorAll('.lang-fr').forEach(function (e) { e.hidden = l !== 'fr' })
+        if (!document.querySelector('.lang-' + l)) l = 'en'
+        ;['en', 'fr', 'de'].forEach(function (k) {
+          document.querySelectorAll('.lang-' + k).forEach(function (e) { e.hidden = l !== k })
+        })
         document.querySelectorAll('[data-en]').forEach(function (e) { var v = e.getAttribute('data-' + l); if (v != null) e.textContent = v })
       }
       document.addEventListener('DOMContentLoaded', applyDoc)
