@@ -46,32 +46,19 @@ jobs:
           winget validate --manifest $env:MANIFEST --disable-interactivity
           if ($LASTEXITCODE -ne 0) { throw "winget validate : echec ($LASTEXITCODE)" }
 
-      # Diagnostic : l'installeur lance par winget ne rendait pas la main alors que
-      # le meme /S termine en 7 s. Hypothese : la marque « telecharge d'Internet »
-      # (Zone.Identifier) declenche une fenetre de securite invisible sur un runner.
-      # Chaque essai a un delai maximum et liste les fenetres ouvertes s'il bloque.
-      - name: installeur /S, sans puis avec marque Internet
+      # Diagnostic du 23/09/2026 : lance depuis un fichier marque « telecharge
+      # d'Internet » (Zone.Identifier, ce que fait winget), l'installeur est retenu
+      # par SmartScreen (« The operation was canceled by the user » : fenetre de
+      # confirmation impossible sans ecran), alors que le meme /S sans la marque se
+      # termine en code 0. Un utilisateur voit la fenetre et clique « Executer quand
+      # meme » ; les VM de validation winget n'ont pas ce filtre. On fait donc comme
+      # elles : pas de controle de zone, pour tester l'installation elle-meme.
+      - name: machine de test sans SmartScreen (comme les VM winget)
         shell: pwsh
         run: |
-          $exe = Join-Path $env:RUNNER_TEMP 'flitdrop-setup.exe'
-          Invoke-WebRequest 'https://github.com/MrFrosas/flitdrop/releases/download/v0.6.3/Flitdrop-Setup-0.6.3.exe' -OutFile $exe
-          function Try-Install([string]$label) {
-            Remove-Item -Recurse -Force "HKCU:\Software\$env:GUID" -ErrorAction SilentlyContinue
-            $p = Start-Process $exe -ArgumentList '/S' -PassThru
-            if (-not $p.WaitForExit(120000)) {
-              Write-Host "$label : BLOQUE apres 120 s. Fenetres ouvertes :"
-              Get-Process | Where-Object MainWindowTitle | Select-Object ProcessName, Id, MainWindowTitle | Format-Table -AutoSize | Out-String | Write-Host
-              Stop-Process -Id $p.Id -Force
-              return
-            }
-            Write-Host "$label : termine, code $($p.ExitCode)"
-            Get-Process Flitdrop -ErrorAction SilentlyContinue | Stop-Process -Force
-            $u = (Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$env:GUID" -ErrorAction SilentlyContinue).QuietUninstallString
-            if ($u) { cmd /c $u; Start-Sleep -Seconds 3 }
-          }
-          Try-Install 'sans marque Internet'
-          Set-Content -Path $exe -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3"
-          Try-Install 'avec marque Internet'
+          New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments' -Force | Out-Null
+          Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\Attachments' -Name SaveZoneInformation -Value 1 -Type DWord
+          "SEE_MASK_NOZONECHECKS=1" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: winget install --manifest (3 installations, delai max)
         shell: pwsh
