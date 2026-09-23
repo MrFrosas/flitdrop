@@ -26,7 +26,12 @@ function cleanResponse(res) {
 
 async function retrieveAsset(request, pathWithSearch, waitUntil, cacheable) {
   if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405 })
-  if (!cacheable) return cleanResponse(await fetch(`https://${ASSET_HOST}${pathWithSearch}`, { method: request.method }))
+  if (!cacheable) {
+    const res = cleanResponse(await fetch(`https://${ASSET_HOST}${pathWithSearch}`, { method: request.method }))
+    // « private » : le TTL navigateur de la zone Cloudflare (4 h) ne s'applique pas
+    res.headers.set('Cache-Control', 'private, max-age=300')
+    return res
+  }
   const cache = caches.default
   const cached = await cache.match(request)
   if (cached) return cached
