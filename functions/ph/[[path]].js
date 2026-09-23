@@ -2,7 +2,9 @@
 // Le site parle à PostHog via flitdrop.com/ph (api_host dans js/analytics.js) :
 // les bloqueurs de publicité ne coupent plus la mesure et aucun domaine tiers
 // n'apparaît dans le navigateur. Projet PostHog « Flitdrop », hébergé dans l'UE.
-//   /ph/static/*, /ph/array/*  ->  eu-assets.i.posthog.com  (bibliothèque, config distante ; mis en cache)
+//   /ph/static/*               ->  eu-assets.i.posthog.com  (bibliothèque versionnée, mise en cache)
+//   /ph/array/*                ->  eu-assets.i.posthog.com  (config distante : jamais mise en cache ici,
+//                                   sinon un réglage changé dans PostHog, comme les replays, reste invisible)
 //   tout le reste sous /ph/*   ->  eu.i.posthog.com         (événements, replays, drapeaux)
 // Les cookies et l'en-tête Authorization ne sont jamais transmis, et aucun
 // Set-Cookie ne revient au navigateur. L'adresse IP du visiteur est passée en
@@ -22,8 +24,9 @@ function cleanResponse(res) {
   return new Response(res.body, { status: res.status, statusText: res.statusText, headers })
 }
 
-async function retrieveAsset(request, pathWithSearch, waitUntil) {
+async function retrieveAsset(request, pathWithSearch, waitUntil, cacheable) {
   if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405 })
+  if (!cacheable) return cleanResponse(await fetch(`https://${ASSET_HOST}${pathWithSearch}`, { method: request.method }))
   const cache = caches.default
   const cached = await cache.match(request)
   if (cached) return cached
@@ -53,7 +56,8 @@ export async function onRequest({ request, waitUntil }) {
   const path = url.pathname.replace(/^\/ph(?=\/|$)/, '') || '/'
   const pathWithSearch = path + url.search
   try {
-    if (path.startsWith('/static/') || path.startsWith('/array/')) return await retrieveAsset(request, pathWithSearch, waitUntil)
+    if (path.startsWith('/static/') || path.startsWith('/array/'))
+      return await retrieveAsset(request, pathWithSearch, waitUntil, path.startsWith('/static/'))
     return await forwardRequest(request, pathWithSearch)
   } catch {
     return new Response(null, { status: 502 })

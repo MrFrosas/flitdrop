@@ -157,7 +157,9 @@
   }
   function phOptIn(p) {
     p.opt_in_capturing({ captureEventName: false });
-    if (phSilenced) { phSilenced = false; try { p.startSessionRecording(); } catch (_) {} }
+    phSilenced = false;
+    // PostHog a décidé des replays au chargement, sans accord : on les relance
+    try { if (!p.sessionRecordingStarted()) p.startSessionRecording(); } catch (_) {}
   }
   function phSilence(p) {
     phSilenced = true;
