@@ -79,6 +79,11 @@ jobs:
             if (-not (Test-Path (Join-Path $loc 'Flitdrop.exe'))) { throw "essai $i : Flitdrop.exe absent dans $loc" }
             Write-Host "essai $i : OK ($loc)"
             Get-Process Flitdrop -ErrorAction SilentlyContinue | Stop-Process -Force
-            winget uninstall --product-code $env:GUID --silent --disable-interactivity
+            winget uninstall --product-code $env:GUID --silent --disable-interactivity --accept-source-agreements
+            if ($LASTEXITCODE -ne 0) { throw "essai $i : winget uninstall en echec ($LASTEXITCODE)" }
             Start-Sleep -Seconds 3
+            # l'essai suivant doit repartir d'un PC propre : plus d'entree ARP ni d'exe
+            if (Test-Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\$env:GUID") { throw "essai $i : entree de desinstallation encore presente" }
+            if (Test-Path (Join-Path $loc 'Flitdrop.exe')) { throw "essai $i : Flitdrop.exe encore present apres desinstallation" }
+            Write-Host "essai $i : desinstallation OK"
           }
