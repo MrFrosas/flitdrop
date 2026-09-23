@@ -20,13 +20,20 @@ if (!fs.existsSync(icns)) {
   }
 }
 const version = JSON.parse(fs.readFileSync(path.join(here, 'package.json'), 'utf8')).version
-const appPath = path.join(here, 'release', 'mac-arm64', 'Flitdrop.app')
+// architecture en argument : arm64 (Apple Silicon, défaut) ou x64 (Intel).
+// electron-builder range l'app arm64 dans release/mac-arm64 et l'app x64 dans release/mac.
+const arch = process.argv[2] || 'arm64'
+if (!['arm64', 'x64'].includes(arch)) {
+  console.error(`architecture inconnue : ${arch} (attendu : arm64 ou x64)`)
+  process.exit(1)
+}
+const appPath = path.join(here, 'release', arch === 'arm64' ? 'mac-arm64' : 'mac', 'Flitdrop.app')
 if (!fs.existsSync(appPath)) {
-  console.error('Flitdrop.app introuvable : lance d’abord electron-builder --mac dir')
+  console.error(`Flitdrop.app (${arch}) introuvable : lance d’abord electron-builder --mac dir --${arch}`)
   process.exit(1)
 }
 const outDir = path.join(here, 'release')
-const out = path.join(outDir, `Flitdrop-${version}-arm64.dmg`)
+const out = path.join(outDir, `Flitdrop-${version}-${arch}.dmg`)
 fs.rmSync(out, { force: true })
 
 const spec = {

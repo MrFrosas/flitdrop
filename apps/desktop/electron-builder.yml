@@ -77,6 +77,34 @@ win:
     certificateProfileName: flitdrop
     TimestampRfc3161: http://timestamp.acs.microsoft.com
     TimestampDigest: SHA256
+linux:
+  # AppImage : lance sans installation sur toutes les distributions, et
+  # electron-updater sait le mettre a jour (latest-linux.yml). .deb : installation
+  # classique Ubuntu / Debian / Mint (pas besoin de libfuse2).
+  target:
+    - AppImage
+    - deb
+  icon: build/icon.png
+  category: Utility
+  executableName: flitdrop
+  synopsis: Send files between your phone and your computer, like AirDrop
+  description: >-
+    Flitdrop sends files, photos, folders and clipboard between any phone and
+    this computer over your local Wi-Fi, end-to-end encrypted. Nothing to
+    install on the phone: scan a QR code once.
+  maintainer: CC's Global <contact@flitdrop.com>
+  vendor: CC's Global
+  # l'association « tous les fichiers » (ext '*') n'a pas de type MIME sous
+  # Linux : on ne declare rien plutot qu'une entree .desktop invalide.
+  fileAssociations: []
+appImage:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+deb:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  # outils presse-papiers : wl-clipboard (Wayland) sinon xclip (X11)
+  recommends:
+    - wl-clipboard
+    - xclip
 appx:
   # identityName et publisher sont remplacés par les valeurs du Partner Center
   # (Microsoft Store > Gestion des produits > Identité du package)

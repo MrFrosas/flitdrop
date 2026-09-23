@@ -4,19 +4,96 @@ function clipboardDisabled(): boolean {
   return process.env.FLITDROP_NO_CLIP === '1'
 }
 
+type ClipCmd = [cmd: string, args: string[]]
+
+class ClipError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string
+  ) {
+    super(message)
+  }
+}
+
+/**
+ * Lance une commande presse-papiers.
+ * - lecture : on capture stdout et on attend 'close' (tous les flux fermés).
+ * - écriture : stdout/stderr IGNORÉS et on attend 'exit'. Sous Linux, xclip et
+ *   wl-copy restent en arrière-plan pour « posséder » la sélection ; ce
+ *   processus garde les flux hérités ouverts, donc attendre 'close' bloquerait
+ *   indéfiniment alors que la copie est faite.
+ */
 function run(cmd: string, args: string[], stdinText?: string): Promise<string> {
+  const writing = stdinText !== undefined
   return new Promise((resolve, reject) => {
-    const p = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'ignore'] })
+    let p
+    try {
+      p = spawn(cmd, args, { stdio: ['pipe', writing ? 'ignore' : 'pipe', 'ignore'] })
+    } catch (e) {
+      reject(e)
+      return
+    }
     let out = ''
-    p.stdout.setEncoding('utf8')
-    p.stdout.on('data', (d) => {
-      if (out.length < 4 * 1024 * 1024) out += d
-    })
-    p.on('error', reject)
-    p.on('close', (code) => (code === 0 ? resolve(out) : reject(new Error(`${cmd} a retourné ${code}`))))
-    if (stdinText !== undefined) p.stdin.end(stdinText, 'utf8')
-    else p.stdin.end()
+    if (!writing && p.stdout) {
+      p.stdout.setEncoding('utf8')
+      p.stdout.on('data', (d: string) => {
+        if (out.length < 4 * 1024 * 1024) out += d
+      })
+    }
+    let settled = false
+    const done = (err: Error | null) => {
+      if (settled) return
+      settled = true
+      if (err) reject(err)
+      else resolve(out)
+    }
+    p.on('error', (e: NodeJS.ErrnoException) => done(new ClipError(e.message, e.code)))
+    const finish = (code: number | null) =>
+      done(code === 0 ? null : new ClipError(`${cmd} a retourné ${code}`))
+    if (writing) p.on('exit', finish)
+    else p.on('close', finish)
+    // un stdin fermé côté enfant (EPIPE) ne doit pas faire planter le serveur
+    p.stdin?.on('error', () => {})
+    if (writing) p.stdin?.end(stdinText, 'utf8')
+    else p.stdin?.end()
   })
+}
+
+/**
+ * Outils presse-papiers Linux par ordre de préférence. Sous Wayland, wl-clipboard
+ * en premier (xclip n'y voit que les fenêtres XWayland) ; sous X11, xclip puis
+ * xsel. Exporté pour les tests.
+ */
+export function linuxClipCandidates(mode: 'read' | 'write', env: NodeJS.ProcessEnv = process.env): ClipCmd[] {
+  const wayland: ClipCmd[] = mode === 'write' ? [['wl-copy', []]] : [['wl-paste', ['--no-newline']]]
+  const x11: ClipCmd[] =
+    mode === 'write'
+      ? [
+          ['xclip', ['-selection', 'clipboard']],
+          ['xsel', ['--clipboard', '--input']],
+        ]
+      : [
+          ['xclip', ['-selection', 'clipboard', '-o']],
+          ['xsel', ['--clipboard', '--output']],
+        ]
+  return env.WAYLAND_DISPLAY ? [...wayland, ...x11] : [...x11, ...wayland]
+}
+
+// outils absents de la machine : on ne les relance pas (le lecteur tourne toutes les 1,5 s)
+const missing = new Set<string>()
+
+async function runLinux(mode: 'read' | 'write', stdinText?: string): Promise<string> {
+  let last: Error = new Error('aucun outil presse-papiers (installer wl-clipboard, xclip ou xsel)')
+  for (const [cmd, args] of linuxClipCandidates(mode)) {
+    if (missing.has(cmd)) continue
+    try {
+      return await run(cmd, args, stdinText)
+    } catch (e) {
+      if (e instanceof ClipError && e.code === 'ENOENT') missing.add(cmd)
+      last = e as Error
+    }
+  }
+  throw last
 }
 
 export async function writeClipboard(text: string): Promise<void> {
@@ -30,7 +107,7 @@ export async function writeClipboard(text: string): Promise<void> {
       text
     )
   } else {
-    await run('xclip', ['-selection', 'clipboard'], text)
+    await runLinux('write', text)
   }
 }
 
@@ -45,5 +122,5 @@ export async function readClipboard(): Promise<string> {
       '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Get-Clipboard -Raw',
     ])
   }
-  return run('xclip', ['-selection', 'clipboard', '-o'])
+  return runLinux('read')
 }
