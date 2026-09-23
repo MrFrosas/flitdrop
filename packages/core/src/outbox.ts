@@ -6,6 +6,9 @@ import { OUTBOX_MAX_ITEMS } from './constants.js'
 export interface OutboxItem {
   id: string
   kind: 'text' | 'file'
+  // pour un texte : tapé dans l'interface ('text') ou venu du presse-papiers
+  // du PC ('clipboard'). Sert uniquement aux statistiques (type d'envoi).
+  origin?: 'text' | 'clipboard'
   text?: string
   name?: string
   size?: number
@@ -32,10 +35,11 @@ export class Outbox {
     }
   }
 
-  addText(text: string): OutboxItem {
+  addText(text: string, origin: 'text' | 'clipboard' = 'text'): OutboxItem {
     const item: OutboxItem = {
       id: randomToken(8),
       kind: 'text',
+      origin,
       text,
       size: Buffer.byteLength(text, 'utf8'),
       createdAt: new Date().toISOString(),
@@ -89,6 +93,11 @@ export class Outbox {
       if (item.filePath && item.filePath.startsWith(this.dir)) fs.unlink(item.filePath, () => {})
     }
     this.items = []
+  }
+
+  /** Éléments bruts (usage interne au serveur, jamais renvoyés tels quels). */
+  listRaw(): readonly OutboxItem[] {
+    return this.items
   }
 
   listForPhone() {

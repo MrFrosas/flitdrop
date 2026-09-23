@@ -1,4 +1,3 @@
-import { initTelemetry, setTelemetryConsent, track } from './telemetry.js'
 import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '../i18n.js'
 import { applyI18n } from '../i18n-dom.js'
 
@@ -63,7 +62,10 @@ interface State {
     lang: 'auto' | 'fr' | 'en' | 'de'
     shortcutsEnabled: boolean
     autoUpdate: boolean
+    basicStats: boolean
     telemetryConsent: boolean
+    telemetryAsked: boolean
+    basicNoticeShown: boolean
     port: number
   }
   hostname: string
@@ -96,6 +98,13 @@ async function api<T = Record<string, unknown>>(path: string, init?: RequestInit
 
 const postJSON = (path: string, body: unknown) =>
   api(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+
+/** Événement d'interface (accueil, historique…) confié au serveur LOCAL, qui
+ *  décide selon le choix de la personne (détaillé uniquement). Jamais d'envoi
+ *  direct vers internet depuis cette page. */
+function uiEvent(event: string) {
+  void postJSON('/telemetry/event', { event }).catch(() => {})
+}
 
 function toast(title: string, sub?: string) {
   const t = document.createElement('div')
@@ -136,6 +145,7 @@ const VIEW_KEYS: Record<string, string> = {
 function switchView(view: string) {
   document.querySelectorAll<HTMLButtonElement>('.nav-btn').forEach((b) => b.classList.toggle('active', b.dataset.view === view))
   for (const v of Object.keys(VIEW_KEYS)) $(`view-${v}`).classList.toggle('hidden', v !== view)
+  if (view === 'activity') uiEvent('history_opened')
   $('viewTitle').textContent = VIEW_KEYS[view] ? t(VIEW_KEYS[view]!) : 'Flitdrop'
 }
 
@@ -279,6 +289,7 @@ function renderSettings() {
   ;($('setClipHistory') as unknown as HTMLInputElement).checked = state.config.clipHistoryEnabled
   ;($('setClipMax') as unknown as HTMLSelectElement).value = String(state.config.clipHistoryMaxItems)
   ;($('setClipDays') as unknown as HTMLSelectElement).value = String(state.config.clipHistoryMaxDays)
+  ;($('setBasicStats') as unknown as HTMLInputElement).checked = state.config.basicStats || state.config.telemetryConsent
   ;($('setTelemetry') as unknown as HTMLInputElement).checked = state.config.telemetryConsent
   renderShortcutSection()
 }
@@ -468,17 +479,63 @@ function renderAll() {
   renderSettings()
 }
 
-let telemetryStarted = false
 async function refresh() {
   state = await api<State>('/state')
   renderAll()
-  if (!telemetryStarted && state) {
-    telemetryStarted = true
-    initTelemetry({ consent: state.config.telemetryConsent, version: state.version })
-    const os = document.documentElement.getAttribute('data-platform') ?? 'win'
-    track('app_open', { os })
-  } else if (state) {
-    setTelemetryConsent(state.config.telemetryConsent)
+  renderConsentCard()
+}
+
+// ---------- question « aider à améliorer » ----------
+
+/** Carte en haut de la fenêtre (pas une fenêtre surgissante) pour les
+ *  personnes qui n'ont jamais répondu, par ex. après une mise à jour. Masquée
+ *  tant que l'écran d'accueil, qui pose la même question, est ouvert. */
+function renderConsentCard() {
+  const welcomePending = localStorage.getItem('fd_onboard') !== '1' || !$('welcomeModal').classList.contains('hidden')
+  $('consentCard').classList.toggle('hidden', !state || state.config.telemetryAsked || welcomePending)
+  noticeSeen()
+}
+
+/** Les statistiques de base ne partent qu'une fois leur annonce (carte ou
+ *  accueil) réellement affichée, fenêtre visible : on le signale au serveur
+ *  local, une seule fois. Fenêtre cachée (lancement à l'ouverture de session),
+ *  on attend qu'elle apparaisse. */
+let noticePosted = false
+function noticeSeen() {
+  if (noticePosted || !state || state.config.basicNoticeShown || document.visibilityState !== 'visible') return
+  const card = !$('consentCard').classList.contains('hidden')
+  const welcome = !$('welcomeModal').classList.contains('hidden') && !$('welcomeConsent').classList.contains('hidden')
+  if (!card && !welcome) return
+  noticePosted = true
+  void postJSON('/telemetry/notice', {})
+    .then(() => {
+      if (state) state.config.basicNoticeShown = true
+    })
+    .catch(() => {
+      noticePosted = false
+    })
+}
+document.addEventListener('visibilitychange', noticeSeen)
+
+// ancien identifiant d'installation gardé par la page (versions 0.5 à 0.6.3) :
+// l'identifiant vit désormais dans la config du PC, celui-ci ne sert plus
+try {
+  localStorage.removeItem('fd_iid')
+} catch {
+  // stockage indisponible : rien à nettoyer
+}
+
+/** Page de confidentialité du site, ouverte dans le navigateur du système. */
+function openPrivacy() {
+  void postJSON('/open-url', { url: 'https://flitdrop.com/privacy' }).catch(() => toast(t('common.copyFailed')))
+}
+
+async function chooseTelemetry(choice: 'full' | 'basic_only' | 'none', where: 'welcome' | 'prompt' | 'settings') {
+  await postJSON('/telemetry/choice', { choice, where })
+  if (state) {
+    state.config.telemetryAsked = true
+    state.config.telemetryConsent = choice === 'full'
+    state.config.basicStats = choice !== 'none'
   }
 }
 
@@ -690,6 +747,7 @@ function initUI() {
     if (!currentPairUrl) return
     try {
       await navigator.clipboard.writeText(currentPairUrl)
+      uiEvent('pair_link_copied')
       toast(t('pair.linkCopied'), t('pair.linkCopiedHint'))
     } catch {
       toast(t('pair.copyFailed'))
@@ -852,11 +910,41 @@ function initUI() {
   }
   $('btnReportBug').onclick = () => openIssue('bug')
   $('btnSuggest').onclick = () => openIssue('idea')
+  // les deux niveaux sont liés : le détaillé inclut la base, couper la base
+  // coupe aussi le détaillé
+  const basicBox = $('setBasicStats') as unknown as HTMLInputElement
+  const fullBox = $('setTelemetry') as unknown as HTMLInputElement
+  basicBox.onchange = () => {
+    if (!basicBox.checked) fullBox.checked = false
+  }
+  fullBox.onchange = () => {
+    if (fullBox.checked) basicBox.checked = true
+  }
   $('btnSavePrivacy').onclick = async () => {
-    await postJSON('/settings', { telemetryConsent: ($('setTelemetry') as unknown as HTMLInputElement).checked })
-    toast(t('help.savedPref'))
+    const choice = fullBox.checked ? 'full' : basicBox.checked ? 'basic_only' : 'none'
+    try {
+      await chooseTelemetry(choice, 'settings')
+      toast(t('help.savedPref'))
+    } catch (e) {
+      toast(t('set.saveFailed'), (e as Error).message)
+    }
     void refresh()
   }
+  // la carte ne disparaît et « Choix enregistré » ne s'affiche qu'une fois le
+  // choix réellement enregistré ; sinon la question reste posée
+  const answerCard = (choice: 'full' | 'basic_only') => async () => {
+    try {
+      await chooseTelemetry(choice, 'prompt')
+      $('consentCard').classList.add('hidden')
+      toast(t('consent.saved'))
+    } catch (e) {
+      toast(t('set.saveFailed'), (e as Error).message)
+    }
+    void refresh()
+  }
+  $('btnConsentYes').onclick = answerCard('full')
+  $('btnConsentNo').onclick = answerCard('basic_only')
+  for (const b of document.querySelectorAll<HTMLElement>('[data-privacy-link]')) b.onclick = openPrivacy
 
   const clipSearch = $('clipSearch') as unknown as HTMLInputElement
   clipSearch.oninput = () => {
@@ -910,16 +998,60 @@ async function uploadOutbox(files: FileList) {
 function maybeWelcome() {
   if (localStorage.getItem('fd_onboard') === '1') return
   $('welcomeModal').classList.remove('hidden')
-  $('btnWelcome').onclick = () => {
+  renderConsentCard()
+  // la question n'est posée qu'une fois : déjà répondue, on ne la remontre pas
+  const asked = state?.config.telemetryAsked === true
+  $('welcomeConsent').classList.toggle('hidden', asked)
+  // welcome_shown est un événement détaillé : sans accord il est ignoré par le
+  // serveur, on le renvoie donc au moment où la personne dit oui.
+  uiEvent('welcome_shown')
+  noticeSeen()
+  const answer = (choice: 'full' | 'basic_only') => async () => {
+    try {
+      await chooseTelemetry(choice, 'welcome')
+    } catch (e) {
+      // pas enregistré : la question reste affichée, on peut réessayer
+      toast(t('set.saveFailed'), (e as Error).message)
+      return
+    }
+    $('welcomeConsent').classList.add('hidden')
+    $('welcomeConsentDone').classList.remove('hidden')
+    if (choice === 'full') uiEvent('welcome_shown')
+  }
+  $('btnConsentYesW').onclick = answer('full')
+  $('btnConsentNoW').onclick = answer('basic_only')
+  const close = () => {
     localStorage.setItem('fd_onboard', '1')
     $('welcomeModal').classList.add('hidden')
+    // pas de réponse dans l'accueil : la carte reprend la question, une fois
+    renderConsentCard()
+  }
+  $('btnWelcome').onclick = () => {
+    uiEvent('welcome_pair_clicked')
+    close()
     void openPairModal()
   }
   $('btnWelcomeSkip').onclick = () => {
-    localStorage.setItem('fd_onboard', '1')
-    $('welcomeModal').classList.add('hidden')
+    uiEvent('welcome_skipped')
+    close()
   }
 }
+
+// ---------- rapports d'erreur de la page ----------
+
+/** Erreurs de cette page remontées au serveur local, qui les nettoie, les
+ *  limite et ne les transmet qu'avec l'accord « statistiques détaillées ». */
+function reportPageError(err: unknown) {
+  const e = err as { name?: unknown; message?: unknown; stack?: unknown } | null
+  const error = {
+    type: typeof e?.name === 'string' ? e.name : 'Error',
+    message: typeof e?.message === 'string' ? e.message : String(err ?? ''),
+    stack: typeof e?.stack === 'string' ? e.stack : '',
+  }
+  void postJSON('/telemetry/event', { event: '$exception', error }).catch(() => {})
+}
+window.addEventListener('error', (ev) => reportPageError(ev.error ?? ev.message))
+window.addEventListener('unhandledrejection', (ev) => reportPageError(ev.reason))
 
 // OS hôte réel (transmis par l'app de bureau via ?os=, ou détecté dans le
 // navigateur en dev). Sert de valeur par défaut pour le style « Automatique ».

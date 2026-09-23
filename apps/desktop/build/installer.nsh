@@ -22,8 +22,45 @@
   !endif
 !macroend
 
+; Installation venue du Microsoft Store : la fiche du Store sert le même .exe
+; que le site, l'app ne peut donc pas le savoir seule. Le Store lance
+; l'installeur avec les paramètres saisis dans le Partner Center (« /S /store »),
+; ou le fichier publié pour le Store porte « store » dans son nom
+; (Flitdrop-Setup-x.y.z-store.exe). On pose alors un marqueur à côté de l'exe ;
+; l'app le lit au lancement et garde « store » dans sa config (une mise à jour
+; automatique par l'installeur GitHub ne l'efface donc pas).
+!include "FileFunc.nsh"
+
 !macro customInstall
   CreateShortCut "$SENDTO\Flitdrop.lnk" "$appExe"
+  ; registres rendus tels quels à electron-builder
+  Push $R0
+  Push $R1
+  Push $R2
+  Push $R3
+  Push $R4
+  ${GetParameters} $R0
+  ClearErrors
+  ${GetOptions} $R0 "/store" $R1
+  IfErrors 0 flitdrop_store_mark
+  ; nom de l'installeur : recherche de « store » (StrCmp ignore la casse)
+  StrCpy $R2 0
+  flitdrop_store_loop:
+    StrCpy $R3 $EXEFILE 5 $R2
+    StrCmp $R3 "" flitdrop_store_done
+    StrCmp $R3 "store" flitdrop_store_mark
+    IntOp $R2 $R2 + 1
+    Goto flitdrop_store_loop
+  flitdrop_store_mark:
+    FileOpen $R4 "$INSTDIR\store-install" w
+    FileWrite $R4 "store"
+    FileClose $R4
+  flitdrop_store_done:
+  Pop $R4
+  Pop $R3
+  Pop $R2
+  Pop $R1
+  Pop $R0
 !macroend
 
 !macro customUnInstall

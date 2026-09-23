@@ -8,8 +8,9 @@
 4. Builder sur Windows (ou GitHub Actions, workflow fourni) : `npm run dist:win -w @flitdrop/desktop` → `release/*.appx`.
 5. Soumission : uploader l'appx (le Store signe lui-même les paquets soumis via Partner Center, pas besoin de certificat de signature de code pour la voie Store).
 6. **Fiche** : captures de l'interface radar + de la page téléphone, description axée « AirDrop pour Windows » (voir la note marque dans l'audit), catégorie Productivité / Utilitaires.
-7. **Politique de confidentialité** (obligatoire, URL) : Flitdrop n'envoie aucune donnée à des serveurs, tout reste sur le réseau local ; le mentionner est un argument, pas juste une conformité.
+7. **Politique de confidentialité** (obligatoire, URL) : https://flitdrop.com/privacy. Les fichiers, photos, textes et le presse-papiers restent sur le réseau local, c'est un argument. En revanche l'app envoie des statistiques d'utilisation anonymes (actives par défaut, désactivables dans les Réglages) et, seulement avec l'accord de la personne, des statistiques détaillées et des rapports d'erreur (voir `docs/telemetry.md`). Les réponses du Partner Center sur la collecte de données et le questionnaire IARC doivent le dire : ne plus répondre « aucune donnée envoyée ».
 8. Déclaration des capacités réseau du MSIX : `internetClient` + `privateNetworkClientServer` (réception sur le réseau local). electron-builder les inclut par défaut pour appx ; vérifier dans le manifeste généré.
+9. **Canal « store » des statistiques** : la fiche actuelle (XPDCK4DDN3LK69) est une fiche EXE qui sert le même installeur que le site. Mettre « /S /store » dans les paramètres d'installation silencieuse du paquet (ou un nom de fichier contenant « store ») : l'installeur pose un marqueur `store-install` et l'app se compte en `channel: store` (`apps/desktop/build/installer.nsh`, `apps/desktop/main.cjs`).
 
 ## Pare-feu Windows (détail décisif pour le taux d'activation)
 

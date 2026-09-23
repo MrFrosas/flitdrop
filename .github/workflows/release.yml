@@ -204,3 +204,5 @@ jobs:
             - **Linux** : `.AppImage` (toutes distributions, se met a jour tout seul) ou `.deb` (Ubuntu, Debian, Mint). Presse-papiers : installez `wl-clipboard` (Wayland) ou `xclip` (X11).
 
             Au premier lancement, scannez le QR code avec le telephone, et c'est appaire.
+
+            Statistiques : des statistiques anonymes de base (sans identifiant, jamais vos fichiers) sont actives par defaut, apres un message dans l'app, et se coupent dans Reglages > Aide et confidentialite. Les statistiques detaillees et les rapports d'erreur ne partent qu'avec votre accord. Details : https://flitdrop.com/privacy

@@ -23,7 +23,17 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     lang: 'auto',
     shortcutsEnabled: true,
     autoUpdate: true,
+    basicStats: true,
     telemetryConsent: false,
+    telemetryAsked: false,
+    basicNoticeShown: false,
+    installId: 'i'.repeat(16),
+    installedAt: new Date().toISOString(),
+    installChannel: '',
+    lastVersion: '',
+    firstPairingDone: false,
+    firstTransferDone: false,
+    lastDailyActiveDay: '',
   }
 }
 

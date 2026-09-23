@@ -17,6 +17,43 @@ let _langFrom = null
 const tr = (key, params) =>
   _t ? _t(_resolveLang(core && core.cfg ? core.cfg.lang : 'auto', _langFrom(app.getLocale())), key, params) : key
 
+// Canal d'installation, pour les statistiques : Microsoft Store, installeur
+// Windows (nsis), .dmg, AppImage, .deb, ou lancement de développement. La
+// fiche du Store sert le même installeur .exe que le site : c'est l'installeur
+// qui pose le marqueur « store-install » à côté de l'exe (build/installer.nsh),
+// et le coeur garde « store » dans la config après une mise à jour.
+function installChannel() {
+  if (!app.isPackaged) return 'dev'
+  if (process.platform === 'win32') {
+    if (process.windowsStore) return 'store'
+    try {
+      if (fs.existsSync(path.join(path.dirname(process.execPath), 'store-install'))) return 'store'
+    } catch {
+      // illisible : installeur classique
+    }
+    return 'nsis'
+  }
+  if (process.platform === 'darwin') return 'dmg'
+  if (process.env.APPIMAGE) return 'appimage'
+  return 'deb'
+}
+
+// Rapports d'erreur du processus principal : confiés au coeur, qui les nettoie
+// et ne les envoie qu'avec l'accord « statistiques détaillées ». Le moniteur
+// n'altère pas le comportement par défaut d'Electron en cas d'exception.
+function reportMainError(err, handled) {
+  try {
+    if (core && core.telemetry) core.telemetry.exception(err, 'main', handled)
+  } catch {
+    // jamais d'erreur en rapportant une erreur
+  }
+}
+process.on('uncaughtExceptionMonitor', (err) => reportMainError(err, false))
+process.on('unhandledRejection', (reason) => {
+  console.error('Promesse rejetée non gérée :', reason)
+  reportMainError(reason, false)
+})
+
 // Surveille les IMAGES du presse-papiers (ce que la page web ne peut pas lire).
 // Electron donne la vraie image copiée : on en fait une miniature et on la
 // confie au coeur pour l'historique. `lastSig` évite les doublons.
@@ -122,6 +159,8 @@ if (!gotLock) {
     _langFrom = bundle.langFrom
     core = await startServer({
       quiet: true,
+      // statistiques : version de l'app, canal d'installation, langue du système
+      telemetry: { version: app.getVersion(), channel: installChannel(), systemLocale: app.getLocale() },
       // recopie d'une image de l'historique dans le presse-papiers système
       writeImageToClipboard: (png) => {
         try {

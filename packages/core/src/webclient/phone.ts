@@ -1,5 +1,4 @@
 import { b64uToBytes, seal, sealJSON, openJSON, open, jti } from './wdcrypto.js'
-import { initTelemetry, track, sizeBucket } from './telemetry.js'
 import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '../i18n.js'
 import { applyI18n } from '../i18n-dom.js'
 
@@ -23,7 +22,6 @@ interface HelloRes {
   instanceId?: string
   // clé de session renvoyée au 1er hello : remplace la clé (éphémère) du QR.
   newKey?: string
-  telemetryConsent?: boolean
   hosts?: string[]
 }
 interface OutboxItem {
@@ -95,6 +93,30 @@ async function post<T>(path: string, purpose: string, obj: Record<string, unknow
   const j = (await r.json()) as { p?: string }
   return (j.p ? openJSON(key!, j.p, aad(purpose + ':res')) : j) as T
 }
+
+/** Signale au PC un échec qu'il n'a pas pu voir lui-même (statistiques
+ *  anonymes, comptées par le PC selon le choix fait sur le PC). Requête
+ *  chiffrée comme les autres, vers le PC uniquement : le téléphone ne contacte
+ *  jamais internet. Aucun nom de fichier, seulement une catégorie. */
+function reportFail(direction: 'phone_to_pc' | 'pc_to_phone', mime: string | undefined, reason: string, itemId?: string) {
+  if (!pair || !key) return
+  const kind = (mime ?? '').startsWith('image/') ? 'photo' : 'file'
+  const body: Record<string, unknown> = { event: 'transfer_fail', direction, kind, reason }
+  if (itemId) body.itemId = itemId
+  void post('/api/phone/report', 'report', body).catch(() => {})
+}
+
+/** Confirme au PC qu'un de ses fichiers est arrivé entier et déchiffré : c'est
+ *  seulement là que le PC compte la réussite (identifiant d'élément seul). */
+function reportReceived(itemId: string) {
+  if (!pair || !key) return
+  void post('/api/phone/report', 'report', { event: 'transfer_ok', direction: 'pc_to_phone', itemId }).catch(() => {})
+}
+
+// codes d'erreur que la route de téléchargement du PC renvoie elle-même, après
+// les avoir comptés. Tout autre refus (appareil refusé, trop de requêtes) vient
+// d'avant cette route : c'est au téléphone de le signaler.
+const DL_CODES_COUNTED = new Set(['itemNotFound', 'notAFile', 'fileGone'])
 
 function show(screen: 'scan' | 'error' | 'main') {
   for (const s of ['scan', 'error', 'main']) $(`screen-${s}`).classList.toggle('hidden', s !== screen)
@@ -285,8 +307,6 @@ async function connect() {
       key = b64uToBytes(hello.newKey)
       localStorage.setItem(PAIR_KEY, JSON.stringify(pair))
     }
-    initTelemetry({ consent: hello.telemetryConsent === true, version: '' })
-    track('phone_connect', { platform })
     $('pcName').textContent = hello.desktopName
     $('statusDot').classList.remove('off')
     $('menuInfo').textContent = t('ph.menuInfo', { name: hello.desktopName })
@@ -381,15 +401,17 @@ async function sendFile(file: File): Promise<void> {
   if (file.size > maxBytes) {
     ui.li.classList.add('err')
     ui.state.textContent = t('ph.send.tooBig', { size: fmtSize(maxBytes) })
+    reportFail('phone_to_pc', file.type, 'tooBig')
     return
   }
   const chunkSize = SEND_CHUNK
   const chunks = Math.ceil(file.size / chunkSize)
+  let tid = ''
   try {
     const init = await post<{ transferId: string }>('/api/phone/transfer/init', 'init', {
       meta: { name: file.name || fallbackName, size: file.size, mime: file.type || undefined, chunkSize, chunks },
     })
-    const tid = init.transferId
+    tid = init.transferId
     const started = Date.now()
     const acked = new Set<number>()
     let sentBytes = 0
@@ -449,10 +471,11 @@ async function sendFile(file: File): Promise<void> {
     ui.bar.style.width = '100%'
     ui.li.classList.add('done')
     ui.state.textContent = t('ph.send.arrived', { name: hello?.desktopName ?? 'PC' })
-    track('transfer_ok', { size: sizeBucket(file.size), resumes })
   } catch (e) {
     const err = e as ApiFail
-    track('transfer_fail', { status: err.status ?? 0, reason: (err.code || err.message || '').slice(0, 40) })
+    // le PC compte lui-même les échecs qu'il voit ; on ne signale que la coupure
+    // avant le tout début du transfert, qu'il n'a jamais vue.
+    if (!tid && !err.status) reportFail('phone_to_pc', file.type, 'network')
     ui.li.classList.add('err')
     ui.state.textContent = err.code === 'refused' ? t('ph.send.refused') : errText(err)
   }
@@ -523,12 +546,20 @@ async function downloadItem(item: OutboxItem, li: HTMLLIElement) {
   bar.classList.remove('hidden')
   state.classList.remove('hidden')
   state.textContent = t('ph.recv.downloading')
+  let serverSaw = false
+  let reason: 'network' | 'incomplete' | 'decrypt' | 'refused' | 'busy' = 'network'
   try {
     const r = await fetch(`/api/phone/outbox/${item.id}/download`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-wd-device': pair!.id },
       body: envelope('download', { itemId: item.id }),
     })
+    if (!r.ok) {
+      const j = (await r.json().catch(() => ({}))) as { code?: string }
+      // réponse d'erreur de la route de téléchargement : le PC l'a déjà comptée
+      if (typeof j.code === 'string' && DL_CODES_COUNTED.has(j.code)) serverSaw = true
+      else reason = r.status === 401 || r.status === 403 ? 'refused' : r.status === 429 ? 'busy' : 'network'
+    }
     if (!r.ok || !r.body) throw new Error(t('ph.recv.dlFailed'))
     const reader = r.body.getReader()
     // file de morceaux réseau : on ne recopie JAMAIS tout l'accumulateur (l'ancien
@@ -584,7 +615,9 @@ async function downloadItem(item: OutboxItem, li: HTMLLIElement) {
           if (len === null || queued < 4 + len) break
           take(4)
           const sealed = take(len)
+          reason = 'decrypt'
           const plain = open(key!, sealed, aad('dl', `${item.id}|${frameIndex}`))
+          reason = 'network'
           parts.push(plain)
           received += plain.length
           frameIndex++
@@ -596,10 +629,14 @@ async function downloadItem(item: OutboxItem, li: HTMLLIElement) {
       }
       if (done) break
     }
-    if (total > 0 && received !== total) throw new Error(t('ph.recv.incomplete'))
+    if (total > 0 && received !== total) {
+      reason = 'incomplete'
+      throw new Error(t('ph.recv.incomplete'))
+    }
     const blob = new Blob(parts as BlobPart[], { type: item.mime || 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     downloadedIds.add(item.id)
+    reportReceived(item.id)
     li.classList.add('done')
     state.textContent = t('ph.recv.done')
     if ((item.mime ?? '').startsWith('image/')) {
@@ -618,6 +655,7 @@ async function downloadItem(item: OutboxItem, li: HTMLLIElement) {
   } catch (e) {
     state.textContent = (e as Error).message || t('ph.recv.dlFailed')
     li.classList.add('err')
+    if (!serverSaw) reportFail('pc_to_phone', item.mime, reason, item.id)
   }
 }
 

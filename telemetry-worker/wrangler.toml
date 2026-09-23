@@ -2,12 +2,14 @@ name = "flitdrop-telemetry"
 main = "worker.js"
 compatibility_date = "2026-06-01"
 
-# Analytics Engine : stockage des évènements, interrogeable en SQL.
+# Analytics Engine : stockage des évènements, interrogeable en SQL (facultatif :
+# sans cette liaison, le Worker relaie quand même vers PostHog).
 [[analytics_engine_datasets]]
 binding = "FLITDROP_TELEMETRY"
 dataset = "flitdrop_events"
 
-# Route sur le sous-domaine telemetry.flitdrop.com (domaine déjà sur Cloudflare).
+# Domaine personnalisé telemetry.flitdrop.com (domaine déjà sur Cloudflare).
+# Un domaine personnalisé se déclare sans chemin : le Worker ne répond qu'à /e.
 [[routes]]
-pattern = "telemetry.flitdrop.com/e"
+pattern = "telemetry.flitdrop.com"
 custom_domain = true

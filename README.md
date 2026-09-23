@@ -111,7 +111,7 @@ npm run dist:linux:ci -w @flitdrop/desktop   # Linux: .AppImage + .deb (x64)
 - [Architecture](docs/architecture.md) · [Security](docs/security.md) (with adversarial attack review)
 - [Clipboard sync: the truth](docs/clipboard.md) · [Offline mode](docs/offline.md) · [iOS Shortcut guide](docs/raccourci-ios.md)
 - [Native feasibility audit](docs/audit-faisabilite-native.md) · [Native apps roadmap](docs/roadmap-apps-natives.md)
-- [Telemetry (opt-in) and Cloudflare deploy](docs/telemetry.md)
+- [Telemetry (anonymous basic stats on by default, detailed stats opt-in) and Cloudflare deploy](docs/telemetry.md)
 - [Microsoft Store publishing](docs/microsoft-store.md) · [Business model](docs/business.md)
 
 ## Honest limitations

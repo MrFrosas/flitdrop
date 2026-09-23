@@ -29,6 +29,7 @@ import { NonceCache, open, seal, openFreshJSON, sealJSON, randomToken } from './
 import { readClipboard, writeClipboard } from './clip.js'
 import { ClipHistory } from './cliphistory.js'
 import { saveMultipartFiles } from './uploads.js'
+import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
 import { t as tr, resolveLang, langFrom, acceptLang } from './i18n.js'
 import {
   b64u,
@@ -43,6 +44,25 @@ import {
 
 // ré-exporté pour l'app Electron (main.cjs) : tray, notifications, dialogue.
 export { t, resolveLang, langFrom } from './i18n.js'
+
+// réglages dont le NOM (jamais la valeur) peut remonter dans settings_changed
+const SETTINGS_KEYS = [
+  'deviceName',
+  'downloadDir',
+  'maxFileMB',
+  'requireApproval',
+  'clipboardAutoPush',
+  'clipHistoryEnabled',
+  'clipHistoryMaxItems',
+  'clipHistoryMaxDays',
+  'theme',
+  'skin',
+  'lang',
+  'shortcutsEnabled',
+  'autoUpdate',
+  'basicStats',
+  'telemetryConsent',
+] as const
 
 const PUBLIC_DIR = path.join(moduleDir(import.meta.url), '..', 'public')
 const ADMIN_COOKIE = 'wd_admin'
@@ -72,6 +92,9 @@ export interface StartOptions {
   // fourni par l'app de bureau (Electron) pour recopier une image de
   // l'historique dans le presse-papiers du système.
   writeImageToClipboard?: (png: Buffer) => void
+  // fourni par l'app de bureau uniquement : version, canal d'installation et
+  // langue du système. Sans lui (CLI, tests), la télémétrie reste éteinte.
+  telemetry?: TelemetryOptions
 }
 
 export interface RunningServer {
@@ -86,6 +109,8 @@ export interface RunningServer {
   /** Enregistre une image copiée sur le PC dans l'historique du presse-papiers
    *  (appelé par l'app de bureau qui lit l'image via Electron). */
   addClipboardImage: (png: Buffer, thumb: string, w: number, h: number) => void
+  /** Statistiques et rapports d'erreur (no-op sans opts.telemetry). */
+  telemetry: Telemetry
   close: () => Promise<void>
 }
 
@@ -128,6 +153,15 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const nonces = new NonceCache()
   const transfers = new TransferManager(() => cfg, history, hub)
   const clipHistory = new ClipHistory(home)
+  const telemetry = new Telemetry(
+    { home, cfg, pairedDevices: () => devices.listPublic().filter((d) => d.status === 'active').length },
+    opts.telemetry ?? { version: VERSION, channel: 'dev', disabled: true }
+  )
+  // un transfert téléphone -> PC qui échoue (refus, disque, expiration…) est
+  // compté une seule fois, avec son code d'erreur, jamais son nom de fichier.
+  transfers.failureHook = (t, status, reason) => telemetry.transferFail('phone_to_pc', kindOf(t.mime), status, reason)
+  // textes de la file d'envoi déjà comptés comme reçus par tel téléphone
+  const textDelivered = new Set<string>()
 
   // ---------- surveillance du presse-papiers du PC ----------
   // Le seul sens réellement automatisable côté PC : on lit notre propre presse-
@@ -151,7 +185,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       hub.broadcast('cliphistory-changed', {})
     }
     if (cfg.clipboardAutoPush) {
-      outbox.addText(text)
+      outbox.addText(text, 'clipboard')
       hub.broadcast('outbox-changed', {})
       hub.broadcast('clip-autopushed', { preview: text.slice(0, 120) })
     }
@@ -310,6 +344,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const fresh = devices.get(dev.id)
     if (wasPending) hub.broadcast('device-paired', { id: dev.id, name: fresh?.name, platform: fresh?.platform })
     else hub.broadcast('device-online', { id: dev.id, name: fresh?.name })
+    // compté côté serveur : une seule fois par appairage, même avec plusieurs onglets
+    if (wasPending) telemetry.pairingSuccess(fresh?.platform)
+    else telemetry.phoneConnect(dev.id, fresh?.platform)
     res.json({
       p: sealJSON(
         key,
@@ -326,7 +363,6 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
           // clé de session (présente seulement au 1er hello) : le téléphone
           // remplace la clé du QR par celle-ci pour la suite.
           newKey: rotatedKey,
-          telemetryConsent: cfg.telemetryConsent,
           // adresses de secours : si l'IP du PC change, la page sait où le
           // retrouver sans re-scanner le QR code.
           hosts: [
@@ -346,6 +382,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       res.json({ p: sealJSON(key, { transferId: t.id }, aad(dev.id, 'init:res')) })
     } catch (e) {
       const err = e as ApiError
+      const meta = payload.meta as { mime?: unknown } | undefined
+      telemetry.transferFail('phone_to_pc', kindOf(typeof meta?.mime === 'string' ? meta.mime : undefined), err.code ?? 400, err.key ?? 'internal')
       res.status(err.code ?? 400).json({ code: err.key ?? 'internal' })
     }
   })
@@ -378,12 +416,19 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
           // clé suivante
         }
       }
-      if (!plain) return res.status(403).json({ code: 'badChunk' })
+      if (!plain) {
+        // le téléphone abandonnera : si le transfert expire ensuite, c'est la raison
+        t.lastErrorKey = 'badChunk'
+        t.lastErrorStatus = 403
+        return res.status(403).json({ code: 'badChunk' })
+      }
       try {
         await transfers.writeChunk(t, n, plain)
         res.json({ received: t.received })
       } catch (e) {
         const err = e as ApiError
+        t.lastErrorKey = err.key ?? 'internal'
+        t.lastErrorStatus = err.code ?? 400
         res.status(err.code ?? 400).json({ error: err.message })
       }
     }
@@ -411,9 +456,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     try {
       const finalPath = await transfers.finish(t)
       devices.touch(dev.id)
+      telemetry.transferOk('phone_to_pc', kindOf(t.mime), t.size)
       res.json({ p: sealJSON(key, { ok: true, name: path.basename(finalPath) }, aad(dev.id, 'finish:res')) })
     } catch (e) {
       const err = e as ApiError
+      transfers.reportFailure(t, err.code ?? 400, err.key ?? 'internal')
       res.status(err.code ?? 400).json({ code: err.key ?? 'internal' })
     }
   })
@@ -451,12 +498,21 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       text: text.length <= 32_000 ? text : text.slice(0, 32_000),
     })
     devices.touch(dev.id)
+    telemetry.transferOk('phone_to_pc', mode === 'clip' ? 'clipboard' : 'text')
     res.json({ p: sealJSON(key, { ok: true, copied }, aad(dev.id, 'text:res')) })
   })
 
   app.post('/api/phone/outbox', jsonSmall, phoneAuth('outbox'), (req, res) => {
     const { dev, key } = wd(req)
     devices.touch(dev.id)
+    // un texte de la file est « reçu » dès que ce téléphone l'a en main (il
+    // s'affiche tel quel) : compté une fois par texte et par téléphone.
+    for (const item of outbox.listRaw()) {
+      if (item.kind !== 'text' || textDelivered.has(`${item.id}|${dev.id}`)) continue
+      if (textDelivered.size > 2000) textDelivered.clear()
+      textDelivered.add(`${item.id}|${dev.id}`)
+      telemetry.transferOk('pc_to_phone', item.origin === 'clipboard' ? 'clipboard' : 'text')
+    }
     res.json({
       p: sealJSON(key, { desktopName: cfg.deviceName, items: outbox.listForPhone() }, aad(dev.id, 'outbox:res')),
     })
@@ -495,21 +551,40 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       const st = fs.statSync(reserved.path)
       outbox.addFile(path.basename(reserved.path), reserved.path, st.size, 'image/png')
       hub.broadcast('outbox-changed', {})
+    } else {
+      // le texte part dans la réponse et le téléphone le copie aussitôt
+      telemetry.transferOk('pc_to_phone', 'clipboard')
     }
     res.json({ p: sealJSON(key, { ok: true, kind: entry.kind }, aad(dev.id, 'clip-tophone:res')) })
   })
 
+  // Envois de fichiers PC vers téléphone en attente de la confirmation du
+  // téléphone, et échecs déjà comptés par le serveur (clé « élément|appareil »).
+  // Oubliés au bout d'une heure ; bornés en taille.
+  const awaitingPhoneOk = new Map<string, { ts: number; kind: Kind; size?: number }>()
+  const serverCountedFail = new Map<string, { ts: number }>()
+  const forget = <T extends { ts: number }>(m: Map<string, T>, now: number) => {
+    for (const [k, v] of m) if (now - v.ts > 60 * 60 * 1000 || m.size > 500) m.delete(k)
+  }
+
   app.post('/api/phone/outbox/:id/download', jsonSmall, phoneAuth('download'), async (req, res) => {
     const { dev, key, payload } = wd(req)
     const item = outbox.get(String(req.params.id))
-    if (!item || payload.itemId !== item.id) return res.status(404).json({ code: 'itemNotFound' })
-    if (item.kind !== 'file' || !item.filePath) return res.status(400).json({ code: 'notAFile' })
-    let stream: fs.ReadStream
-    try {
-      stream = fs.createReadStream(item.filePath, { highWaterMark: 4 * 1024 * 1024 })
-    } catch {
-      return res.status(410).json({ code: 'fileGone' })
+    const dlFail = (status: number, code: string) => {
+      telemetry.transferFail('pc_to_phone', kindOf(item?.mime), status, code)
+      return res.status(status).json({ code })
     }
+    if (!item || payload.itemId !== item.id) return dlFail(404, 'itemNotFound')
+    if (item.kind !== 'file' || !item.filePath) return dlFail(400, 'notAFile')
+    // createReadStream ne lève rien pour un fichier absent (l'erreur arrive
+    // pendant la lecture) : on vérifie avant d'envoyer le moindre octet
+    try {
+      if (!(await fs.promises.stat(item.filePath)).isFile()) return dlFail(410, 'fileGone')
+    } catch {
+      return dlFail(410, 'fileGone')
+    }
+    const dlKey = `${item.id}|${dev.id}`
+    const stream = fs.createReadStream(item.filePath, { highWaterMark: 4 * 1024 * 1024 })
     res.setHeader('Content-Type', 'application/octet-stream')
     res.setHeader('Cache-Control', 'no-store')
     // si le client se déconnecte (téléphone qui quitte le wifi, onglet fermé),
@@ -546,6 +621,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       }
       if (aborted) return
       res.end()
+      // réussite comptée seulement quand le téléphone confirme avoir tout reçu
+      // et déchiffré (/api/phone/report). Re-téléchargement du même fichier par
+      // le même téléphone : pas recompté.
+      if (!item.downloads[dev.id]) awaitingPhoneOk.set(dlKey, { ts: Date.now(), kind: kindOf(item.mime), size: item.size })
       outbox.markDownloaded(item.id, dev.id)
       history.add({
         dir: 'out',
@@ -558,11 +637,54 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       })
       hub.broadcast('outbox-downloaded', { itemId: item.id, name: item.name, deviceName: dev.name })
     } catch {
+      // lecture du disque impossible en cours de route : compté ici, et le
+      // signalement que le téléphone enverra pour ce même envoi est ignoré
+      if (!aborted) {
+        telemetry.transferFail('pc_to_phone', kindOf(item.mime), 500, 'readError')
+        serverCountedFail.set(dlKey, { ts: Date.now() })
+      }
       if (!res.writableEnded) res.destroy()
     } finally {
       res.off('close', onClose)
       stream.destroy()
     }
+  })
+
+  // Échecs que seul le téléphone voit (fichier trop gros refusé avant envoi,
+  // coupure réseau, requête refusée, téléchargement reçu incomplet ou
+  // illisible), et confirmation qu'un fichier du PC est bien arrivé : la
+  // réussite n'est comptée qu'à ce moment, pour un envoi que le serveur a
+  // vraiment terminé, et un échec signalé annule l'attente (jamais réussi ET
+  // raté). Authentifié comme le reste de l'API téléphone ; le téléphone ne
+  // contacte jamais internet lui-même. Valeurs strictement bornées, aucun
+  // texte libre.
+  const REPORT_REASONS = new Set(['tooBig', 'network', 'incomplete', 'decrypt', 'refused', 'busy'])
+  const reportBudget = new Map<string, number[]>()
+  app.post('/api/phone/report', jsonSmall, phoneAuth('report'), (req, res) => {
+    const { dev, key, payload } = wd(req)
+    const direction = payload.direction === 'pc_to_phone' ? 'pc_to_phone' : payload.direction === 'phone_to_pc' ? 'phone_to_pc' : null
+    const kind = payload.kind === 'photo' || payload.kind === 'text' || payload.kind === 'clipboard' ? payload.kind : 'file'
+    const reason = typeof payload.reason === 'string' && REPORT_REASONS.has(payload.reason) ? payload.reason : null
+    const now = Date.now()
+    forget(awaitingPhoneOk, now)
+    forget(serverCountedFail, now)
+    const itemKey = typeof payload.itemId === 'string' ? `${payload.itemId.slice(0, 64)}|${dev.id}` : null
+    const waiting = itemKey ? awaitingPhoneOk.get(itemKey) : undefined
+    if (payload.event === 'transfer_ok' && direction === 'pc_to_phone' && itemKey && waiting) {
+      awaitingPhoneOk.delete(itemKey)
+      telemetry.transferOk('pc_to_phone', waiting.kind, waiting.size)
+    }
+    const recent = (reportBudget.get(dev.id) ?? []).filter((ts) => now - ts < 60 * 60 * 1000)
+    if (payload.event === 'transfer_fail' && direction && reason && recent.length < 30) {
+      if (itemKey) awaitingPhoneOk.delete(itemKey)
+      // déjà compté par le serveur (lecture du disque impossible) : pas deux fois
+      if (!(itemKey && serverCountedFail.delete(itemKey))) {
+        recent.push(now)
+        telemetry.transferFail(direction as Direction, kind as Kind, 0, reason)
+      }
+    }
+    reportBudget.set(dev.id, recent)
+    res.json({ p: sealJSON(key, { ok: true }, aad(dev.id, 'report:res')) })
   })
 
   // ---------- API Raccourci iOS (jeton simple, voir docs/raccourci-ios.md) ----------
@@ -593,8 +715,12 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     fs.mkdirSync(cfg.downloadDir, { recursive: true })
     try {
       const saved = await saveMultipartFiles(req, cfg.downloadDir, cfg.maxFileMB * 1024 * 1024)
-      if (saved.length === 0) return res.status(400).type('text/plain; charset=utf-8').send(st(req, 'srv.scNoFile'))
+      if (saved.length === 0) {
+        telemetry.transferFail('phone_to_pc', 'file', 400, 'noFile')
+        return res.status(400).type('text/plain; charset=utf-8').send(st(req, 'srv.scNoFile'))
+      }
       for (const f of saved) {
+        telemetry.transferOk('phone_to_pc', kindOf(f.mime), f.size)
         history.add({
           dir: 'in',
           kind: 'file',
@@ -614,6 +740,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         .send(total === 1 ? st(req, 'srv.scArrivedOne', { name: saved[0]?.name ?? '', pc: cfg.deviceName }) : st(req, 'srv.scArrivedMany', { n: total, pc: cfg.deviceName }))
     } catch (e) {
       const err = e as Error & { code?: number }
+      telemetry.transferFail('phone_to_pc', 'file', err.code === 413 ? 413 : 400, err.code === 413 ? 'tooBig' : 'uploadFailed')
       res.status(err.code === 413 ? 413 : 400).type('text/plain; charset=utf-8').send(
         err.code === 413 ? st(req, 'srv.scTooBig', { mb: cfg.maxFileMB }) : st(req, 'srv.scFailed')
       )
@@ -632,6 +759,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     history.add({ dir: 'in', kind: 'clip', preview: text.slice(0, 160), deviceId: dev.id, deviceName: dev.name, status: 'ok' })
     hub.broadcast('text-received', { deviceName: dev.name, mode: 'clip', copied, text: text.slice(0, 32_000) })
     devices.touch(dev.id)
+    telemetry.transferOk('phone_to_pc', 'clipboard')
     res.type('text/plain; charset=utf-8').send(st(req, 'srv.scCopied', { pc: cfg.deviceName }))
   })
 
@@ -641,6 +769,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const text = await readClipboard().catch(() => '')
     history.add({ dir: 'out', kind: 'clip', preview: text.slice(0, 160), deviceId: dev.id, deviceName: dev.name, status: 'ok' })
     devices.touch(dev.id)
+    if (text) telemetry.transferOk('pc_to_phone', 'clipboard')
     res.type('text/plain; charset=utf-8').send(text)
   })
 
@@ -676,7 +805,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         lang: cfg.lang,
         shortcutsEnabled: cfg.shortcutsEnabled,
         autoUpdate: cfg.autoUpdate,
+        basicStats: cfg.basicStats,
         telemetryConsent: cfg.telemetryConsent,
+        telemetryAsked: cfg.telemetryAsked,
+        basicNoticeShown: cfg.basicNoticeShown,
         port: actualPort,
       },
       hostname: os.hostname(),
@@ -729,7 +861,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       const st = fs.statSync(reserved.path)
       outbox.addFile(path.basename(reserved.path), reserved.path, st.size, 'image/png')
     } else {
-      outbox.addText(entry.text)
+      outbox.addText(entry.text, 'clipboard')
     }
     hub.broadcast('outbox-changed', {})
     res.json({ ok: true })
@@ -767,6 +899,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   admin.post('/pair/new', (_req, res) => {
     devices.prunePending(PENDING_PAIRING_TTL_MS)
     const d = devices.create(cfg.instanceId)
+    telemetry.track('pair_qr_shown')
     res.json({ deviceId: d.id, url: pairUrl(d) })
   })
 
@@ -826,7 +959,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   admin.post('/clipboard/push', async (_req, res) => {
     const text = await readClipboard().catch(() => '')
     if (!text) return res.status(400).json({ code: 'clipboardEmpty' })
-    const item = outbox.addText(text.slice(0, MAX_TEXT_BYTES))
+    const item = outbox.addText(text.slice(0, MAX_TEXT_BYTES), 'clipboard')
     hub.broadcast('outbox-changed', {})
     res.json({ ok: true, id: item.id, preview: text.slice(0, 120) })
   })
@@ -858,6 +991,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   admin.post('/settings', jsonSmall, (req, res) => {
     const body = req.body as Partial<Config>
+    // instantané pour savoir quels réglages ont VRAIMENT changé (statistiques :
+    // on n'envoie que le nom du réglage, jamais sa valeur)
+    const before: Record<string, unknown> = { ...cfg }
     if (typeof body.deviceName === 'string' && body.deviceName.trim()) cfg.deviceName = body.deviceName.trim().slice(0, 40)
     if (typeof body.downloadDir === 'string' && body.downloadDir.trim()) {
       const dir = body.downloadDir.trim()
@@ -894,9 +1030,70 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (body.lang === 'auto' || body.lang === 'fr' || body.lang === 'en' || body.lang === 'de') cfg.lang = body.lang
     if (typeof body.shortcutsEnabled === 'boolean') cfg.shortcutsEnabled = body.shortcutsEnabled
     if (typeof body.autoUpdate === 'boolean') cfg.autoUpdate = body.autoUpdate
-    if (typeof body.telemetryConsent === 'boolean') cfg.telemetryConsent = body.telemetryConsent
+    if (typeof body.basicStats === 'boolean' || typeof body.telemetryConsent === 'boolean') {
+      const basic = typeof body.basicStats === 'boolean' ? body.basicStats : cfg.basicStats
+      // couper la base coupe aussi le détaillé, sauf « oui » explicite dans la même requête
+      const full = typeof body.telemetryConsent === 'boolean' ? body.telemetryConsent : basic === false ? false : cfg.telemetryConsent
+      applyTelemetryChoice(basic, full)
+    }
     saveConfig(home, cfg)
+    if (cfg.basicNoticeShown) telemetry.noticeShown()
+    for (const k of SETTINGS_KEYS) if (before[k] !== (cfg as unknown as Record<string, unknown>)[k]) telemetry.track('settings_changed', { key: k })
     hub.broadcast('settings-changed', {})
+    res.json({ ok: true })
+  })
+
+  // Les deux niveaux sont liés : détaillé implique de base, couper la base
+  // coupe tout. Répondre (oui, non, réglages) vaut réponse à la question.
+  const applyTelemetryChoice = (basic: boolean, full: boolean) => {
+    cfg.telemetryConsent = full
+    cfg.basicStats = basic || full
+    cfg.telemetryAsked = true
+    // répondre suppose d'avoir lu la question : l'annonce a été vue
+    cfg.basicNoticeShown = true
+  }
+
+  // Choix explicite « Aider à améliorer Flitdrop ? » (accueil, carte, réglages).
+  admin.post('/telemetry/choice', jsonSmall, (req, res) => {
+    const body = req.body as { choice?: unknown; where?: unknown }
+    const choice = body.choice === 'full' || body.choice === 'basic_only' || body.choice === 'none' ? body.choice : null
+    const where = body.where === 'welcome' || body.where === 'prompt' || body.where === 'settings' ? body.where : null
+    if (!choice || !where) return res.status(400).json({ code: 'internal' })
+    applyTelemetryChoice(choice !== 'none', choice === 'full')
+    saveConfig(home, cfg)
+    // événement détaillé : ne part QUE si la personne vient de dire oui
+    telemetry.track('telemetry_choice', { choice, where })
+    telemetry.noticeShown()
+    hub.broadcast('settings-changed', {})
+    res.json({ ok: true })
+  })
+
+  // L'interface signale qu'elle vient d'afficher (fenêtre visible) le texte qui
+  // annonce les statistiques de base : c'est seulement à partir de là qu'elles
+  // partent. Jusque-là, lancement et actif du jour restent en attente.
+  admin.post('/telemetry/notice', (_req, res) => {
+    telemetry.noticeShown()
+    res.json({ ok: true })
+  })
+
+  // Événements d'interface du PC (écran d'accueil, historique…) et erreurs de
+  // la page. Liste fermée ; le niveau détaillé est exigé par le module.
+  admin.post('/telemetry/event', jsonSmall, (req, res) => {
+    const body = req.body as { event?: unknown; error?: { type?: unknown; message?: unknown; stack?: unknown } }
+    if (body.event === '$exception' && body.error && typeof body.error === 'object') {
+      const e = body.error
+      telemetry.exception(
+        {
+          name: typeof e.type === 'string' ? e.type : 'Error',
+          message: typeof e.message === 'string' ? e.message.slice(0, 2000) : '',
+          stack: typeof e.stack === 'string' ? e.stack.slice(0, 8000) : '',
+        },
+        'desktop',
+        false
+      )
+    } else if (typeof body.event === 'string' && UI_EVENTS.has(body.event)) {
+      telemetry.track(body.event)
+    }
     res.json({ ok: true })
   })
 
@@ -906,6 +1103,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   app.use((_req, res) => res.status(404).json({ code: 'notFound' }))
   app.use((err: Error & { status?: number; type?: string }, _req: Request, res: Response, _next: NextFunction) => {
+    // erreur inattendue du serveur (pas un corps refusé, déjà 4xx) : rapport
+    // d'erreur nettoyé, si la personne a accepté les statistiques détaillées
+    if (!err.status || err.status >= 500) telemetry.exception(err, 'server', true)
     if (res.headersSent) return res.destroy()
     res.status(err.status ?? 500).json({ code: 'internal' })
   })
@@ -967,6 +1167,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   actualPort = (server.address() as AddressInfo).port
 
   const adminUrl = `http://127.0.0.1:${actualPort}/app/?k=${encodeURIComponent(cfg.adminToken)}`
+  // premier lancement / mise à jour / actif du jour (no-op hors app de bureau)
+  telemetry.start()
 
   const addLocalFiles = async (paths: string[]): Promise<number> => {
     let added = 0
@@ -1006,7 +1208,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     adminUrl,
     addLocalFiles,
     addClipboardImage,
+    telemetry,
     close: async () => {
+      telemetry.stop()
       clearInterval(clipTimer)
       clearInterval(clipPurgeTimer)
       clearInterval(pendingTimer)

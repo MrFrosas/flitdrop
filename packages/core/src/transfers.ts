@@ -39,6 +39,11 @@ export interface Transfer {
   startedAt: number
   lastActivity: number
   historyId: string
+  // statistiques : dernier code d'erreur vu (raison de l'échec si le transfert
+  // expire ensuite) et échec déjà compté (un transfert = un seul échec compté).
+  lastErrorKey?: string
+  lastErrorStatus?: number
+  failCounted?: boolean
 }
 
 export class ApiError extends Error {
@@ -58,6 +63,8 @@ export class TransferManager {
   private lastProgressPush = new Map<string, number>()
   /** Posé par le serveur quand la validation manuelle est activée. */
   approvalHook: ((info: { deviceName: string; name: string; size: number }) => Promise<boolean>) | null = null
+  /** Posé par le serveur : un transfert a échoué (statistiques anonymes). */
+  failureHook: ((t: Transfer, status: number, reason: string) => void) | null = null
 
   constructor(
     private getCfg: () => Config,
@@ -164,7 +171,7 @@ export class TransferManager {
       await handle.write(plain, 0, plain.length, index * t.chunkSize)
     } catch (e) {
       t.have.delete(index) // rollback : cet index n'a pas été écrit
-      await this.abort(t, 'erreur d’écriture disque')
+      await this.abort(t, 'erreur d’écriture disque', 'diskWrite', 500)
       throw new ApiError('erreur d’écriture disque', 500, 'diskWrite')
     }
     t.bytes += plain.length
@@ -210,9 +217,23 @@ export class TransferManager {
     return finalPath
   }
 
-  async abort(t: Transfer, reason: string): Promise<void> {
+  /** Compte l'échec d'un transfert UNE seule fois, quel que soit le chemin
+   *  (erreur au finish, puis expiration, par exemple). */
+  reportFailure(t: Transfer, status: number, reason: string): void {
+    if (t.failCounted) return
+    t.failCounted = true
+    try {
+      this.failureHook?.(t, status, reason)
+    } catch {
+      // statistiques non critiques
+    }
+  }
+
+  async abort(t: Transfer, reason: string, key?: string, status = 0): Promise<void> {
     if (t.status !== 'active') return
     t.status = 'error'
+    // l'arrêt de l'app n'est pas un échec de transfert
+    if (key !== 'shutdown') this.reportFailure(t, status || t.lastErrorStatus || 0, key ?? t.lastErrorKey ?? 'aborted')
     const handle = this.handles.get(t.id)
     if (handle) {
       await handle.close().catch(() => {})
@@ -228,11 +249,12 @@ export class TransferManager {
   private sweep(): void {
     const now = Date.now()
     for (const t of [...this.active.values()]) {
-      if (now - t.lastActivity > TRANSFER_IDLE_TIMEOUT_MS) void this.abort(t, 'transfert expiré (inactivité)')
+      if (now - t.lastActivity > TRANSFER_IDLE_TIMEOUT_MS)
+        void this.abort(t, 'transfert expiré (inactivité)', t.lastErrorKey ?? 'expired', t.lastErrorStatus ?? 408)
     }
   }
 
   async closeAll(): Promise<void> {
-    for (const t of [...this.active.values()]) await this.abort(t, 'arrêt du serveur')
+    for (const t of [...this.active.values()]) await this.abort(t, 'arrêt du serveur', 'shutdown')
   }
 }
