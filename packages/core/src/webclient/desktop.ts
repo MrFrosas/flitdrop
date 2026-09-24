@@ -495,6 +495,7 @@ async function refresh() {
   state = await api<State>('/state')
   renderAll()
   renderConsentCard()
+  wakeRadar()
 }
 
 // ---------- état du système (app de bureau) ----------
@@ -514,16 +515,31 @@ function renderHost() {
 const hostAction = (action: 'openMacUpdate' | 'openLoginItems') =>
   postJSON('/host/action', { action }).catch((e) => toast((e as Error).message))
 
-// animations du radar en pause tant que la fenêtre est cachée
+// Animations du radar : en pause quand la fenêtre est cachée ou n'a pas le
+// focus, et au repos après trois pulsations sans rien de neuf. Une fenêtre
+// visible qui pulse en continu coûte 15 à 20 % d'un cœur (mesuré sur Mac :
+// toute la fenêtre, transparente et floutée, est redessinée à chaque image).
+const RADAR_REST_MS = 11_000
+let radarRestTimer: ReturnType<typeof setTimeout> | undefined
+function wakeRadar() {
+  const radar = document.querySelector('.radar')
+  if (!radar) return
+  radar.classList.remove('rest')
+  clearTimeout(radarRestTimer)
+  radarRestTimer = setTimeout(() => radar.classList.add('rest'), RADAR_REST_MS)
+}
 function syncVisibility() {
-  document.documentElement.classList.toggle('paused', document.hidden)
+  document.documentElement.classList.toggle('paused', document.hidden || !document.hasFocus())
   if (document.hidden) return
   if (dirty) void refresh()
   // les points « en ligne » dépendent de l'heure : on les remet à jour
   else renderRadar()
+  wakeRadar()
 }
 syncVisibility()
 document.addEventListener('visibilitychange', syncVisibility)
+window.addEventListener('focus', syncVisibility)
+window.addEventListener('blur', () => document.documentElement.classList.add('paused'))
 
 // ---------- question « aider à améliorer » ----------
 
