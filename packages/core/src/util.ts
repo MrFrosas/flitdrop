@@ -117,11 +117,12 @@ const unreachable = (ip: string) => linkLocal(ip) || /^100\.(?:6[4-9]|[7-9]\d|1[
 
 /** Partage de connexion du PC en marche : c'est alors par là que le téléphone
  *  arrive (point d'accès mobile Windows, partage Internet du Mac, point d'accès
- *  de NetworkManager sous Linux). */
+ *  de NetworkManager sous Linux). Sous Linux, seulement sur une carte wifi :
+ *  10.42.0.1 est aussi l'adresse du pont de conteneurs de k3s (cni0). */
 function isHotspot(ifname: string, ip: string, platform: string): boolean {
   if (platform === 'win32') return ip === '192.168.137.1'
   if (platform === 'darwin') return /^bridge1\d\d$/.test(ifname) && /^192\.168\.[2-9]\.1$/.test(ip)
-  if (platform === 'linux') return /^10\.42\.\d+\.1$/.test(ip)
+  if (platform === 'linux') return /^(?:wl|wlan)/.test(ifname) && /^10\.42\.\d+\.1$/.test(ip)
   return false
 }
 
@@ -136,11 +137,16 @@ function legacyScore(ifname: string, ip: string): number {
 }
 
 /** Rang d'une adresse : 3 partage de connexion du PC, 2 vraie carte wifi ou
- *  filaire, 1 inconnue, 0 injoignable par le téléphone (virtuelle, VPN). */
+ *  filaire, 1 inconnue, 0 injoignable par le téléphone (virtuelle, VPN).
+ *  Une carte virtuelle reste écartée même si son adresse ressemble à un
+ *  partage de connexion. Sur Mac, le partage passe au même rang qu'une vraie
+ *  carte : bridge100 existe aussi quand le Mac partage son wifi vers un
+ *  appareil filaire, et un téléphone sur ce wifi ne le joint pas ; l'ancien
+ *  classement départage, comme avant. */
 function rankOf(ifname: string, ip: string, mac: string, platform: string): number {
   if (unreachable(ip)) return 0
-  if (isHotspot(ifname, ip, platform)) return 3
   if (VIRTUAL_NAME.test(ifname) || VIRTUAL_MAC.test(mac)) return 0
+  if (isHotspot(ifname, ip, platform)) return platform === 'darwin' ? 2 : 3
   if (HYPERV_NAME.test(ifname) || HYPERV_MAC.test(mac)) return 1
   const physical = PHYSICAL_NAME[platform]
   return physical && physical.test(ifname) ? 2 : 1

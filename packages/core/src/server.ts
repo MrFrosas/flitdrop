@@ -29,7 +29,7 @@ import { NonceCache, open, seal, openFreshJSON, sealJSON, randomToken } from './
 import { createClipboardText, type ClipboardTextBackend } from './clip.js'
 import { ClipHistory } from './cliphistory.js'
 import { TransferActivity } from './activity.js'
-import { HOST_ACTIONS, type HostAction, type HostState } from './host.js'
+import { HOST_ACTIONS, type HostAction, type HostPatch, type HostState } from './host.js'
 import { saveMultipartFiles } from './uploads.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
 import { t as tr, resolveLang, langFrom, acceptLang } from './i18n.js'
@@ -59,6 +59,7 @@ export {
   isLinuxAutostart,
   setLinuxAutostart,
   refreshLinuxAutostart,
+  followRenamedAppImage,
   type HostState,
   type HostAction,
 } from './host.js'
@@ -148,12 +149,14 @@ export interface RunningServer {
   /** Activité des transferts : événement 'transfer' { active, progress }.
    *  active passe à true dès que des octets passent (dans un sens ou dans
    *  l'autre), à false 30 s après le dernier octet ; progress (0 à 1) est la
-   *  progression globale quand elle est connue, sinon null. Au plus 2
-   *  annonces par seconde. */
+   *  progression globale quand elle est connue, sinon null ; running compte
+   *  les transferts encore en cours (0 : tout est arrivé). Au plus 2
+   *  annonces par seconde, et une au moins toutes les 10 minutes tant que des
+   *  octets passent. */
   activity: TransferActivity
   /** L'app de bureau signale un état du système à la page (nouvelle version
    *  sur Mac, démarrage automatique à autoriser) : la page se redessine. */
-  setHost: (patch: Partial<HostState>) => void
+  setHost: (patch: HostPatch) => void
   close: () => Promise<void>
 }
 
@@ -358,11 +361,13 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
     req.on('newListener', onNew)
   }
-  // Corps d'au moins `minBytes` (texte long, envoi par Raccourci) : compté
-  // comme un transfert, avec sa progression quand la taille est annoncée.
-  const trackBody = (prefix: string, minBytes: number) => (req: Request, _res: Response, next: NextFunction) => {
+  // Corps d'au moins `minBytes` (envoi par Raccourci) : compté comme un
+  // transfert, avec sa progression quand la taille est annoncée. `allow` :
+  // seulement pour un expéditeur reconnu, sinon n'importe qui sur le wifi
+  // garderait le PC éveillé avec de faux envois.
+  const trackBody = (prefix: string, minBytes: number, allow: (req: Request) => boolean) => (req: Request, _res: Response, next: NextFunction) => {
     const total = Number(req.headers['content-length']) || 0
-    if (total < minBytes) return next()
+    if (total < minBytes || !allow(req)) return next()
     const key = `${prefix}:${randomToken(6)}`
     let got = 0
     watchBody(req, (n) => {
@@ -382,8 +387,14 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // Chemin de connexion : un téléphone a ouvert la page (QR scanné). Compté
   // ici, par le PC, jamais par le téléphone ; la page elle-même, pas ses
   // fichiers. Une page ouverte sur le PC lui-même n'est pas un téléphone.
+  // Seulement quand un QR attend d'être scanné : un téléphone déjà appairé qui
+  // rouvre son icône ou recharge la page n'est pas compté.
+  const pairingShown = () => {
+    const now = Date.now()
+    return devices.listPublic().some((d) => d.status === 'pending' && now - Date.parse(d.createdAt) <= PENDING_PAIRING_TTL_MS)
+  }
   app.use('/s', (req, _res, next) => {
-    if (req.method === 'GET' && (req.path === '/' || req.path === '/index.html') && !isLoopback(req.socket.remoteAddress)) {
+    if (req.method === 'GET' && (req.path === '/' || req.path === '/index.html') && !isLoopback(req.socket.remoteAddress) && pairingShown()) {
       const ua = req.headers['user-agent']
       telemetry.phonePageOpened(req.socket.remoteAddress ?? '?', typeof ua === 'string' ? ua : undefined)
     }
@@ -531,8 +542,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       const n = Number(req.params.n)
       if (!Number.isInteger(n) || n < 0 || n >= t.chunks) return res.status(400).json({ code: 'badIndex' })
       // un morceau de 8 Mo peut mettre longtemps sur un wifi lent : chaque
-      // paquet reçu compte comme activité, pas seulement le morceau complet
-      watchBody(req, () => activity.update(`up:${t.id}`, t.bytes, t.size))
+      // paquet reçu prolonge l'activité, pas seulement le morceau complet.
+      // Seulement une fois un premier morceau accepté (déchiffré) : un corps
+      // forgé avec l'identifiant vu passer en clair ne réveille pas le PC.
+      watchBody(req, () => activity.keep(`up:${t.id}`))
       next()
     },
     express.raw({ type: () => true, limit: MAX_CHUNK_BODY }),
@@ -608,8 +621,16 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
   })
 
-  app.post('/api/phone/text', trackBody('txt', LARGE_TEXT_BYTES), jsonText, phoneAuth('text'), async (req, res) => {
+  app.post('/api/phone/text', jsonText, phoneAuth('text'), async (req, res) => {
     const { dev, key, payload } = wd(req)
+    // texte long : compté comme un transfert, une fois l'envoi vérifié
+    // (le corps est déjà arrivé, un seul signe suffit)
+    const bodyBytes = Number(req.headers['content-length']) || 0
+    if (bodyBytes >= LARGE_TEXT_BYTES) {
+      const actKey = `txt:${randomToken(6)}`
+      activity.update(actKey, bodyBytes, bodyBytes)
+      activity.end(actKey)
+    }
     const text = typeof payload.text === 'string' ? payload.text : ''
     if (!text || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES)
       return res.status(400).json({ code: 'textEmpty' })
@@ -871,7 +892,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     return dev
   }
 
-  app.post('/api/shortcut/upload', rlShortcut, trackBody('sc', 0), async (req, res) => {
+  app.post('/api/shortcut/upload', rlShortcut, trackBody('sc', 0, (req) => !!shortcutDevice(req)), async (req, res) => {
     const dev = shortcutDevice(req)
     if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
     fs.mkdirSync(cfg.downloadDir, { recursive: true })
@@ -909,7 +930,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
   })
 
-  app.post('/api/shortcut/text', rlShortcut, trackBody('sctxt', LARGE_TEXT_BYTES), express.text({ limit: '1mb', type: () => true }), async (req, res) => {
+  app.post('/api/shortcut/text', rlShortcut, trackBody('sctxt', LARGE_TEXT_BYTES, (req) => !!shortcutDevice(req)), express.text({ limit: '1mb', type: () => true }), async (req, res) => {
     const dev = shortcutDevice(req)
     if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
     const text = typeof req.body === 'string' ? req.body : ''
@@ -951,10 +972,17 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   // état du système signalé par l'app de bureau (vide en CLI et en tests)
   const host: HostState = { macUpdate: null, loginItemNeedsApproval: false }
-  const setHost = (patch: Partial<HostState>): void => {
+  const setHost = (patch: HostPatch): void => {
     let changed = false
-    if (patch.macUpdate !== undefined) {
-      const v = patch.macUpdate && typeof patch.macUpdate.version === 'string' ? { version: patch.macUpdate.version.slice(0, 40) } : null
+    if (patch.macUpdate !== undefined || patch.revealMacUpdate) {
+      const src = patch.macUpdate !== undefined ? patch.macUpdate : host.macUpdate
+      let v: HostState['macUpdate'] = src && typeof src.version === 'string' ? { version: src.version.slice(0, 40) } : null
+      if (v) {
+        // même version : on garde le compteur ; vérification à la main : +1
+        const reveal = host.macUpdate?.version === v.version ? (host.macUpdate.reveal ?? 0) : 0
+        const next = patch.revealMacUpdate ? reveal + 1 : reveal
+        if (next > 0) v = { ...v, reveal: next }
+      }
       if (JSON.stringify(v) !== JSON.stringify(host.macUpdate)) {
         host.macUpdate = v
         changed = true

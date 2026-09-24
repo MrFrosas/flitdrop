@@ -227,6 +227,12 @@ async function checkMacUpdateByHand() {
   const res = await macUpdates.checkNow()
   if (!res) return
   if (res.latest) {
+    // la carte revient même après « Plus tard » : la personne vient de demander
+    try {
+      core.setHost({ macUpdate: { version: res.latest.version }, revealMacUpdate: true })
+    } catch {
+      // ancienne version du coeur : la fenêtre s'ouvre quand même
+    }
     showWindow()
     return
   }
@@ -387,6 +393,11 @@ if (!gotLock) {
           tr,
           isEnabled: () => !core || !core.cfg || core.cfg.autoUpdate !== false,
           getWin: () => win,
+          // Linux : l'AppImage installée à la fermeture change de nom, le
+          // démarrage automatique la suit avant la sortie
+          onAppImageRenamed: (newPath) => {
+            if (process.platform === 'linux' && host && host.followRenamedAppImage) host.followRenamedAppImage(linuxAutostartPath(), newPath)
+          },
         })
       } catch {
         // l'app fonctionne même si l'auto-update échoue à s'initialiser

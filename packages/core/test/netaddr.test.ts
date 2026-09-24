@@ -147,6 +147,14 @@ describe('adresse du QR code : macOS', () => {
     expect(mac(t)[0]).toBe('192.168.2.1')
   })
 
+  it('Mac qui partage son wifi vers un appareil filaire : en0 reste dans le QR', () => {
+    const t: Table = {
+      en0: [v4('192.168.1.20')],
+      bridge100: [v4('192.168.2.1', '3a:11:22:33:44:64')],
+    }
+    expect(mac(t)[0]).toBe('192.168.1.20')
+  })
+
   it('pont Thunderbolt et adresse de secours ignorés, carte USB-Ethernet gardée', () => {
     const t: Table = {
       bridge0: [v4('169.254.44.1')],
@@ -189,6 +197,17 @@ describe('adresse du QR code : Linux', () => {
       enp3s0: [v4('172.20.10.4')],
     }
     expect(lin(t)[0]).toBe('172.20.10.4')
+  })
+
+  it('k3s : le pont de conteneurs cni0 (10.42.0.1) n’est pas un point d’accès', () => {
+    const t: Table = {
+      wlp2s0: [v4('192.168.1.20')],
+      cni0: [v4('10.42.0.1', '5a:11:22:33:44:55')],
+      'flannel.1': [v4('10.42.0.0', '6e:11:22:33:44:55')],
+    }
+    expect(lin(t)[0]).toBe('192.168.1.20')
+    // même adresse sur une carte filaire : pas un point d'accès wifi, l'ancien classement décide
+    expect(lin({ eth0: [v4('192.168.1.20')], enp3s0: [v4('10.42.0.1')] })[0]).toBe('192.168.1.20')
   })
 
   it('pont br0 d’un hôte de machines virtuelles (vraie carte) gardé', () => {

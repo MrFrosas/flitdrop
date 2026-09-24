@@ -70,7 +70,7 @@ interface State {
   }
   hostname: string
   /** signalé par l'app de bureau (absent d'un coeur plus ancien) */
-  host?: { macUpdate: { version: string } | null; loginItemNeedsApproval: boolean }
+  host?: { macUpdate: { version: string; reveal?: number } | null; loginItemNeedsApproval: boolean }
   ips: string[]
   devices: DevicePub[]
   history: HistEntry[]
@@ -499,12 +499,14 @@ async function refresh() {
 
 // ---------- état du système (app de bureau) ----------
 
-// « Plus tard » : la carte se cache pour cette version jusqu'au prochain lancement
+// « Plus tard » : la carte se cache pour cette version jusqu'au prochain
+// lancement, ou jusqu'à une vérification demandée à la main (menu de l'icône)
 let macUpdateLater = ''
+const macUpdateKey = (upd: { version: string; reveal?: number } | null | undefined) => (upd ? `${upd.version}|${upd.reveal ?? 0}` : '')
 function renderHost() {
   const host = state?.host
   const upd = host?.macUpdate ?? null
-  $('macUpdateCard').classList.toggle('hidden', !upd || upd.version === macUpdateLater)
+  $('macUpdateCard').classList.toggle('hidden', !upd || macUpdateKey(upd) === macUpdateLater)
   if (upd) $('macUpdateBody').textContent = t('macupd.body', { v: upd.version })
   $('loginApproval').classList.toggle('hidden', !host?.loginItemNeedsApproval)
 }
@@ -983,7 +985,7 @@ function initUI() {
   }
   $('btnMacUpdate').onclick = () => void hostAction('openMacUpdate')
   $('btnMacUpdateLater').onclick = () => {
-    macUpdateLater = state?.host?.macUpdate?.version ?? ''
+    macUpdateLater = macUpdateKey(state?.host?.macUpdate)
     renderHost()
   }
   $('btnLoginItems').onclick = () => void hostAction('openLoginItems')

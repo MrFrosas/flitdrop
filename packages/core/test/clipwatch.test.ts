@@ -316,6 +316,29 @@ describe('ClipboardWatcher : rythme', () => {
     w.stop()
   })
 
+  it('réveil perdu par le système : le déverrouillage rend le rythme normal', async () => {
+    vi.useFakeTimers()
+    const f = fakeClipboard({ formats: [] })
+    const { w, checkText } = watcher(f.clipboard)
+    w.start()
+    await vi.advanceTimersByTimeAsync(1500)
+    w.suspend()
+    w.lock()
+    // pas de wake() (veille moderne de Windows) : la personne déverrouille
+    w.unlock()
+    expect(w.isPaused).toBe(false)
+    checkText.mockClear()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(checkText).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1500 * 2)
+    expect(checkText).toHaveBeenCalledTimes(3)
+    // même sans verrouillage signalé
+    w.suspend()
+    w.unlock()
+    expect(w.isPaused).toBe(false)
+    w.stop()
+  })
+
   it('veille seule : le réveil relance tout de suite', async () => {
     vi.useFakeTimers()
     const f = fakeClipboard({ formats: [] })

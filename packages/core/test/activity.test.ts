@@ -26,7 +26,7 @@ describe('activité des transferts (minuterie du coeur)', () => {
     vi.advanceTimersByTime(120_000)
     expect(vi.getTimerCount()).toBe(0)
     expect(seen).toEqual([])
-    expect(a.state()).toEqual({ active: false, progress: null })
+    expect(a.state()).toEqual({ active: false, progress: null, running: 0 })
   })
 
   it('premier octet : actif tout de suite, avec la progression', () => {
@@ -34,7 +34,7 @@ describe('activité des transferts (minuterie du coeur)', () => {
     const a = new TransferActivity()
     const seen = recorder(a)
     a.update('up:1', 1_000, 4_000)
-    expect(seen).toEqual([{ active: true, progress: 0.25 }])
+    expect(seen).toEqual([{ active: true, progress: 0.25, running: 1 }])
   })
 
   it('octets sans taille connue : actif, progression null', () => {
@@ -42,7 +42,10 @@ describe('activité des transferts (minuterie du coeur)', () => {
     const a = new TransferActivity()
     const seen = recorder(a)
     a.touch()
-    expect(seen).toEqual([{ active: true, progress: null }])
+    expect(seen).toEqual([{ active: true, progress: null, running: 0 }])
+    a.update('sc:1', 5_000, 0)
+    vi.advanceTimersByTime(600)
+    expect(seen.at(-1)).toEqual({ active: true, progress: null, running: 1 })
   })
 
   it('au plus 2 annonces par seconde, et la dernière valeur arrive toujours', () => {
@@ -59,7 +62,7 @@ describe('activité des transferts (minuterie du coeur)', () => {
     // 5 s : 1 annonce immédiate + 10 annonces espacées de 500 ms au plus
     expect(seen.length).toBeLessThanOrEqual(11)
     expect(seen.length).toBeGreaterThanOrEqual(9)
-    expect(seen.at(-1)).toEqual({ active: true, progress: 1 })
+    expect(seen.at(-1)).toEqual({ active: true, progress: 1, running: 1 })
     for (let i = 1; i < seen.length; i++) expect(seen[i]!.progress!).toBeGreaterThanOrEqual(seen[i - 1]!.progress!)
   })
 
@@ -75,8 +78,8 @@ describe('activité des transferts (minuterie du coeur)', () => {
     expect(a.state().active).toBe(true)
     expect(seen.at(-1)?.active).toBe(true)
     vi.advanceTimersByTime(1)
-    expect(seen.at(-1)).toEqual({ active: false, progress: null })
-    expect(a.state()).toEqual({ active: false, progress: null })
+    expect(seen.at(-1)).toEqual({ active: false, progress: null, running: 0 })
+    expect(a.state()).toEqual({ active: false, progress: null, running: 0 })
     // plus aucune minuterie une fois retombé au repos
     expect(vi.getTimerCount()).toBe(0)
   })
@@ -88,15 +91,16 @@ describe('activité des transferts (minuterie du coeur)', () => {
     a.update('up:1', 50, 100)
     a.update('dl:2', 0, 100)
     vi.advanceTimersByTime(600)
-    expect(seen.at(-1)).toEqual({ active: true, progress: 0.25 })
+    expect(seen.at(-1)).toEqual({ active: true, progress: 0.25, running: 2 })
     a.end('up:1')
     vi.advanceTimersByTime(600)
-    expect(seen.at(-1)).toEqual({ active: true, progress: 0 })
+    expect(seen.at(-1)).toEqual({ active: true, progress: 0, running: 1 })
     a.end('dl:2')
     vi.advanceTimersByTime(600)
-    expect(seen.at(-1)).toEqual({ active: true, progress: null })
+    // plus rien en cours : actif (PC éveillé) mais rien n'avance
+    expect(seen.at(-1)).toEqual({ active: true, progress: null, running: 0 })
     vi.advanceTimersByTime(30_000)
-    expect(seen.at(-1)).toEqual({ active: false, progress: null })
+    expect(seen.at(-1)).toEqual({ active: false, progress: null, running: 0 })
   })
 
   it('un transfert muet depuis 30 s ne fige pas la progression des autres', () => {
@@ -110,7 +114,7 @@ describe('activité des transferts (minuterie du coeur)', () => {
     }
     a.update('dl:vivant', 40, 100)
     vi.advanceTimersByTime(600)
-    expect(seen.at(-1)).toEqual({ active: true, progress: 0.4 })
+    expect(seen.at(-1)).toEqual({ active: true, progress: 0.4, running: 1 })
   })
 
   it('reprise après le repos : de nouveau actif', () => {
@@ -121,7 +125,7 @@ describe('activité des transferts (minuterie du coeur)', () => {
     vi.advanceTimersByTime(31_000)
     a.update('up:2', 1, 2)
     expect(seen.map((s) => s.active)).toEqual([true, false, true])
-    expect(seen.at(-1)).toEqual({ active: true, progress: 0.5 })
+    expect(seen.at(-1)).toEqual({ active: true, progress: 0.5, running: 1 })
   })
 
   it('fermeture : minuteries arrêtées, plus rien n’est annoncé', () => {
@@ -134,7 +138,46 @@ describe('activité des transferts (minuterie du coeur)', () => {
     expect(vi.getTimerCount()).toBe(0)
     a.update('up:1', 3, 10)
     vi.advanceTimersByTime(60_000)
-    expect(seen).toEqual([{ active: true, progress: 0.1 }])
+    expect(seen).toEqual([{ active: true, progress: 0.1, running: 1 }])
+  })
+
+  it('taille inconnue pendant plus de 30 minutes : l’état est redit toutes les 10 minutes', () => {
+    vi.useFakeTimers()
+    const a = new TransferActivity()
+    const seen = recorder(a)
+    // envoi par Raccourci sans taille annoncée : un paquet toutes les 5 s
+    let got = 0
+    for (let s = 0; s < 45 * 60; s += 5) {
+      got += 64 * 1024
+      a.update('sc:1', got, 0)
+      vi.advanceTimersByTime(5_000)
+    }
+    // état inchangé (actif, progression inconnue) mais redit au moins 4 fois
+    expect(seen.length).toBeGreaterThanOrEqual(5)
+    for (const s of seen) expect(s).toEqual({ active: true, progress: null, running: 1 })
+    for (let i = 1; i < seen.length; i++) expect(seen[i]).not.toBe(seen[i - 1])
+    a.close()
+  })
+
+  it('keep() prolonge un transfert reconnu, sans jamais en déclencher un', () => {
+    vi.useFakeTimers()
+    const a = new TransferActivity()
+    const seen = recorder(a)
+    // transfert inconnu (corps pas encore vérifié) : rien
+    a.keep('up:inconnu')
+    expect(a.state().active).toBe(false)
+    expect(seen).toEqual([])
+    a.update('up:1', 1, 10)
+    vi.advanceTimersByTime(25_000)
+    a.keep('up:1')
+    vi.advanceTimersByTime(25_000)
+    // 50 s après le dernier morceau accepté, mais des paquets sont passés
+    expect(a.state()).toEqual({ active: true, progress: 0.1, running: 1 })
+    // un paquet pour un autre transfert, jamais accepté : ne prolonge rien
+    a.keep('up:inconnu')
+    vi.advanceTimersByTime(6_000)
+    expect(a.state().active).toBe(false)
+    a.close()
   })
 
   it('un écouteur qui plante ne casse rien', () => {
@@ -198,7 +241,7 @@ describe('activité des transferts sur le serveur', () => {
     await phone.post('/api/phone/outbox', 'outbox', {})
     await phone.post('/api/phone/cliphistory', 'cliphistory', {})
     await phone.post('/api/phone/text', 'text', { text: 'court', mode: 'message' })
-    expect(srv.activity.state()).toEqual({ active: false, progress: null })
+    expect(srv.activity.state()).toEqual({ active: false, progress: null, running: 0 })
   })
 
   it('envoi du téléphone vers le PC : actif dès le premier morceau, puis sorti du calcul', async () => {
@@ -227,7 +270,7 @@ describe('activité des transferts sur le serveur', () => {
     await phone.post(`/api/phone/transfer/${transferId}/finish`, 'finish', { transferId })
     expect(entries()).not.toContain(`up:${transferId}`)
     await new Promise((r) => setTimeout(r, 600))
-    expect(seen.at(-1)).toEqual({ active: true, progress: null })
+    expect(seen.at(-1)).toEqual({ active: true, progress: null, running: 0 })
     for (const s of seen) if (s.progress !== null) expect(s.progress).toBeLessThanOrEqual(1)
   })
 
@@ -287,5 +330,51 @@ describe('activité des transferts sur le serveur', () => {
     expect(Buffer.compare(saved, payload)).toBe(0)
     expect(keys.some((k) => k.startsWith('sc:'))).toBe(true)
     expect(entries().some((k) => k.startsWith('sc:'))).toBe(false)
+  })
+})
+
+// serveur à part : l'activité doit partir du repos
+describe('activité des transferts : seulement après vérification', () => {
+  beforeAll(async () => {
+    home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-act2-'))
+    process.env.FLITDROP_DOWNLOADS = path.join(home, 'dl')
+    srv = await startServer({ port: 0, home, disableClipboard: true })
+    base = `http://127.0.0.1:${srv.port}`
+  })
+  afterAll(async () => {
+    await srv.close()
+    delete process.env.FLITDROP_DOWNLOADS
+    fs.rmSync(home, { recursive: true, force: true })
+  })
+
+  it('faux envois avec un identifiant vu passer en clair : le PC n’est pas gardé éveillé', async () => {
+    const phone = await pairPhone()
+    expect(srv.activity.state().active).toBe(false)
+    // long texte forgé : l'identifiant de l'appareil est connu, pas sa clé
+    const forged = await fetch(base + '/api/phone/text', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-wd-device': phone.id },
+      body: JSON.stringify({ p: 'A'.repeat(70_000) }),
+    })
+    expect(forged.status).toBe(403)
+    expect(srv.activity.state().active).toBe(false)
+    // morceau forgé pour un vrai transfert (identifiant lu dans l'adresse)
+    const size = 200_000
+    const data = crypto.randomBytes(size)
+    const initRes = await phone.post('/api/phone/transfer/init', 'init', { meta: { name: 'faux.bin', size, chunkSize: size, chunks: 1 } })
+    const { transferId } = openJSON<{ transferId: string }>(phone.key, ((await initRes.json()) as { p: string }).p, phone.aad('init:res'))
+    const chunk = (body: Uint8Array) =>
+      fetch(`${base}/api/phone/transfer/${transferId}/chunk/0`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/octet-stream', 'x-wd-device': phone.id },
+        body: body as unknown as BodyInit,
+      })
+    expect((await chunk(crypto.randomBytes(size + 40))).status).toBe(403)
+    expect(srv.activity.state().active).toBe(false)
+    // le vrai morceau, lui, compte
+    expect((await chunk(seal(phone.key, data, phone.aad('chunk', `${transferId}|0`)))).status).toBe(200)
+    expect(srv.activity.state().active).toBe(true)
+    await phone.post(`/api/phone/transfer/${transferId}/finish`, 'finish', { transferId })
+    expect(srv.activity.state().running).toBe(0)
   })
 })

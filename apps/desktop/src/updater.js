@@ -13,10 +13,11 @@ const { autoUpdater } = require('electron-updater')
  *  tr: (key: string, params?: Record<string, string|number>) => string,
  *  isEnabled: () => boolean,
  *  getWin: () => import('electron').BrowserWindow | null,
+ *  onAppImageRenamed?: (newPath: string) => void,
  * }} opts
  */
 function setupAutoUpdate(opts) {
-  const { app, dialog, Notification, tr, isEnabled, getWin } = opts
+  const { app, dialog, Notification, tr, isEnabled, getWin, onAppImageRenamed } = opts
   // pas de mise a jour en developpement (app non empaquetee)
   if (!app.isPackaged) return { checkNow: () => {} }
   // macOS : l'app n'est pas notarisee, electron-updater n'y installerait rien
@@ -32,6 +33,16 @@ function setupAutoUpdate(opts) {
   // Windows et Linux (AppImage) ; macOS : voir plus haut.
   autoUpdater.on('error', () => {
     // silencieux : hors-ligne, pas de release, etc. ne doivent rien casser
+  })
+  // Linux : la nouvelle AppImage porte un autre nom et l'ancienne est effacee.
+  // Emis pendant l'installation, avant la sortie : le lancement au demarrage
+  // suit ici, meme quand la MAJ s'installe a la fermeture sans relance.
+  autoUpdater.on('appimage-filename-updated', (newPath) => {
+    try {
+      if (onAppImageRenamed) onAppImageRenamed(newPath)
+    } catch {
+      // non critique
+    }
   })
 
   let notified = false

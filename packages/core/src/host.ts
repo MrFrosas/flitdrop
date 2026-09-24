@@ -11,12 +11,18 @@ import type { TransferActivityState } from './activity.js'
 
 /** Ce que l'app de bureau signale à la page du PC (GET /state, champ host). */
 export interface HostState {
-  /** Mac : une version plus récente est publiée (carte « Nouvelle version »). */
-  macUpdate: { version: string } | null
+  /** Mac : une version plus récente est publiée (carte « Nouvelle version »).
+   *  `reveal` augmente à chaque vérification demandée à la main : la page
+   *  remontre alors la carte, même après « Plus tard ». */
+  macUpdate: { version: string; reveal?: number } | null
   /** Mac : « Lancer au démarrage » attend l'accord de la personne dans les
    *  réglages de macOS. */
   loginItemNeedsApproval: boolean
 }
+
+/** Changement signalé par l'app de bureau. `revealMacUpdate` : la personne
+ *  vient de demander une vérification, la carte doit se remontrer. */
+export type HostPatch = Partial<HostState> & { revealMacUpdate?: boolean }
 
 /** Actions que la page peut demander à l'app de bureau (jamais d'adresse
  *  fournie par la page : l'app sait elle-même quoi ouvrir). */
@@ -38,7 +44,8 @@ export interface KeepAwakeOptions {
    *  pourcentage connu, -1 = effacée. */
   setProgress: (value: number) => void
   /** Filet de sécurité : sans aucune nouvelle du coeur pendant ce délai, on
-   *  rend la main au système même si « actif » n'est jamais retombé. */
+   *  rend la main au système même si « actif » n'est jamais retombé. Le coeur
+   *  redit l'état toutes les 10 minutes tant que des octets passent. */
   maxMs?: number
 }
 
@@ -68,6 +75,12 @@ export class TransferKeepAwake {
       return
     }
     this.hold()
+    // tout est arrivé : le PC reste éveillé encore un peu, mais la barre
+    // disparaît (sinon « en cours » pendant 30 s après chaque fichier)
+    if (state.running === 0) {
+      if (this.shown) this.progress(-1)
+      return
+    }
     const p = state.progress
     this.progress(typeof p === 'number' && Number.isFinite(p) ? Math.min(1, Math.max(0, p)) : 2)
   }
@@ -94,7 +107,8 @@ export class TransferKeepAwake {
     if (this.cap) clearTimeout(this.cap)
     this.cap = setTimeout(() => {
       this.cap = null
-      this.release()
+      // la barre part avec le verrou : jamais une progression figée à l'écran
+      this.stop()
     }, this.maxMs)
     this.cap.unref?.()
   }
@@ -389,6 +403,16 @@ export function setLinuxAutostart(file: string, enabled: boolean, execTarget: st
     // dossier en lecture seule : l'état réel est relu ci-dessous
   }
   return isLinuxAutostart(file)
+}
+
+/** Mise à jour installée à la fermeture (bouton « Plus tard ») : l'ancienne
+ *  AppImage est effacée et la nouvelle porte un autre nom, sans relance. Le
+ *  fichier de démarrage suit tout de suite (événement
+ *  'appimage-filename-updated' d'electron-updater), sinon Flitdrop ne
+ *  démarrerait plus à la connexion suivante. `true` : le fichier a été corrigé. */
+export function followRenamedAppImage(file: string, newPath: unknown): boolean {
+  if (typeof newPath !== 'string' || !path.isAbsolute(newPath) || newPath.includes('\0')) return false
+  return refreshLinuxAutostart(file, newPath)
 }
 
 /** Au lancement : si le démarrage automatique est posé, on corrige la seule

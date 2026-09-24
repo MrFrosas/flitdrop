@@ -191,11 +191,14 @@ export class ClipboardWatcher {
     if (!was && !this.running) this.schedule(this.o.pausedMs)
   }
 
-  /** Déverrouillage : une vérification tout de suite, sauf si l'ordinateur dort encore. */
+  /** Déverrouillage : une vérification tout de suite. Quelqu'un vient de
+   *  déverrouiller, donc l'ordinateur est réveillé : la veille est levée aussi
+   *  (un « réveil » perdu par le système ne laisse plus la synchro au ralenti). */
   unlock(): void {
-    if (this.stopped || !this.locked) return
+    if (this.stopped || !this.paused) return
     this.locked = false
-    if (!this.paused && !this.running) this.schedule(0)
+    this.suspended = false
+    if (!this.running) this.schedule(0)
   }
 
   /** Mise en veille : on ne vérifie presque plus. */

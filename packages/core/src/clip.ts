@@ -11,7 +11,9 @@ class ClipError extends Error {
     message: string,
     readonly code?: string,
     // code de sortie : l'outil a bien démarré mais n'a rien rendu
-    readonly exitCode?: number | null
+    readonly exitCode?: number | null,
+    // ce que l'outil a écrit sur sa sortie d'erreur (lecture seulement)
+    readonly stderr = ''
   ) {
     super(message)
   }
@@ -40,7 +42,7 @@ export function runClipTool(
     let p
     try {
       // windowsHide : pas de fenêtre console qui clignote sous Windows (PowerShell)
-      p = spawn(cmd, args, { stdio: ['pipe', writing ? 'ignore' : 'pipe', 'ignore'], windowsHide: true })
+      p = spawn(cmd, args, { stdio: ['pipe', writing ? 'ignore' : 'pipe', writing ? 'ignore' : 'pipe'], windowsHide: true })
     } catch (e) {
       reject(e)
       return
@@ -50,6 +52,15 @@ export function runClipTool(
       p.stdout.setEncoding('utf8')
       p.stdout.on('data', (d: string) => {
         if (out.length < 4 * 1024 * 1024) out += d
+      })
+    }
+    // lecture : on garde le début du message d'erreur (wl-paste y dit « rien de
+    // copié » ou « pas de connexion », deux cas à traiter différemment)
+    let errOut = ''
+    if (!writing && p.stderr) {
+      p.stderr.setEncoding('utf8')
+      p.stderr.on('data', (d: string) => {
+        if (errOut.length < 4096) errOut += d
       })
     }
     let settled = false
@@ -74,7 +85,7 @@ export function runClipTool(
     }
     p.on('error', (e: NodeJS.ErrnoException) => done(new ClipError(e.message, e.code)))
     const finish = (code: number | null) =>
-      done(code === 0 ? null : new ClipError(`${cmd} a retourné ${code}`, undefined, code))
+      done(code === 0 ? null : new ClipError(`${cmd} a retourné ${code}`, undefined, code, errOut))
     if (writing) p.on('exit', finish)
     else p.on('close', finish)
     // un stdin fermé côté enfant (EPIPE) ne doit pas faire planter le serveur
@@ -109,22 +120,44 @@ export function linuxClipCandidates(mode: 'read' | 'write', env: NodeJS.ProcessE
 
 // outils absents de la machine : on ne les relance pas (le lecteur tourne toutes les 1,5 s)
 const missing = new Set<string>()
+// outils présents mais qui ne marchent pas ici (wl-paste sans accès au
+// presse-papiers du compositeur) : on passe au suivant, et on les retente
+// seulement si plus rien d'autre ne marche
+const broken = new Set<string>()
+
+// wl-paste qui répond « rien de copié » (vide, image seule, pas de texte) :
+// selon la version, « No selection », « Nothing is copied » ou « No suitable
+// type of content copied »
+const WL_NOTHING = /no selection|nothing is copied|no suitable type|clipboard is empty/i
+
+/** Remet à zéro la mémoire des outils (tests). */
+export function resetLinuxClipTools(): void {
+  missing.clear()
+  broken.clear()
+}
 
 /** Exporté pour les tests. */
 export async function runLinux(mode: 'read' | 'write', stdinText?: string): Promise<string> {
   let last: Error = new Error('aucun outil presse-papiers (installer wl-clipboard, xclip ou xsel)')
   for (const [cmd, args] of linuxClipCandidates(mode)) {
-    if (missing.has(cmd)) continue
+    if (missing.has(cmd) || broken.has(cmd)) continue
     try {
       return await runClipTool(cmd, args, stdinText)
     } catch (e) {
       if (e instanceof ClipError && e.code === 'ENOENT') missing.add(cmd)
-      // wl-paste a démarré mais ne trouve aucun texte (vide, image seule) : on
-      // s'arrête là, inutile de lancer xclip puis xsel à chaque vérification
-      if (mode === 'read' && cmd === 'wl-paste' && e instanceof ClipError && typeof e.exitCode === 'number') return ''
+      if (mode === 'read' && cmd === 'wl-paste' && e instanceof ClipError && typeof e.exitCode === 'number') {
+        // wl-paste a démarré mais ne trouve aucun texte (vide, image seule) : on
+        // s'arrête là, inutile de lancer xclip puis xsel à chaque vérification
+        if (WL_NOTHING.test(e.stderr)) return ''
+        // vraie panne (compositeur sans accès au presse-papiers, connexion
+        // refusée) : xclip lit le même presse-papiers par XWayland
+        broken.add(cmd)
+      }
       last = e as Error
     }
   }
+  // plus rien ne marche : les outils mis de côté seront retentés la prochaine fois
+  broken.clear()
   throw last
 }
 

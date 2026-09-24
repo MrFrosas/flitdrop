@@ -19,9 +19,10 @@ import {
   isLinuxAutostart,
   setLinuxAutostart,
   refreshLinuxAutostart,
+  followRenamedAppImage,
   type PowerBlocker,
 } from '../src/host.js'
-import { TransferActivity } from '../src/activity.js'
+import { TransferActivity, ACTIVITY_HEARTBEAT_MS } from '../src/activity.js'
 import { startServer } from '../src/server.js'
 
 afterEach(() => {
@@ -146,6 +147,73 @@ describe('TransferKeepAwake', () => {
     expect(bars.at(-1)).toBe(-1)
     a.close()
     k.stop()
+  })
+
+  it('fichier arrivé : la barre disparaît tout de suite, le PC reste éveillé 30 s', () => {
+    vi.useFakeTimers()
+    const b = fakeBlocker()
+    const bars: number[] = []
+    const a = new TransferActivity()
+    const k = new TransferKeepAwake({ blocker: b.blocker, setProgress: (v) => bars.push(v) })
+    a.on('transfer', (s) => k.update(s))
+    a.update('dl:1', 2_000, 4_000)
+    a.update('dl:1', 4_000, 4_000)
+    vi.advanceTimersByTime(600)
+    expect(bars.at(-1)).toBe(1)
+    a.end('dl:1')
+    vi.advanceTimersByTime(600)
+    // jamais la barre « en cours » (2) après l'arrivée
+    expect(bars.at(-1)).toBe(-1)
+    expect(bars).not.toContain(2)
+    expect(k.holding).toBe(true)
+    vi.advanceTimersByTime(31_000)
+    expect(k.holding).toBe(false)
+    a.close()
+    k.stop()
+  })
+
+  it('taille inconnue : barre « en cours » ; ancien coeur sans `running` : comme avant', () => {
+    const bars: number[] = []
+    const k = new TransferKeepAwake({ blocker: fakeBlocker().blocker, setProgress: (v) => bars.push(v) })
+    k.update({ active: true, progress: null, running: 1 })
+    k.update({ active: true, progress: null })
+    k.update({ active: true, progress: null, running: 0 })
+    expect(bars).toEqual([2, 2, -1])
+    expect(k.holding).toBe(true)
+    k.stop()
+  })
+
+  it('transfert sans taille plus long que le filet de 30 minutes : le PC reste éveillé', () => {
+    vi.useFakeTimers()
+    const b = fakeBlocker()
+    const bars: number[] = []
+    const a = new TransferActivity()
+    const k = new TransferKeepAwake({ blocker: b.blocker, setProgress: (v) => bars.push(v) })
+    a.on('transfer', (s) => k.update(s))
+    let got = 0
+    for (let t = 0; t < KEEP_AWAKE_MAX_MS + 2 * ACTIVITY_HEARTBEAT_MS; t += 5_000) {
+      got += 64 * 1024
+      a.update('sc:1', got, 0)
+      vi.advanceTimersByTime(5_000)
+      expect(k.holding).toBe(true)
+    }
+    expect(b.calls.start).toBe(1)
+    a.end('sc:1')
+    vi.advanceTimersByTime(31_000)
+    expect(k.holding).toBe(false)
+    expect(bars.at(-1)).toBe(-1)
+    a.close()
+    k.stop()
+  })
+
+  it('filet de 30 minutes atteint : la barre part avec le verrou', () => {
+    vi.useFakeTimers()
+    const bars: number[] = []
+    const k = new TransferKeepAwake({ blocker: fakeBlocker().blocker, setProgress: (v) => bars.push(v) })
+    k.update({ active: true, progress: 0.4, running: 1 })
+    vi.advanceTimersByTime(KEEP_AWAKE_MAX_MS + 1)
+    expect(k.holding).toBe(false)
+    expect(bars).toEqual([0.4, -1])
   })
 })
 
@@ -310,6 +378,17 @@ describe('état du système dans la page du PC', () => {
       expect(await state()).toEqual({ macUpdate: null, loginItemNeedsApproval: false })
       srv.setHost({ macUpdate: { version: '0.6.7' }, loginItemNeedsApproval: true })
       expect(await state()).toEqual({ macUpdate: { version: '0.6.7' }, loginItemNeedsApproval: true })
+      // vérification à la main : la carte se remontre, même après « Plus tard »
+      srv.setHost({ macUpdate: { version: '0.6.7' }, revealMacUpdate: true })
+      expect(await state()).toEqual({ macUpdate: { version: '0.6.7', reveal: 1 }, loginItemNeedsApproval: true })
+      // vérification automatique qui retrouve la même version : rien ne change
+      srv.setHost({ macUpdate: { version: '0.6.7' } })
+      expect(await state()).toEqual({ macUpdate: { version: '0.6.7', reveal: 1 }, loginItemNeedsApproval: true })
+      srv.setHost({ revealMacUpdate: true })
+      expect(await state()).toEqual({ macUpdate: { version: '0.6.7', reveal: 2 }, loginItemNeedsApproval: true })
+      // version suivante : le compteur repart
+      srv.setHost({ macUpdate: { version: '0.6.8' } })
+      expect(await state()).toEqual({ macUpdate: { version: '0.6.8' }, loginItemNeedsApproval: true })
       const post = (body: unknown) => fetch(base + '/host/action', { method: 'POST', headers, body: JSON.stringify(body) })
       expect((await post({ action: 'openMacUpdate' })).status).toBe(200)
       expect((await post({ action: 'openLoginItems' })).status).toBe(200)
@@ -394,5 +473,20 @@ describe('lancement au démarrage sous Linux', () => {
     expect(text).not.toContain('0.6.6')
     expect(text).toContain('X-GNOME-Autostart-Delay=10')
     expect(refreshLinuxAutostart(file, '/apps/Flitdrop-0.6.7.AppImage')).toBe(false)
+  })
+
+  it('mise à jour installée à la fermeture : le démarrage suit la nouvelle AppImage avant la sortie', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-autostart-'))
+    const file = linuxAutostartFile({}, dir)
+    // pas de démarrage automatique : rien n'est créé
+    expect(followRenamedAppImage(file, '/home/lea/Apps/Flitdrop-0.6.7-x86_64.AppImage')).toBe(false)
+    expect(fs.existsSync(file)).toBe(false)
+    setLinuxAutostart(file, true, '/home/lea/Apps/Flitdrop-0.6.6-x86_64.AppImage')
+    // chemin reçu illisible : le fichier ne bouge pas
+    for (const bad of [undefined, 42, '', 'Flitdrop-0.6.7.AppImage', '/a\0b']) expect(followRenamedAppImage(file, bad)).toBe(false)
+    expect(fs.readFileSync(file, 'utf8')).toContain('Flitdrop-0.6.6-x86_64.AppImage')
+    expect(followRenamedAppImage(file, '/home/lea/Apps/Flitdrop-0.6.7-x86_64.AppImage')).toBe(true)
+    expect(fs.readFileSync(file, 'utf8')).toContain('Exec="/home/lea/Apps/Flitdrop-0.6.7-x86_64.AppImage" --hidden')
+    fs.rmSync(dir, { recursive: true, force: true })
   })
 })

@@ -6,12 +6,20 @@ import { EventEmitter } from 'node:events'
 export interface TransferActivityState {
   active: boolean
   progress: number | null
+  /** Transferts encore en cours. 0 avec `active` : tout est arrivé, le PC
+   *  reste éveillé encore un peu mais rien n'avance plus. Absent dans les
+   *  anciennes versions du coeur. */
+  running?: number
 }
 
 // délai de calme après le dernier octet avant de déclarer « plus rien ne passe »
 export const ACTIVITY_IDLE_MS = 30_000
 // au plus 2 annonces de progression par seconde
 export const ACTIVITY_THROTTLE_MS = 500
+// tant que des octets passent, l'état est redit au moins toutes les 10 minutes,
+// même inchangé (taille inconnue) : le filet de 30 minutes de l'app ne rend
+// jamais la main au milieu d'un transfert
+export const ACTIVITY_HEARTBEAT_MS = 10 * 60 * 1000
 
 /** Activité des transferts, pour l'app de bureau : garder le PC éveillé
  *  pendant un transfert et afficher la progression sur l'icône. Couvre les
@@ -53,6 +61,17 @@ export class TransferActivity extends EventEmitter {
     this.emitNow()
   }
 
+  /** Des octets arrivent pour un transfert déjà reconnu (un morceau déjà
+   *  accepté) : prolonge l'activité, sans jamais la déclencher. Un corps pas
+   *  encore vérifié ne réveille donc pas le PC à lui seul. */
+  keep(key: string): void {
+    if (this.closed || !this.active) return
+    const e = this.entries.get(key)
+    if (!e) return
+    e.at = this.now()
+    this.lastByte = e.at
+  }
+
   /** Transfert terminé (réussi, raté ou abandonné) : il sort du calcul de la
    *  progression. L'activité ne retombe qu'après 30 s sans aucun octet. */
   end(key: string): void {
@@ -80,7 +99,10 @@ export class TransferActivity extends EventEmitter {
   }
 
   state(): TransferActivityState {
-    return { active: this.active, progress: this.active ? this.progress() : null }
+    if (!this.active) return { active: false, progress: null, running: 0 }
+    // progress() retire d'abord les transferts muets : le compte suit
+    const progress = this.progress()
+    return { active: true, progress, running: this.entries.size }
   }
 
   close(): void {
@@ -99,7 +121,11 @@ export class TransferActivity extends EventEmitter {
     this.idleTimer = setTimeout(() => {
       this.idleTimer = null
       const quiet = this.now() - this.lastByte
-      if (quiet < ACTIVITY_IDLE_MS) return this.armIdle(ACTIVITY_IDLE_MS - quiet)
+      if (quiet < ACTIVITY_IDLE_MS) {
+        // des octets passent encore : signe de vie si rien n'a été dit depuis longtemps
+        if (this.now() - this.lastEmit >= ACTIVITY_HEARTBEAT_MS) this.emitNow(true)
+        return this.armIdle(ACTIVITY_IDLE_MS - quiet)
+      }
       this.active = false
       this.entries.clear()
       if (this.trailing) clearTimeout(this.trailing)
@@ -121,9 +147,10 @@ export class TransferActivity extends EventEmitter {
     this.trailing.unref?.()
   }
 
-  private emitNow(): void {
+  private emitNow(force = false): void {
     const s = this.state()
-    if (this.lastSent && this.lastSent.active === s.active && this.lastSent.progress === s.progress) return
+    const last = this.lastSent
+    if (!force && last && last.active === s.active && last.progress === s.progress && last.running === s.running) return
     this.lastSent = s
     this.lastEmit = this.now()
     try {

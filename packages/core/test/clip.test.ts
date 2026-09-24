@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { createClipboardText, linuxClipCandidates, readClipboard, runClipTool, runLinux, writeClipboard } from '../src/clip.js'
+import { createClipboardText, linuxClipCandidates, readClipboard, resetLinuxClipTools, runClipTool, runLinux, writeClipboard } from '../src/clip.js'
 
 describe('linuxClipCandidates', () => {
   it('prend xclip puis xsel sous X11, wl-clipboard en dernier recours', () => {
@@ -76,15 +76,40 @@ describe.skipIf(process.platform === 'win32')('lecture sous Wayland', () => {
     log = path.join(dir, 'log')
     process.env.PATH = dir + path.delimiter + '/bin' + path.delimiter + '/usr/bin'
     process.env.WAYLAND_DISPLAY = 'wayland-test'
+    resetLinuxClipTools()
   }
 
   it('aucun texte copié (image seule) : vide tout de suite, sans lancer xclip ni xsel', async () => {
     setup()
-    tool('wl-paste', 'exit 1')
     tool('xclip', 'printf de-xclip')
     tool('xsel', 'printf de-xsel')
-    expect(await runLinux('read')).toBe('')
-    expect(fs.readFileSync(log, 'utf8').trim().split('\n')).toEqual(['wl-paste'])
+    // messages des différentes versions de wl-paste
+    for (const msg of ['No selection', 'Nothing is copied', 'No suitable type of content copied']) {
+      tool('wl-paste', `echo "${msg}" >&2\nexit 1`)
+      expect(await runLinux('read')).toBe('')
+    }
+    expect(fs.readFileSync(log, 'utf8').trim().split('\n')).toEqual(['wl-paste', 'wl-paste', 'wl-paste'])
+  })
+
+  it('wl-paste en panne (compositeur sans accès) : xclip prend le relais, wl-paste mis de côté', async () => {
+    setup()
+    tool('wl-paste', 'echo "Failed to connect to a Wayland server" >&2\nexit 1')
+    tool('xclip', 'printf de-xclip')
+    tool('xsel', 'printf de-xsel')
+    expect(await runLinux('read')).toBe('de-xclip')
+    expect(await runLinux('read')).toBe('de-xclip')
+    // wl-paste n'est pas relancé à chaque vérification
+    expect(fs.readFileSync(log, 'utf8').trim().split('\n')).toEqual(['wl-paste', 'xclip', 'xclip'])
+  })
+
+  it('plus rien ne marche : wl-paste est retenté au passage suivant', async () => {
+    setup()
+    tool('wl-paste', 'echo "Failed to connect to a Wayland server" >&2\nexit 1')
+    tool('xclip', 'exit 1')
+    tool('xsel', 'exit 1')
+    await expect(runLinux('read')).rejects.toThrow()
+    tool('wl-paste', 'printf revenu')
+    expect(await runLinux('read')).toBe('revenu')
   })
 
   it('texte copié : lu par wl-paste', async () => {

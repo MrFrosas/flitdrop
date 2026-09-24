@@ -101,6 +101,13 @@ describe('télémétrie branchée sur le serveur', () => {
     const lan = localIPv4s().find((ip) => !ip.startsWith('169.254.'))
     if (!lan) return // machine sans réseau : le reste est couvert par les tests unitaires
     const phoneBase = `http://${lan}:${srv.port}`
+    // aucun QR affiché : un téléphone déjà appairé qui rouvre son icône ou
+    // recharge la page n'est pas compté
+    await (await fetch(phoneBase + '/s/', { headers: { 'user-agent': IPHONE } })).text()
+    await settle()
+    expect(events('phone_page_opened')).toHaveLength(0)
+    // un QR attend d'être scanné : la page ouverte est comptée
+    const { deviceId } = (await (await admin('/pair/new', {})).json()) as { deviceId: string }
     const page = await fetch(phoneBase + '/s/', { headers: { 'user-agent': IPHONE } })
     expect(page.status).toBe(200)
     await page.text()
@@ -113,6 +120,7 @@ describe('télémétrie branchée sur le serveur', () => {
     expect(opened[0]!.props).toMatchObject({ first: true, platform: 'ios' })
     expect(opened[0]!.tier).toBe('basic')
     expect(JSON.stringify(opened[0])).not.toContain(lan)
+    await admin(`/device/${deviceId}/revoke`, {})
   })
 
   it('état : la question n’a pas encore été posée', async () => {
