@@ -912,12 +912,16 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       // Seulement une fois un premier morceau accepté (déchiffré) : un corps
       // forgé avec l'identifiant vu passer en clair ne réveille pas le PC.
       // Les octets en route font aussi avancer la barre et la vitesse du PC
-      // (sinon elles ne bougeaient qu'à chaque morceau de 8 Mo complet).
+      // (sinon elles ne bougeaient qu'à chaque morceau de 8 Mo complet), avec
+      // la même règle : seulement depuis une adresse dont un morceau de ce
+      // transfert a déjà été déchiffré, et jamais pour un morceau déjà reçu.
+      // Un corps forgé par un autre appareil du wifi ne fait rien bouger.
+      const from = req.socket.remoteAddress ?? ''
+      const counts = !t.have.has(n) && !!t.trustedFrom?.has(from)
       let inflight = 0
       watchBody(req, (bytes) => {
         activity.keep(`up:${t.id}`)
-        inflight += bytes
-        transfers.noteInflight(t, bytes)
+        if (counts) inflight += transfers.noteInflight(t, bytes)
       })
       const release = () => {
         if (inflight > 0) transfers.noteInflight(t, -inflight)
@@ -951,17 +955,25 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
           // clé suivante
         }
       }
-      ;(req as Request & { wdRelease?: () => void }).wdRelease?.()
+      const release = (req as Request & { wdRelease?: () => void }).wdRelease ?? (() => {})
       if (!plain) {
+        release()
         // le téléphone abandonnera : si le transfert expire ensuite, c'est la raison
         t.lastErrorKey = 'badChunk'
         t.lastErrorStatus = 403
         return res.status(403).json({ code: 'badChunk' })
       }
+      // morceau authentique : les octets en route depuis cette adresse
+      // comptent désormais dans la progression du PC
+      ;(t.trustedFrom ??= new Set()).add(req.socket.remoteAddress ?? '')
       try {
-        await transfers.writeChunk(t, n, plain)
+        // octets en route retirés au moment même où le morceau compte dans
+        // t.bytes : la barre du PC ne recule pas entre les deux
+        await transfers.writeChunk(t, n, plain, release)
+        release()
         res.json({ received: t.received })
       } catch (e) {
+        release()
         const err = e as ApiError
         t.lastErrorKey = err.key ?? 'internal'
         t.lastErrorStatus = err.code ?? 400
@@ -1162,6 +1174,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const actKey = `dl:${randomToken(6)}`
     let sentBytes = 0
     let lastPush = 0
+    let completed = false
     try {
       for await (const chunk of stream) {
         if (aborted || res.writableEnded) break
@@ -1209,6 +1222,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         deviceName: dev.name,
         status: 'ok',
       })
+      completed = true
       hub.broadcast('outbox-downloaded', { itemId: item.id, name: item.name, deviceName: dev.name })
     } catch {
       // lecture du disque impossible en cours de route : compté ici, et le
@@ -1222,6 +1236,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       res.off('close', onClose)
       stream.destroy()
       activity.end(actKey)
+      // téléchargement interrompu (téléphone parti, page fermée, morceau
+      // refusé) : la page du PC retire sa ligne « Vers iPhone : 42 % »
+      if (!completed && lastPush > 0) hub.broadcast('outbox-progress', { itemId: item.id, ended: true })
     }
   })
 
@@ -1296,7 +1313,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // raté). Authentifié comme le reste de l'API téléphone ; le téléphone ne
   // contacte jamais internet lui-même. Valeurs strictement bornées, aucun
   // texte libre.
-  const REPORT_REASONS = new Set(['tooBig', 'network', 'incomplete', 'decrypt', 'refused', 'busy'])
+  // 'crypto' : le chiffrement du téléphone lui-même a échoué (pas les données)
+  const REPORT_REASONS = new Set(['tooBig', 'network', 'incomplete', 'decrypt', 'crypto', 'refused', 'busy'])
   const reportBudget = new Map<string, number[]>()
   app.post('/api/phone/report', jsonSmall, phoneAuth('report'), (req, res) => {
     const { dev, key, payload } = wd(req)

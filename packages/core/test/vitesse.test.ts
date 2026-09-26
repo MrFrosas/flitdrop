@@ -55,12 +55,12 @@ async function pairPhone(): Promise<Phone> {
 const runner = makeCryptoRunner()
 function workerSeal(key: Uint8Array, plain: Uint8Array, aad: string): Uint8Array {
   const { reply } = runner.handle({ id: 1, op: 'seal', key, aad, buf: new Uint8Array(plain).buffer } as CryptoJob)
-  if (!('buf' in reply)) throw new Error('seal')
+  if ('error' in reply || !('buf' in reply)) throw new Error('seal')
   return new Uint8Array(reply.buf)
 }
 function workerOpen(key: Uint8Array, sealed: Uint8Array, aad: string): Uint8Array {
   const { reply } = runner.handle({ id: 1, op: 'open', key, aad, buf: new Uint8Array(sealed).buffer } as CryptoJob)
-  if (!('buf' in reply)) throw new Error('open')
+  if ('error' in reply || !('buf' in reply)) throw new Error('open')
   return new Uint8Array(reply.buf)
 }
 
@@ -178,6 +178,130 @@ describe('envoi du téléphone chiffré par les Workers', () => {
     const sealed = workerSeal(phone.key, crypto.randomBytes(1000), phone.aad('chunk', `${tid}|0`))
     sealed[500] = sealed[500]! ^ 1
     expect((await postChunk(phone, tid, 0, sealed)).status).toBe(403)
+  })
+})
+
+/** Corps envoyé en plusieurs fois, avec des pauses (téléphone sur un wifi
+ *  lent), depuis `host` : 127.0.0.1 ou l'adresse du Mac sur le réseau. */
+function slowChunk(phone: Phone, tid: string, n: number, body: Uint8Array, opts: { host?: string; pieces?: number; pauseMs?: number; cut?: boolean } = {}): Promise<number> {
+  const pieces = opts.pieces ?? 4
+  return new Promise((resolve) => {
+    const req = http.request(
+      {
+        host: opts.host ?? '127.0.0.1',
+        port,
+        path: `/api/phone/transfer/${tid}/chunk/${n}`,
+        method: 'POST',
+        headers: { 'content-type': 'application/octet-stream', 'x-wd-device': phone.id, 'content-length': body.length },
+      },
+      (res) => {
+        res.resume()
+        res.on('end', () => resolve(res.statusCode ?? 0))
+      }
+    )
+    req.on('error', () => resolve(0))
+    const step = Math.ceil(body.length / pieces)
+    let i = 0
+    const next = () => {
+      if (opts.cut && i === pieces - 1) return setTimeout(() => (req.destroy(), resolve(0)), opts.pauseMs ?? 450)
+      if (i >= pieces) return req.end()
+      const part = body.subarray(i * step, Math.min(body.length, (i + 1) * step))
+      i++
+      req.write(part, () => setTimeout(next, opts.pauseMs ?? 450))
+    }
+    next()
+  })
+}
+
+async function watchProgress(): Promise<{ ws: WebSocket; events: { type: string; data: Record<string, unknown> }[] }> {
+  const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/ui?k=${srv.adminToken}`)
+  const events: { type: string; data: Record<string, unknown> }[] = []
+  ws.on('message', (m) => events.push(JSON.parse(String(m)) as { type: string; data: Record<string, unknown> }))
+  await new Promise((r) => ws.once('open', r))
+  return { ws, events }
+}
+
+const lanIp = (() => {
+  for (const list of Object.values(os.networkInterfaces()))
+    for (const a of list ?? []) if (a.family === 'IPv4' && !a.internal) return a.address
+  return null
+})()
+
+describe('progression du PC pendant un envoi du téléphone', () => {
+  it('un corps forgé (identifiants vus en clair sur le wifi) ne fait pas bouger la barre du PC', async () => {
+    const phone = await pairPhone()
+    const chunkSize = 1024 * 1024
+    const size = 3 * chunkSize
+    const data = crypto.randomBytes(size)
+    const tid = await init(phone, 'forge.bin', size, chunkSize)
+    const { ws, events } = await watchProgress()
+    const progress = () => events.filter((e) => e.type === 'transfer-progress' && e.data.id === tid).map((e) => e.data.bytes as number)
+    // aucun morceau accepté : un corps de n'importe qui ne compte pas, même
+    // envoyé lentement et à plusieurs
+    const junk = crypto.randomBytes(chunkSize + 40)
+    const st = await Promise.all([0, 1, 2].map((n) => slowChunk(phone, tid, n, junk, { pieces: 3 })))
+    expect(st).toEqual([403, 403, 403])
+    expect(progress().filter((b) => b > 0)).toEqual([])
+    // le vrai téléphone envoie le morceau 0 depuis 127.0.0.1
+    const sealed0 = workerSeal(phone.key, data.subarray(0, chunkSize), phone.aad('chunk', `${tid}|0`))
+    expect((await postChunk(phone, tid, 0, sealed0)).status).toBe(200)
+    const after0 = Math.max(0, ...progress())
+    expect(after0).toBe(chunkSize)
+    // un autre appareil du wifi (autre adresse) forge le morceau 1, et le même
+    // téléphone renvoie un morceau déjà reçu : rien au-delà du vrai total
+    if (lanIp) expect(await slowChunk(phone, tid, 1, junk, { host: lanIp, pieces: 3 })).toBe(403)
+    expect(await slowChunk(phone, tid, 0, sealed0, { pieces: 3 })).toBe(200)
+    expect(Math.max(0, ...progress())).toBe(chunkSize)
+    ws.close()
+  })
+
+  it('la barre du PC avance pendant qu’un morceau arrive, et ne recule jamais (morceau coupé, morceaux en parallèle)', async () => {
+    const phone = await pairPhone()
+    const chunkSize = 1024 * 1024
+    const size = 5 * chunkSize
+    const data = crypto.randomBytes(size)
+    const tid = await init(phone, 'mono.bin', size, chunkSize)
+    const sealedOf = (n: number) => workerSeal(phone.key, data.subarray(n * chunkSize, (n + 1) * chunkSize), phone.aad('chunk', `${tid}|${n}`))
+    const { ws, events } = await watchProgress()
+    expect((await postChunk(phone, tid, 0, sealedOf(0))).status).toBe(200)
+    // en même temps : 1 arrive lentement, 2 est coupé aux trois quarts (ses
+    // octets en route ne comptent plus, alors qu'ils avaient été montrés)
+    const [s1] = await Promise.all([
+      slowChunk(phone, tid, 1, sealedOf(1), { pieces: 6, pauseMs: 450 }),
+      slowChunk(phone, tid, 2, sealedOf(2), { pieces: 4, pauseMs: 300, cut: true }),
+    ])
+    expect(s1).toBe(200)
+    for (const n of [2, 3, 4]) expect((await postChunk(phone, tid, n, sealedOf(n))).status).toBe(200)
+    expect((await phone.post(`/api/phone/transfer/${tid}/finish`, 'finish', { transferId: tid })).status).toBe(200)
+    ws.close()
+    const bytes = events.filter((e) => e.type === 'transfer-progress' && e.data.id === tid).map((e) => e.data.bytes as number)
+    // des octets en route ont été montrés (pas seulement des morceaux entiers)
+    expect(bytes.some((b) => b % chunkSize !== 0)).toBe(true)
+    for (let i = 1; i < bytes.length; i++) expect(bytes[i]!).toBeGreaterThanOrEqual(bytes[i - 1]!)
+    expect(bytes.at(-1)).toBe(size)
+  })
+
+  it('téléchargement interrompu par le téléphone : le PC retire sa ligne de progression', async () => {
+    const phone = await pairPhone()
+    const id = await putOutbox('coupe.bin', crypto.randomBytes(48 * 1024 * 1024))
+    const { ws, events } = await watchProgress()
+    const ac = new AbortController()
+    const r = await fetch(base + `/api/phone/outbox/${id}/download`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-wd-device': phone.id },
+      body: JSON.stringify({ p: sealJSON(phone.key, { itemId: id, ts: Date.now(), jti: randomToken(9) }, phone.aad('download')) }),
+      signal: ac.signal,
+    })
+    const reader = r.body!.getReader()
+    await reader.read()
+    ac.abort()
+    await reader.read().catch(() => {})
+    for (let i = 0; i < 50 && !events.some((e) => e.type === 'outbox-progress' && e.data.ended); i++) await new Promise((res) => setTimeout(res, 50))
+    ws.close()
+    const mine = events.filter((e) => e.type === 'outbox-progress' && e.data.itemId === id)
+    expect(mine.some((e) => typeof e.data.bytes === 'number')).toBe(true)
+    expect(mine.at(-1)!.data.ended).toBe(true)
+    expect(events.some((e) => e.type === 'outbox-downloaded' && e.data.itemId === id)).toBe(false)
   })
 })
 

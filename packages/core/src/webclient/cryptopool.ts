@@ -32,6 +32,9 @@ export interface PoolOptions {
   idleMs?: number
   /** un Worker qui n'a pas dit « prêt » dans ce délai est abandonné */
   readyTimeoutMs?: number
+  /** attente avant de relancer des Workers après une perte (doublée à chaque
+   *  nouvelle perte sans travail réussi entre deux, jusqu'à 8 fois) */
+  retryMs?: number
 }
 
 /** Tag faux : données modifiées ou mauvaise clé. Rien n'a été déchiffré. */
@@ -41,12 +44,28 @@ export class CryptoAuthError extends Error {
   }
 }
 
+/** Le chiffrement n'a pas pu se faire (Worker perdu en plein travail avec
+ *  un morceau qui n'existait plus que chez lui). Les données ne sont pas en
+ *  cause : l'appelant refait ce morceau. */
+export class CryptoPoolError extends Error {
+  constructor() {
+    super('crypto')
+  }
+}
+
 interface Pending {
   id: number
   op: 'seal' | 'open'
   key: Uint8Array
   aad: string
   data: Uint8Array
+  /** longueur d'origine (data est vidé quand son tampon part au Worker) */
+  len: number
+  /** la page garde son morceau pendant que le Worker travaille sur une
+   *  copie. Toujours pour un déchiffrement (un téléchargement ne peut pas
+   *  redemander un morceau au PC) ; pour un chiffrement, seulement quand des
+   *  Workers viennent d'être perdus (sinon le tampon part sans copie). */
+  kept: boolean
   resolve: (b: Uint8Array) => void
   reject: (e: Error) => void
 }
@@ -58,18 +77,29 @@ interface Slot {
   timer: ReturnType<typeof setTimeout> | null
 }
 
+// attentes successives avant de relancer des Workers perdus : au-delà de
+// PAGE_AFTER pertes d'affilée (environ 15 s), la page fait le travail en
+// attendant, pour que rien ne reste bloqué
+const MAX_BACKOFF_STEPS = 3
+const PAGE_AFTER = 4
+
 export class CryptoPool {
   /** moteur des Workers ('main' : la page chiffre elle-même), null avant le premier démarrage */
   engine: CryptoEngine | 'main' | null = null
   private slots: Slot[] = []
   private queue: Pending[] = []
+  // la page chiffre elle-même pour de bon : aucun Worker n'a jamais démarré
+  // dans ce navigateur (ou close())
   private broken = false
   private nextId = 1
   private idleTimer: ReturnType<typeof setTimeout> | null = null
-  // un Worker a déjà dit « prêt » : si les suivants plantent, on insiste
+  // un Worker a déjà dit « prêt » : les suivants qui plantent sont relancés
+  // plus tard, jamais abandonnés pour de bon
   private everReady = false
-  // Workers perdus en route : au-delà de quelques-uns, la page chiffre elle-même
+  // pertes d'affilée sans travail réussi entre deux, et relance prévue
   private losses = 0
+  private retryAt = 0
+  private retryTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(private opts: PoolOptions) {}
 
@@ -84,15 +114,15 @@ export class CryptoPool {
 
   /** Arrête tous les Workers (les travaux en attente passent sur la page). */
   close(): void {
-    this.stopAll()
     this.broken = true
     this.engine = 'main'
+    this.stopAll()
     this.pump()
   }
 
   private submit(op: 'seal' | 'open', key: Uint8Array, data: Uint8Array, aad: string): Promise<Uint8Array> {
     return new Promise<Uint8Array>((resolve, reject) => {
-      this.queue.push({ id: this.nextId++, op, key, aad, data, resolve, reject })
+      this.queue.push({ id: this.nextId++, op, key, aad, data, len: data.byteLength, kept: op === 'open', resolve, reject })
       if (this.idleTimer) {
         clearTimeout(this.idleTimer)
         this.idleTimer = null
@@ -101,26 +131,40 @@ export class CryptoPool {
     })
   }
 
-  private runOnPage(p: Pending) {
+  private runOnPage(p: Pending, data: Uint8Array = p.data) {
     try {
-      p.resolve(p.op === 'seal' ? this.opts.fallback.seal(p.key, p.data, p.aad) : this.opts.fallback.open(p.key, p.data, p.aad))
+      p.resolve(p.op === 'seal' ? this.opts.fallback.seal(p.key, data, p.aad) : this.opts.fallback.open(p.key, data, p.aad))
     } catch {
-      p.reject(p.op === 'open' ? new CryptoAuthError() : new Error('fail'))
+      p.reject(p.op === 'open' ? new CryptoAuthError() : new CryptoPoolError())
     }
   }
 
+  /** Travaux confiés à la page, un à un, en rendant la main entre deux : la
+   *  page reste utilisable. */
+  private runQueueOnPage() {
+    const jobs = this.queue.splice(0)
+    if (jobs.length) this.engine = 'main'
+    jobs.forEach((p, i) => setTimeout(() => this.runOnPage(p), i))
+  }
+
   private pump(): void {
-    if (this.broken) {
-      const jobs = this.queue.splice(0)
-      // un à un, en rendant la main entre deux : la page reste utilisable
-      jobs.forEach((p, i) => setTimeout(() => this.runOnPage(p), i))
-      return
+    if (this.broken) return this.runQueueOnPage()
+    const now = Date.now()
+    // démarrage paresseux : aucun Worker tant qu'il n'y a rien à chiffrer.
+    // Après une perte, on attend avant d'en relancer (réseau qui revient,
+    // mémoire rendue) au lieu de réessayer en boucle.
+    if (now >= this.retryAt) {
+      while (this.slots.length < Math.max(1, this.opts.size) && this.queue.length > 0 && this.spawn()) {
+        /* un de plus */
+      }
+      if (this.broken) return this.runQueueOnPage()
     }
-    // démarrage paresseux : aucun Worker tant qu'il n'y a rien à chiffrer
-    while (this.slots.length < Math.max(1, this.opts.size) && this.queue.length > 0 && this.spawn()) {
-      /* un de plus */
+    // Workers perdus plusieurs fois d'affilée : la page fait le travail
+    // jusqu'à la prochaine relance, pour que rien ne reste bloqué
+    if (this.losses >= PAGE_AFTER && now < this.retryAt) {
+      this.runQueueOnPage()
+      return this.armIdle()
     }
-    if (this.broken) return this.pump()
     for (;;) {
       const p = this.queue[0]
       if (!p) break
@@ -130,6 +174,15 @@ export class CryptoPool {
       this.queue.shift()
       this.post(best, p)
     }
+    if (this.queue.length > 0 && now < this.retryAt && !this.slots.some((s) => !s.ready)) {
+      // aucun Worker pour l'instant : on attend la relance (un seul
+      // minuteur, posé seulement quand il y a du travail en attente)
+      if (!this.retryTimer)
+        this.retryTimer = setTimeout(() => {
+          this.retryTimer = null
+          this.pump()
+        }, this.retryAt - now)
+    }
     this.armIdle()
   }
 
@@ -138,7 +191,10 @@ export class CryptoPool {
     try {
       w = this.opts.create()
     } catch {
+      // pas de Worker dans ce navigateur : la page chiffre elle-même, pour de
+      // bon ; un Worker qui a déjà marché sera retenté plus tard
       if (!this.everReady && this.slots.length === 0) this.fail()
+      else this.lost()
       return false
     }
     const slot: Slot = { w, ready: false, inflight: new Map(), timer: null }
@@ -150,6 +206,8 @@ export class CryptoPool {
   }
 
   private onReply(slot: Slot, r: CryptoReply) {
+    // Worker déjà abandonné (message parti avant son arrêt) : ignoré
+    if (!this.slots.includes(slot)) return
     if ('ready' in r) {
       if (slot.timer) clearTimeout(slot.timer)
       slot.timer = null
@@ -161,15 +219,36 @@ export class CryptoPool {
     const p = slot.inflight.get(r.id)
     if (!p) return
     slot.inflight.delete(r.id)
-    if ('error' in r) p.reject(r.error === 'auth' ? new CryptoAuthError() : new Error('fail'))
-    else p.resolve(new Uint8Array(r.buf))
+    if ('error' in r) {
+      if (r.error === 'auth') p.reject(new CryptoAuthError())
+      else {
+        // le Worker n'a pas pu (mémoire, moteur) : la page refait ce morceau
+        // avec le tampon qu'il a rendu, ou la copie qu'elle a gardée
+        const data = r.buf ? new Uint8Array(r.buf) : this.stillHeld(p)
+        if (data) setTimeout(() => this.runOnPage(p, data), 0)
+        else p.reject(new CryptoPoolError())
+      }
+    } else {
+      // un travail réussi : les pertes d'avant sont oubliées
+      this.losses = 0
+      this.retryAt = 0
+      p.resolve(new Uint8Array(r.buf))
+    }
     this.pump()
   }
 
+  /** Données d'un travail encore disponibles sur la page, sinon null. */
+  private stillHeld(p: Pending): Uint8Array | null {
+    if (p.kept) return p.data
+    return p.len === 0 ? new Uint8Array(0) : null
+  }
+
   private post(slot: Slot, p: Pending) {
-    // le tampon part au Worker sans copie ; une vue partielle est d'abord recopiée
+    // chiffrement : le tampon part au Worker sans copie (une vue partielle est
+    // d'abord recopiée). Déchiffrement : le Worker reçoit une copie.
+    if (p.op === 'seal') p.kept = this.losses > 0
     const whole = p.data.byteOffset === 0 && p.data.byteLength === p.data.buffer.byteLength
-    const buf = (whole ? p.data.buffer : new Uint8Array(p.data).buffer) as ArrayBuffer
+    const buf = (whole && !p.kept ? p.data.buffer : new Uint8Array(p.data).buffer) as ArrayBuffer
     slot.inflight.set(p.id, p)
     const job: CryptoJob = { id: p.id, op: p.op, key: p.key, aad: p.aad, buf }
     try {
@@ -182,8 +261,18 @@ export class CryptoPool {
     }
   }
 
-  /** Worker perdu (erreur, pas prêt à temps) : ses travaux en cours échouent
-   *  (leurs tampons sont partis), la file continue sur les autres. */
+  /** Travaux d'un Worker perdu : ceux dont la page a encore les données sont
+   *  refaits par la page, les autres échouent (l'envoi relit ce morceau). */
+  private orphan(jobs: Iterable<Pending>) {
+    for (const p of jobs) {
+      const data = this.stillHeld(p)
+      if (data) setTimeout(() => this.runOnPage(p, data), 0)
+      else p.reject(new CryptoPoolError())
+    }
+  }
+
+  /** Worker perdu (erreur, pas prêt à temps) : la file continue sur les
+   *  autres, et on en relance un plus tard. */
   private lose(slot: Slot): void {
     const i = this.slots.indexOf(slot)
     if (i < 0) return
@@ -194,13 +283,24 @@ export class CryptoPool {
     } catch {
       // déjà arrêté
     }
-    for (const p of slot.inflight.values()) p.reject(new Error('fail'))
+    const jobs = [...slot.inflight.values()]
     slot.inflight.clear()
-    // aucun Worker n'a jamais démarré, ou ils plantent sans cesse : la page
-    // chiffre elle-même
-    this.losses++
-    if ((!this.everReady && this.slots.length === 0) || this.losses > 6) return this.fail()
+    this.orphan(jobs)
+    // aucun Worker n'a jamais démarré dans ce navigateur : la page chiffre
+    // elle-même, comme avant
+    if (!this.everReady && this.slots.length === 0) return this.fail()
+    this.lost()
     this.pump()
+  }
+
+  /** Une perte de plus : prochaine relance dans 1, 2, 4 puis 8 fois retryMs.
+   *  Plusieurs Workers perdus ensemble (réseau coupé au démarrage) ne
+   *  comptent qu'une fois. */
+  private lost() {
+    const now = Date.now()
+    if (now < this.retryAt) return
+    this.losses++
+    this.retryAt = now + (this.opts.retryMs ?? 1000) * 2 ** Math.min(this.losses - 1, MAX_BACKOFF_STEPS)
   }
 
   private fail(): void {
@@ -227,9 +327,12 @@ export class CryptoPool {
       } catch {
         // déjà arrêté
       }
-      for (const p of s.inflight.values()) p.reject(new Error('fail'))
+      this.orphan(s.inflight.values())
+      s.inflight.clear()
     }
     if (this.idleTimer) clearTimeout(this.idleTimer)
     this.idleTimer = null
+    if (this.retryTimer) clearTimeout(this.retryTimer)
+    this.retryTimer = null
   }
 }

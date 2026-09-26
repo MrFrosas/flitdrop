@@ -20,7 +20,10 @@ export interface CryptoJob {
 export type CryptoReply =
   | { ready: true; engine: CryptoEngine }
   | { id: number; buf: ArrayBuffer; ms: number }
-  | { id: number; error: 'auth' | 'fail' }
+  | { id: number; error: 'auth' }
+  /** échec du Worker lui-même (mémoire, moteur) : le tampon reçu revient
+   *  intact, la page refait ce travail elle-même */
+  | { id: number; error: 'fail'; buf?: ArrayBuffer }
 
 const te = new TextEncoder()
 
@@ -53,7 +56,10 @@ export function makeCryptoRunner(useWasm = true): {
       try {
         out = run(job)
       } catch {
-        return { reply: { id: job.id, error: 'fail' }, transfer: [] }
+        // l'entrée n'a pas été modifiée (le moteur travaille sur sa copie) :
+        // elle repart à la page, qui refait ce morceau sans le perdre
+        const back = job.buf.byteLength > 0 ? job.buf : undefined
+        return { reply: { id: job.id, error: 'fail', buf: back }, transfer: back ? [back] : [] }
       }
       // tag faux : rien n'est déchiffré, la page abandonne ce téléchargement
       if (!out) return { reply: { id: job.id, error: 'auth' }, transfer: [] }

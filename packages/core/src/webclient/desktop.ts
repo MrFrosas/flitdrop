@@ -140,6 +140,8 @@ const progressCards = new Map<string, { li: HTMLLIElement; bar: HTMLSpanElement;
 // fichiers du PC en train de partir vers un téléphone : vitesse et temps
 // restant sous leur ligne dans « Envoyer »
 const outboxProgress = new Map<string, { meter: SpeedMeter; bytes: number; size: number; deviceName: string; at: number }>()
+// fin de secours de chaque ligne de progression (voir 'outbox-progress')
+const outboxProgressEnd = new Map<string, ReturnType<typeof setTimeout>>()
 const outboxSubs = new Map<string, HTMLElement>()
 
 // ---------- utilitaires ----------
@@ -1037,7 +1039,24 @@ function connectWS() {
         if (currentApprovalId === (data as { id?: string }).id) $('apprModal').classList.add('hidden')
         break
       case 'outbox-progress': {
-        const d = data as { itemId: string; bytes: number; size: number; deviceName?: string }
+        const d = data as { itemId: string; bytes: number; size: number; deviceName?: string; ended?: boolean }
+        clearTimeout(outboxProgressEnd.get(d.itemId))
+        outboxProgressEnd.delete(d.itemId)
+        if (d.ended) {
+          // téléchargement interrompu : la ligne redevient normale tout de suite
+          if (outboxProgress.delete(d.itemId)) renderOutbox()
+          break
+        }
+        // plus aucune nouvelle pendant 15 s (PC d'une version sans le signal de
+        // fin, connexion perdue) : la ligne redevient normale d'elle-même, un
+        // seul minuteur par fichier, aucun sondage
+        outboxProgressEnd.set(
+          d.itemId,
+          setTimeout(() => {
+            outboxProgressEnd.delete(d.itemId)
+            if (outboxProgress.delete(d.itemId)) renderOutbox()
+          }, 15_000)
+        )
         let p = outboxProgress.get(d.itemId)
         if (!p) {
           p = { meter: new SpeedMeter(), bytes: 0, size: d.size, deviceName: d.deviceName ?? '', at: 0 }
@@ -1051,7 +1070,10 @@ function connectWS() {
         break
       }
       case 'outbox-downloaded': {
-        outboxProgress.delete((data as { itemId?: string }).itemId ?? '')
+        const doneId = (data as { itemId?: string }).itemId ?? ''
+        outboxProgress.delete(doneId)
+        clearTimeout(outboxProgressEnd.get(doneId))
+        outboxProgressEnd.delete(doneId)
         const d = data as { name?: string; deviceName?: string }
         toast(t('toast.pickedUp'), d.name ? `${d.name} · ${d.deviceName}` : d.deviceName)
         void refresh()

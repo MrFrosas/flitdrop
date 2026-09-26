@@ -13,6 +13,10 @@ import {
   TRANSFER_IDLE_TIMEOUT_MS,
 } from './constants.js'
 
+// morceaux qu'un téléphone envoie à la fois (SEND_WINDOW de la page) : borne
+// des octets en route comptés dans la progression
+const MAX_INFLIGHT_CHUNKS = 4
+
 export interface TransferMeta {
   name: string
   size: number
@@ -35,6 +39,10 @@ export interface Transfer {
   /** octets de morceaux en cours de réception (pas encore écrits) : la page
    *  du PC montre la progression et la vitesse sans attendre 8 Mo complets */
   inflight?: number
+  /** adresses d'où au moins un morceau de ce transfert a été accepté
+   *  (déchiffré) : seuls leurs octets en route comptent dans la progression,
+   *  un corps forgé par un autre appareil du wifi ne fait rien bouger */
+  trustedFrom?: Set<string>
   /** indices déjà écrits : permet un envoi PARALLÈLE (hors ordre) tout en
    *  restant idempotent et vérifiable à la reprise. */
   have: Set<number>
@@ -65,6 +73,7 @@ export class TransferManager {
   private active = new Map<string, Transfer>()
   private handles = new Map<string, fs.promises.FileHandle>()
   private lastProgressPush = new Map<string, number>()
+  private lastProgressBytes = new Map<string, number>()
   /** Posé par le serveur quand la validation manuelle est activée. */
   approvalHook: ((info: { deviceName: string; name: string; size: number }) => Promise<boolean>) | null = null
   /** Posé par le serveur : un transfert a échoué (statistiques anonymes). */
@@ -158,7 +167,10 @@ export class TransferManager {
     return index === t.chunks - 1 ? t.size - (t.chunks - 1) * t.chunkSize : t.chunkSize
   }
 
-  async writeChunk(t: Transfer, index: number, plain: Uint8Array): Promise<void> {
+  /** `settle` est appelé juste avant que les octets du morceau comptent dans
+   *  t.bytes (même tour de boucle) : ses octets en route sont retirés au même
+   *  moment, la progression n'est jamais comptée deux fois ni en recul. */
+  async writeChunk(t: Transfer, index: number, plain: Uint8Array, settle?: () => void): Promise<void> {
     if (t.status !== 'active') throw new ApiError('transfert terminé', 400, 'transferDone')
     if (!Number.isInteger(index) || index < 0 || index >= t.chunks) throw new ApiError('index invalide', 400, 'badIndex')
     // idempotent : un chunk déjà écrit (reprise, réémission) est acquitté sans réécriture
@@ -180,6 +192,7 @@ export class TransferManager {
       await this.abort(t, 'erreur d’écriture disque', 'diskWrite', 500)
       throw new ApiError('erreur d’écriture disque', 500, 'diskWrite')
     }
+    settle?.()
     t.bytes += plain.length
     t.received = t.have.size
     t.lastActivity = Date.now()
@@ -188,17 +201,28 @@ export class TransferManager {
   }
 
   /** Octets d'un morceau qui arrivent (positif) ou qui ne comptent plus
-   *  (négatif : morceau écrit, refusé ou coupé). */
-  noteInflight(t: Transfer, delta: number): void {
-    t.inflight = Math.max(0, (t.inflight ?? 0) + delta)
-    if (delta > 0 && t.status === 'active') this.pushProgress(t, false)
+   *  (négatif : morceau écrit, refusé ou coupé). Renvoie ce qui a vraiment
+   *  été compté : jamais plus que les morceaux qu'un téléphone envoie à la
+   *  fois, ni plus que ce qui manque au fichier. */
+  noteInflight(t: Transfer, delta: number): number {
+    const cur = t.inflight ?? 0
+    const cap = Math.min(MAX_INFLIGHT_CHUNKS * t.chunkSize, Math.max(0, t.size - t.bytes))
+    const applied = delta > 0 ? Math.max(0, Math.min(delta, cap - cur)) : Math.max(-cur, delta)
+    t.inflight = cur + applied
+    if (applied > 0 && t.status === 'active') this.pushProgress(t, false)
+    return applied
   }
 
   private pushProgress(t: Transfer, force: boolean) {
     const last = this.lastProgressPush.get(t.id) ?? 0
     if (!force && Date.now() - last <= 400) return
     this.lastProgressPush.set(t.id, Date.now())
-    this.hub.broadcast('transfer-progress', { id: t.id, bytes: Math.min(t.size, t.bytes + (t.inflight ?? 0)), size: t.size })
+    // jamais en recul : un morceau coupé en route retire ses octets, la barre
+    // attend simplement que le vrai total la rattrape (sinon le PC effaçait sa
+    // vitesse et sa barre reculait)
+    const bytes = Math.max(this.lastProgressBytes.get(t.id) ?? 0, Math.min(t.size, t.bytes + (t.inflight ?? 0)))
+    this.lastProgressBytes.set(t.id, bytes)
+    this.hub.broadcast('transfer-progress', { id: t.id, bytes, size: t.size })
   }
 
   async finish(t: Transfer): Promise<string> {
@@ -222,6 +246,7 @@ export class TransferManager {
     t.status = 'done'
     this.active.delete(t.id)
     this.lastProgressPush.delete(t.id)
+    this.lastProgressBytes.delete(t.id)
     this.activity?.end(`up:${t.id}`)
     this.history.update(t.historyId, { status: 'ok', path: finalPath, name: path.basename(finalPath) })
     this.hub.broadcast('transfer-done', {
@@ -259,6 +284,7 @@ export class TransferManager {
     fs.unlink(t.tmpPath, () => {})
     this.active.delete(t.id)
     this.lastProgressPush.delete(t.id)
+    this.lastProgressBytes.delete(t.id)
     this.activity?.end(`up:${t.id}`)
     this.history.update(t.historyId, { status: 'error', error: reason })
     this.hub.broadcast('transfer-error', { id: t.id, name: t.name, reason })

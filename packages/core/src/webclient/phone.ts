@@ -3,7 +3,7 @@ import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '..
 import { applyI18n } from '../i18n-dom.js'
 import { KeyedNodes, VersionedList, reconcile } from './lists.js'
 import { afterExpiredCode, connectError, shouldSuggestInstall } from './onboarding.js'
-import { CryptoPool, CryptoAuthError, type WorkerLike } from './cryptopool.js'
+import { CryptoPool, CryptoAuthError, CryptoPoolError, type WorkerLike } from './cryptopool.js'
 import { SpeedMeter, progressText } from './speed.js'
 import { speedVerdict } from './speedverdict.js'
 import { runPass, afterFailure, type Lanes } from './sendpass.js'
@@ -113,6 +113,9 @@ class ApiFail extends Error {
     super(msg)
   }
 }
+
+/** Échec dont le message est déjà une phrase traduite, à montrer telle quelle. */
+class ShownError extends Error {}
 
 /** Texte d'erreur localisé : le serveur renvoie un CODE stable, traduit ici. */
 function errText(e: unknown): string {
@@ -565,10 +568,18 @@ async function sendFile(file: File): Promise<void> {
     // les erreurs transitoires)
     const sendOne = async (n: number) => {
       const slice = file.slice(n * chunkSize, Math.min((n + 1) * chunkSize, file.size))
-      const plain = new Uint8Array(await slice.arrayBuffer())
-      const len = plain.length
+      const len = slice.size
       // `plain` part au Worker (sans copie) : ne plus s'en servir ensuite
-      const sealed = await pool.seal(key!, plain, aad('chunk', `${tid}|${n}`))
+      const sealOnce = async () => pool.seal(key!, new Uint8Array(await slice.arrayBuffer()), aad('chunk', `${tid}|${n}`))
+      let sealed: Uint8Array
+      try {
+        sealed = await sealOnce()
+      } catch (e) {
+        // Worker perdu avec ce morceau : on le relit et on le rechiffre (un
+        // autre Worker, ou la page)
+        if (!(e instanceof CryptoPoolError)) throw e
+        sealed = await sealOnce()
+      }
       try {
         await sendChunk(tid, n, sealed, (bytes) => {
           moving.set(n, Math.min(len, bytes))
@@ -586,7 +597,14 @@ async function sendFile(file: File): Promise<void> {
 
     // morceaux en route à la fois : moins quand le lien lâche (sendpass.ts)
     const lanes: Lanes = { lanes: SEND_WINDOW, okStreak: 0 }
-    const toFail = (e: unknown) => (e instanceof ApiFail ? e : new ApiFail((e as Error)?.message || t('ph.send.lostRetry'), 0))
+    // tout autre échec (lecture du fichier, chiffrement) : repris comme une
+    // coupure, et jamais un message technique à l'écran
+    const toFail = (e: unknown) => (e instanceof ApiFail ? e : new ApiFail(t('ph.send.lostRetry'), 0))
+    // abandon seulement après 30 reprises ET 8 minutes sans aucun morceau
+    // arrivé : un PC en veille ou un téléphone hors de portée un moment
+    // reprennent (le temps seul ne suffit pas : un écran verrouillé fige les
+    // minuteurs, puis l'heure saute d'un coup)
+    let lastProgress = Date.now()
 
     // boucle reprenable : si le réseau coupe, on resynchronise avec le PC
     // (quels chunks lui manquent) et on repart, sans jamais renvoyer ce qui
@@ -598,8 +616,11 @@ async function sendFile(file: File): Promise<void> {
         const hard = failures.find(isHard)
         if (hard) throw hard
         // des morceaux sont passés depuis la dernière coupure : on repart de zéro
-        if (acked.size > before) resumes = 0
-        if (resumes >= 30) throw failures[0]
+        if (acked.size > before) {
+          resumes = 0
+          lastProgress = Date.now()
+        }
+        if (resumes >= 30 && Date.now() - lastProgress >= 8 * 60_000) throw failures[0]
         resumes++
         // lien qui lâche : moins de morceaux à la fois
         afterFailure(lanes)
@@ -728,7 +749,7 @@ async function downloadInto(item: OutboxItem, li: HTMLLIElement) {
   state.classList.remove('hidden')
   state.textContent = t('ph.recv.downloading')
   let serverSaw = false
-  let reason: 'network' | 'incomplete' | 'decrypt' | 'refused' | 'busy' = 'network'
+  let reason: 'network' | 'incomplete' | 'decrypt' | 'crypto' | 'refused' | 'busy' = 'network'
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
   try {
     const r = await fetch(`/api/phone/outbox/${item.id}/download`, {
@@ -742,7 +763,7 @@ async function downloadInto(item: OutboxItem, li: HTMLLIElement) {
       if (typeof j.code === 'string' && DL_CODES_COUNTED.has(j.code)) serverSaw = true
       else reason = r.status === 401 || r.status === 403 ? 'refused' : r.status === 429 ? 'busy' : 'network'
     }
-    if (!r.ok || !r.body) throw new Error(t('ph.recv.dlFailed'))
+    if (!r.ok || !r.body) throw new ShownError(t('ph.recv.dlFailed'))
     reader = r.body.getReader()
     // file de morceaux réseau : on ne recopie JAMAIS tout l'accumulateur (l'ancien
     // code était en O(n²) et ramait sur les gros fichiers). peek/take sont en O(n).
@@ -839,7 +860,7 @@ async function downloadInto(item: OutboxItem, li: HTMLLIElement) {
     while (opening.length > 0) await settle()
     if (total > 0 && received !== total) {
       reason = 'incomplete'
-      throw new Error(t('ph.recv.incomplete'))
+      throw new ShownError(t('ph.recv.incomplete'))
     }
     const blob = new Blob([...blobs, ...parts] as BlobPart[], { type: item.mime || 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
@@ -865,7 +886,10 @@ async function downloadInto(item: OutboxItem, li: HTMLLIElement) {
     // plus la peine de laisser le PC envoyer la suite
     void reader?.cancel().catch(() => {})
     if (e instanceof CryptoAuthError) reason = 'decrypt'
-    state.textContent = e instanceof CryptoAuthError ? t('ph.recv.dlFailed') : (e as Error).message || t('ph.recv.dlFailed')
+    else if (e instanceof CryptoPoolError) reason = 'crypto'
+    // seulement nos propres phrases : jamais un message technique du
+    // navigateur (« Load failed ») ou du chiffrement
+    state.textContent = e instanceof ShownError ? e.message : t('ph.recv.dlFailed')
     li.classList.add('err')
     if (!serverSaw) reportFail('pc_to_phone', item.mime, reason, item.id)
   }

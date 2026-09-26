@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { randomBytes } from 'node:crypto'
-import { CryptoPool, CryptoAuthError, type WorkerLike } from '../src/webclient/cryptopool.js'
+import { CryptoPool, CryptoAuthError, CryptoPoolError, type WorkerLike } from '../src/webclient/cryptopool.js'
 import { makeCryptoRunner, type CryptoJob } from '../src/webclient/cryptojob.js'
 import * as wd from '../src/webclient/wdcrypto.js'
 import { seal as pcSeal, open as pcOpen } from '../src/crypto.js'
@@ -16,21 +16,27 @@ class FakeWorker implements WorkerLike {
   terminated = false
   private runner: ReturnType<typeof makeCryptoRunner>
   private crash: boolean
-  constructor(opts: { useWasm?: boolean; failStart?: boolean; crashOnJob?: boolean } = {}) {
+  private failJob: boolean
+  jobs = 0
+  constructor(opts: { useWasm?: boolean; failStart?: boolean; crashOnJob?: boolean; failJob?: boolean } = {}) {
     this.runner = makeCryptoRunner(opts.useWasm ?? true)
     setTimeout(() => {
       if (opts.failStart) this.onerror?.(new Error('script introuvable'))
       else this.onmessage?.({ data: { ready: true, engine: this.runner.engine } })
     }, 1)
     this.crash = !!opts.crashOnJob
+    this.failJob = !!opts.failJob
   }
   postMessage(msg: unknown, transfer?: Transferable[]) {
     if (this.terminated) return
     const job = structuredClone(msg, { transfer: transfer as Transferable[] }) as CryptoJob
     setTimeout(() => {
       if (this.terminated) return
+      this.jobs++
       if (this.crash) return this.onerror?.(new Error('plantage'))
-      const { reply, transfer: tr } = this.runner.handle(job)
+      // échec dans le moteur (mémoire refusée) : même chemin que cryptojob.ts,
+      // provoqué par une clé que le moteur refuse
+      const { reply, transfer: tr } = this.runner.handle(this.failJob ? { ...job, key: new Uint8Array(1) } : job)
       this.onmessage?.({ data: structuredClone(reply, { transfer: tr }) })
     }, 1)
   }
@@ -112,11 +118,11 @@ describe('chiffrement du téléphone dans des Web Workers', () => {
     sealed.forEach((s, i) => expect(Buffer.from(pcOpen(key, s, 'a')).equals(Buffer.from(plains[i]!))).toBe(true))
   })
 
-  it('Worker qui plante en plein travail : ce morceau échoue (l’envoi le reprendra), les suivants passent', async () => {
+  it('Worker qui plante en plein travail : ce morceau échoue (l’envoi le relit), les suivants passent', async () => {
     let n = 0
-    const pool = new CryptoPool({ create: () => new FakeWorker({ crashOnJob: n++ === 0 }), size: 1, fallback })
+    const pool = new CryptoPool({ create: () => new FakeWorker({ crashOnJob: n++ === 0 }), size: 1, fallback, retryMs: 10 })
     const key = rnd(32)
-    await expect(pool.seal(key, rnd(10), 'a')).rejects.toThrow()
+    await expect(pool.seal(key, rnd(10), 'a')).rejects.toBeInstanceOf(CryptoPoolError)
     const p = rnd(10)
     const s = await pool.seal(key, p.slice(), 'a')
     expect(Buffer.from(pcOpen(key, s, 'a')).equals(Buffer.from(p))).toBe(true)
@@ -133,5 +139,105 @@ describe('chiffrement du téléphone dans des Web Workers', () => {
     expect(workers.every((w) => w.terminated)).toBe(true)
     await pool.seal(key, rnd(10), 'a')
     expect(workers.length).toBe(4)
+  })
+
+  it('coupure réseau pendant la relance des Workers : ils reviennent ensuite, la page ne reste pas en mode lent', async () => {
+    const workers: FakeWorker[] = []
+    let blipUntil = 0
+    const pool = new CryptoPool({
+      create: () => (workers.push(new FakeWorker({ failStart: Date.now() < blipUntil })), workers.at(-1)!),
+      size: 4,
+      fallback,
+      idleMs: 20,
+      retryMs: 15,
+    })
+    const key = rnd(32)
+    await pool.seal(key, rnd(10), 'a')
+    expect(pool.engine).toBe('wasm')
+    await sleep(60)
+    expect(workers.every((w) => w.terminated)).toBe(true)
+    // le wifi revient à peine : cw.js ne se charge pas pendant 40 ms
+    blipUntil = Date.now() + 40
+    const p = rnd(5000)
+    const s = await pool.seal(key, p.slice(), 'b')
+    expect(Buffer.from(pcOpen(key, s, 'b')).equals(Buffer.from(p))).toBe(true)
+    expect(pool.engine).toBe('wasm')
+    // et encore plus tard, toujours dans les Workers
+    for (let i = 0; i < 3; i++) await pool.seal(key, rnd(100), 'c')
+    expect(pool.engine).toBe('wasm')
+    // relances espacées, pas une boucle serrée
+    expect(workers.length).toBeLessThan(40)
+  })
+
+  it('Workers qui plantent sans cesse : la page avance en attendant, sans jamais les abandonner pour de bon', async () => {
+    let healthy = false
+    const pool = new CryptoPool({ create: () => new FakeWorker({ crashOnJob: !healthy }), size: 2, fallback, retryMs: 5 })
+    const key = rnd(32)
+    // premier démarrage réussi, puis plantages en série : chaque morceau perdu
+    // est signalé (l'envoi le relit), jamais un blocage
+    const results: string[] = []
+    for (let i = 0; i < 8; i++) {
+      const p = rnd(1000)
+      try {
+        const s = await pool.seal(key, p.slice(), 'x')
+        expect(Buffer.from(pcOpen(key, s, 'x')).equals(Buffer.from(p))).toBe(true)
+        results.push('ok')
+      } catch (e) {
+        expect(e).toBeInstanceOf(CryptoPoolError)
+        results.push('lost')
+      }
+    }
+    // seul le tout premier morceau est perdu (l'envoi le relit) : ensuite la
+    // page garde une copie et refait elle-même ce qu'un Worker perd
+    expect(results).toEqual(['lost', ...Array(7).fill('ok')])
+    // les Workers réparés sont repris aux relances suivantes (ceux qui
+    // plantent encore sortent au premier travail)
+    healthy = true
+    for (let i = 0; i < 12 && pool.engine !== 'wasm'; i++) {
+      await sleep(60)
+      await pool.seal(key, rnd(100), 'y')
+    }
+    expect(pool.engine).toBe('wasm')
+  })
+
+  it('échec du moteur dans le Worker (mémoire refusée) : la page refait ce morceau, rien n’est perdu', async () => {
+    const pool = new CryptoPool({ create: () => new FakeWorker({ failJob: true }), size: 2, fallback })
+    const key = rnd(32)
+    const p = rnd(300_000)
+    const s = await pool.seal(key, p.slice(), 'seal')
+    expect(Buffer.from(pcOpen(key, s, 'seal')).equals(Buffer.from(p))).toBe(true)
+    const q = rnd(200_000)
+    const o = await pool.open(key, pcSeal(key, q, 'open'), 'open')
+    expect(Buffer.from(o).equals(Buffer.from(q))).toBe(true)
+    // un vrai tag faux reste refusé
+    const bad = pcSeal(key, q, 'open')
+    bad[30] = bad[30]! ^ 1
+    await expect(pool.open(key, bad, 'open')).rejects.toBeInstanceOf(CryptoAuthError)
+  })
+
+  it('Worker perdu en plein déchiffrement : la page déchiffre ce morceau (un téléchargement ne peut pas le redemander)', async () => {
+    let n = 0
+    const pool = new CryptoPool({ create: () => new FakeWorker({ crashOnJob: n++ === 0 }), size: 1, fallback, retryMs: 10 })
+    const key = rnd(32)
+    const frames = [rnd(100_000), rnd(50)]
+    const sealed = frames.map((f, i) => pcSeal(key, f, `dl|${i}`))
+    const opened = await Promise.all(sealed.map((s, i) => pool.open(key, s, `dl|${i}`)))
+    opened.forEach((o, i) => expect(Buffer.from(o).equals(Buffer.from(frames[i]!))).toBe(true))
+    // morceau modifié : toujours refusé, même quand c'est la page qui déchiffre
+    const bad = sealed[0]!.slice()
+    bad[40] = bad[40]! ^ 1
+    n = 0
+    const pool2 = new CryptoPool({ create: () => new FakeWorker({ crashOnJob: n++ === 0 }), size: 1, fallback, retryMs: 10 })
+    await expect(pool2.open(key, bad, 'dl|0')).rejects.toBeInstanceOf(CryptoAuthError)
+  })
+
+  it('le Worker rend le morceau intact quand son moteur échoue', () => {
+    const runner = makeCryptoRunner(true)
+    const plain = rnd(1000)
+    const buf = plain.slice().buffer
+    const { reply, transfer } = runner.handle({ id: 7, op: 'seal', key: new Uint8Array(3), aad: 'a', buf } as CryptoJob)
+    expect(reply).toMatchObject({ id: 7, error: 'fail' })
+    expect(transfer).toEqual([buf])
+    expect(Buffer.from(new Uint8Array((reply as { buf: ArrayBuffer }).buf)).equals(Buffer.from(plain))).toBe(true)
   })
 })
