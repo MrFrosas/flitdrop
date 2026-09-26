@@ -3,6 +3,11 @@ import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '..
 import { applyI18n } from '../i18n-dom.js'
 import { KeyedNodes, VersionedList, reconcile } from './lists.js'
 import { afterExpiredCode, connectError, shouldSuggestInstall } from './onboarding.js'
+import { CryptoPool, CryptoAuthError, type WorkerLike } from './cryptopool.js'
+import { SpeedMeter, progressText } from './speed.js'
+import { speedVerdict } from './speedverdict.js'
+import { runPass, afterFailure, type Lanes } from './sendpass.js'
+import type { PcLink } from '../wifi.js'
 
 const LANG_KEY = 'wd_lang'
 let lang: Lang = resolveLang(localStorage.getItem(LANG_KEY) || undefined, langFrom(navigator.language))
@@ -25,6 +30,8 @@ interface HelloRes {
   // clé de session renvoyée au 1er hello : remplace la clé (éphémère) du QR.
   newKey?: string
   hosts?: string[]
+  // fonctions de ce PC (absent d'un PC plus ancien) : 'speedtest'
+  features?: string[]
 }
 interface OutboxItem {
   id: string
@@ -49,9 +56,31 @@ const SEND_HINT_KEY = 'wd_send_hint'
 const SEND_CHUNK = 8 * 1024 * 1024
 // nombre de chunks envoyés EN PARALLÈLE : sature le wifi au lieu d'attendre
 // chaque accusé de réception (le débit passe de ~3 Mo/s à la vitesse de la ligne).
+// Réduit à la volée quand le lien lâche (voir sendFile), rétabli ensuite.
 const SEND_WINDOW = 4
+// morceaux reçus du PC en cours de déchiffrement en même temps (4 Mo chacun)
+const DL_INFLIGHT = 5
+// le fichier reçu est rangé par tranches : la mémoire des morceaux est rendue
+const DL_BLOB_BATCH = 64 * 1024 * 1024
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
+
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
+// Chiffrement des morceaux dans des Web Workers (WebAssembly), plusieurs à la
+// fois, hors du fil de la page : sur iPhone, Safari exécute la page HTTP sans
+// JIT et le chiffrement en JavaScript y plafonnait à 1-3 Mo/s en gelant
+// l'écran. Même format exact : le PC ne voit aucune différence. Si les
+// Workers ne démarrent pas, la page chiffre elle-même, comme avant.
+const pool = new CryptoPool({
+  create: () => {
+    if (typeof Worker !== 'function') throw new Error('Worker indisponible')
+    return new Worker('/s/cw.js') as unknown as WorkerLike
+  },
+  // iPhone : 6 coeurs (Safari en annonce parfois moins) ; ailleurs selon l'appareil
+  size: Math.min(4, Math.max(isIOS() ? 4 : 2, navigator.hardwareConcurrency || 2)),
+  fallback: { seal, open },
+})
 
 let pair: Pairing | null = null
 let key: Uint8Array | null = null
@@ -363,6 +392,13 @@ async function connect() {
     }
     updateManifestForPairing()
     show('main')
+    // test de vitesse : seulement si ce PC sait y répondre
+    $('btnSpeed').classList.toggle('hidden', !hello.features?.includes('speedtest'))
+    // iPhone sans WebAssembly : presque toujours le mode Isolement, qui coupe
+    // aussi le JIT. Les transferts y sont très lents : on le dit, avec la sortie.
+    const slow = $('slowHint')
+    slow.textContent = t('st.lockdown')
+    slow.classList.toggle('hidden', !(isIOS() && typeof WebAssembly !== 'object'))
     startPolling()
     // appairage tout neuf (clé de session reçue) : le bouton d'envoi d'abord
     if (hello.newKey) hintSendOnce()
@@ -430,21 +466,41 @@ function queueItem(name: string, size: number): QueueUI {
   return { li, bar: li.querySelector('.qbar span') as HTMLSpanElement, state: li.querySelector('.qstate') as HTMLElement }
 }
 
-async function sendChunk(tid: string, n: number, sealed: Uint8Array): Promise<void> {
+/** Un morceau chiffré vers le PC. XMLHttpRequest plutôt que fetch : lui seul
+ *  dit combien d'octets sont déjà partis, pour une barre et une vitesse qui
+ *  bougent en continu (et plus seulement tous les 8 Mo). */
+function postChunk(tid: string, n: number, sealed: Uint8Array, onSent: (bytes: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest()
+    x.open('POST', `/api/phone/transfer/${tid}/chunk/${n}`)
+    x.setRequestHeader('content-type', 'application/octet-stream')
+    x.setRequestHeader('x-wd-device', pair!.id)
+    x.upload.onprogress = (e) => onSent(e.loaded)
+    x.onload = () => {
+      if (x.status >= 200 && x.status < 300) return resolve()
+      let j: { code?: string } = {}
+      try {
+        j = JSON.parse(x.responseText) as { code?: string }
+      } catch {
+        j = {}
+      }
+      reject(new ApiFail(j.code ? t('err.' + j.code) : t('err.generic', { status: x.status }), x.status, j.code))
+    }
+    // coupure réseau : statut 0, repris plus loin (jamais une erreur « dure »)
+    x.onerror = x.onabort = x.ontimeout = () => reject(new ApiFail(t('ph.send.lostRetry'), 0))
+    x.send(sealed as unknown as XMLHttpRequestBodyInit)
+  })
+}
+
+async function sendChunk(tid: string, n: number, sealed: Uint8Array, onSent: (bytes: number) => void): Promise<void> {
   let lastErr: unknown
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const r = await fetch(`/api/phone/transfer/${tid}/chunk/${n}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/octet-stream', 'x-wd-device': pair!.id },
-        body: sealed as unknown as BodyInit,
-      })
-      if (r.ok) return
-      const j = (await r.json().catch(() => ({}))) as { error?: string; code?: string }
-      throw new ApiFail(j.code ? t('err.' + j.code) : t('err.generic', { status: r.status }), r.status, j.code)
+      onSent(0)
+      return await postChunk(tid, n, sealed, onSent)
     } catch (e) {
       lastErr = e
-      if (e instanceof ApiFail && e.status !== 429 && e.status < 500) throw e
+      if (e instanceof ApiFail && e.status && e.status !== 429 && e.status < 500) throw e
       await new Promise((r) => setTimeout(r, 700 * (attempt + 1)))
     }
   }
@@ -475,54 +531,81 @@ async function sendFile(file: File): Promise<void> {
   const chunkSize = SEND_CHUNK
   const chunks = Math.ceil(file.size / chunkSize)
   let tid = ''
+  // rafraîchit vitesse et temps restant même sans nouvel octet (lien bloqué)
+  let ticker: number | undefined
   try {
     const init = await post<{ transferId: string }>('/api/phone/transfer/init', 'init', {
       meta: { name: file.name || fallbackName, size: file.size, mime: file.type || undefined, chunkSize, chunks },
     })
     tid = init.transferId
-    const started = Date.now()
     const acked = new Set<number>()
     let sentBytes = 0
     let resumes = 0
+    // octets déjà partis des morceaux en cours d'envoi (non encore confirmés)
+    const moving = new Map<number, number>()
+    const meter = new SpeedMeter()
+    let lastPaint = 0
+    // pendant une reprise, la ligne dit « Connexion perdue, reprise… »
+    let pausing = false
+    const paint = (force = false) => {
+      const now = Date.now()
+      if (pausing || (!force && now - lastPaint < 250)) return
+      lastPaint = now
+      let live = sentBytes
+      for (const v of moving.values()) live += v
+      live = Math.min(file.size, live)
+      meter.add(live)
+      ui.bar.style.width = Math.floor((live / file.size) * 100) + '%'
+      ui.state.textContent = progressText(lang, live, file.size, meter.rate())
+    }
+    ticker = window.setInterval(() => paint(), 1000)
 
-    // envoie un chunk (sendChunk retente déjà 3× les erreurs transitoires)
+    // envoie un chunk : lecture, chiffrement dans un Worker (pendant que les
+    // autres morceaux partent sur le réseau), envoi (sendChunk retente déjà 3×
+    // les erreurs transitoires)
     const sendOne = async (n: number) => {
       const slice = file.slice(n * chunkSize, Math.min((n + 1) * chunkSize, file.size))
       const plain = new Uint8Array(await slice.arrayBuffer())
-      const sealed = seal(key!, plain, aad('chunk', `${tid}|${n}`))
-      await sendChunk(tid, n, sealed)
+      const len = plain.length
+      // `plain` part au Worker (sans copie) : ne plus s'en servir ensuite
+      const sealed = await pool.seal(key!, plain, aad('chunk', `${tid}|${n}`))
+      try {
+        await sendChunk(tid, n, sealed, (bytes) => {
+          moving.set(n, Math.min(len, bytes))
+          paint()
+        })
+      } finally {
+        moving.delete(n)
+      }
       acked.add(n)
-      sentBytes += plain.length
-      const pct = Math.round((sentBytes / file.size) * 100)
-      ui.bar.style.width = pct + '%'
-      const speed = sentBytes / Math.max(0.4, (Date.now() - started) / 1000)
-      ui.state.textContent = t('ph.send.progress', { pct, speed: fmtSize(speed) })
+      sentBytes += len
+      paint(true)
     }
 
     const isHard = (e: ApiFail) => !!e.status && e.status !== 429 && e.status < 500 && e.status !== 408
 
-    // boucle reprennable : à chaque passe on lance SEND_WINDOW envois EN PARALLÈLE
-    // (les workers se partagent la file des chunks restants) ; si le réseau coupe,
-    // on resynchronise avec le PC (quels chunks lui manquent) et on repart, sans
-    // jamais renvoyer ce qui est déjà arrivé.
+    // morceaux en route à la fois : moins quand le lien lâche (sendpass.ts)
+    const lanes: Lanes = { lanes: SEND_WINDOW, okStreak: 0 }
+    const toFail = (e: unknown) => (e instanceof ApiFail ? e : new ApiFail((e as Error)?.message || t('ph.send.lostRetry'), 0))
+
+    // boucle reprenable : si le réseau coupe, on resynchronise avec le PC
+    // (quels chunks lui manquent) et on repart, sans jamais renvoyer ce qui
+    // est déjà arrivé.
     while (acked.size < chunks) {
-      let cursor = 0
-      const worker = async () => {
-        for (;;) {
-          const n = cursor++
-          if (n >= chunks) return
-          if (!acked.has(n)) await sendOne(n)
-        }
-      }
-      const results = await Promise.allSettled(Array.from({ length: Math.min(SEND_WINDOW, chunks) }, worker))
-      const failures = results.filter((r) => r.status === 'rejected').map((r) => (r as PromiseRejectedResult).reason as ApiFail)
+      const before = acked.size
+      const failures = await runPass(chunks, acked, lanes, SEND_WINDOW, sendOne, toFail)
       if (failures.length) {
         const hard = failures.find(isHard)
         if (hard) throw hard
+        // des morceaux sont passés depuis la dernière coupure : on repart de zéro
+        if (acked.size > before) resumes = 0
         if (resumes >= 30) throw failures[0]
         resumes++
+        // lien qui lâche : moins de morceaux à la fois
+        afterFailure(lanes)
+        pausing = true
         ui.state.textContent = t('ph.send.lost')
-        await new Promise((r) => setTimeout(r, Math.min(8000, 1000 * resumes)))
+        await new Promise((r) => setTimeout(r, Math.min(4000, 500 * 2 ** Math.min(resumes - 1, 3))))
         // reprendre à l'octet près : le PC nous dit quels chunks il a déjà
         const st = await transferStatus(tid).catch(() => null)
         if (st?.have) {
@@ -533,6 +616,7 @@ async function sendFile(file: File): Promise<void> {
             sentBytes += i === chunks - 1 ? file.size - (chunks - 1) * chunkSize : chunkSize
           }
         }
+        pausing = false
       }
     }
     await post(`/api/phone/transfer/${tid}/finish`, 'finish', { transferId: tid })
@@ -547,6 +631,8 @@ async function sendFile(file: File): Promise<void> {
     if (!tid && !err.status) reportFail('phone_to_pc', file.type, 'network')
     ui.li.classList.add('err')
     ui.state.textContent = err.code === 'refused' ? t('ph.send.refused') : errText(err)
+  } finally {
+    clearInterval(ticker)
   }
 }
 
@@ -557,9 +643,11 @@ async function sendFiles(files: FileList | File[]) {
   const list = [...files]
   const summary = $('sendSummary')
   summary.classList.remove('hidden')
+  // gros envoi : l'iPhone qui se verrouille met la page en pause
+  const big = list.reduce((a, f) => a + f.size, 0) > 100 * 1024 * 1024
   let done = 0
   for (const f of list) {
-    summary.innerHTML = t('ph.send.sending', { a: done + 1, b: list.length })
+    summary.innerHTML = t('ph.send.sending', { a: done + 1, b: list.length }) + (big ? '<br>' + t('ph.send.keepOn') : '')
     await sendFile(f)
     done++
   }
@@ -641,6 +729,7 @@ async function downloadInto(item: OutboxItem, li: HTMLLIElement) {
   state.textContent = t('ph.recv.downloading')
   let serverSaw = false
   let reason: 'network' | 'incomplete' | 'decrypt' | 'refused' | 'busy' = 'network'
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
   try {
     const r = await fetch(`/api/phone/outbox/${item.id}/download`, {
       method: 'POST',
@@ -654,15 +743,42 @@ async function downloadInto(item: OutboxItem, li: HTMLLIElement) {
       else reason = r.status === 401 || r.status === 403 ? 'refused' : r.status === 429 ? 'busy' : 'network'
     }
     if (!r.ok || !r.body) throw new Error(t('ph.recv.dlFailed'))
-    const reader = r.body.getReader()
+    reader = r.body.getReader()
     // file de morceaux réseau : on ne recopie JAMAIS tout l'accumulateur (l'ancien
     // code était en O(n²) et ramait sur les gros fichiers). peek/take sont en O(n).
     const queue: Uint8Array[] = []
     let queued = 0
-    const parts: Uint8Array[] = []
+    // morceaux déchiffrés, rangés en Blob par tranches de 64 Mo : la mémoire
+    // des morceaux est rendue au fur et à mesure (avant : tout le fichier en
+    // mémoire, puis une copie de plus au moment du Blob)
+    let parts: Uint8Array[] = []
+    let partsBytes = 0
+    const blobs: Blob[] = []
     let frameIndex = 0
     let received = 0
     const total = item.size ?? 0
+    const meter = new SpeedMeter()
+    let lastPaint = 0
+    // morceaux confiés aux Workers, dans l'ordre du fichier
+    const opening: Promise<Uint8Array>[] = []
+    const settle = async () => {
+      const plain = await opening.shift()!
+      parts.push(plain)
+      partsBytes += plain.length
+      received += plain.length
+      if (partsBytes >= DL_BLOB_BATCH) {
+        blobs.push(new Blob(parts as BlobPart[]))
+        parts = []
+        partsBytes = 0
+      }
+      const now = Date.now()
+      if (total > 0 && now - lastPaint >= 250) {
+        lastPaint = now
+        meter.add(received)
+        barFill.style.width = Math.floor((received / total) * 100) + '%'
+        state.textContent = progressText(lang, received, total, meter.rate())
+      }
+    }
     // lit la longueur (4 o) en tête sans consommer, même si elle chevauche 2 morceaux
     const peekLen = (): number | null => {
       if (queued < 4) return null
@@ -708,25 +824,24 @@ async function downloadInto(item: OutboxItem, li: HTMLLIElement) {
           if (len === null || queued < 4 + len) break
           take(4)
           const sealed = take(len)
-          reason = 'decrypt'
-          const plain = open(key!, sealed, aad('dl', `${item.id}|${frameIndex}`))
-          reason = 'network'
-          parts.push(plain)
-          received += plain.length
+          // déchiffré dans un Worker pendant que les morceaux suivants arrivent ;
+          // chaque morceau garde son numéro (AAD) : un morceau déplacé, rejoué
+          // ou modifié est refusé
+          const job = pool.open(key!, sealed, aad('dl', `${item.id}|${frameIndex}`))
+          job.catch(() => {})
+          opening.push(job)
           frameIndex++
-          if (total > 0) {
-            barFill.style.width = Math.round((received / total) * 100) + '%'
-            state.textContent = `${Math.round((received / total) * 100)} %`
-          }
+          while (opening.length >= DL_INFLIGHT) await settle()
         }
       }
       if (done) break
     }
+    while (opening.length > 0) await settle()
     if (total > 0 && received !== total) {
       reason = 'incomplete'
       throw new Error(t('ph.recv.incomplete'))
     }
-    const blob = new Blob(parts as BlobPart[], { type: item.mime || 'application/octet-stream' })
+    const blob = new Blob([...blobs, ...parts] as BlobPart[], { type: item.mime || 'application/octet-stream' })
     const url = URL.createObjectURL(blob)
     downloadedIds.add(item.id)
     reportReceived(item.id)
@@ -747,7 +862,10 @@ async function downloadInto(item: OutboxItem, li: HTMLLIElement) {
       toast(t('ph.recv.fileDone'))
     }
   } catch (e) {
-    state.textContent = (e as Error).message || t('ph.recv.dlFailed')
+    // plus la peine de laisser le PC envoyer la suite
+    void reader?.cancel().catch(() => {})
+    if (e instanceof CryptoAuthError) reason = 'decrypt'
+    state.textContent = e instanceof CryptoAuthError ? t('ph.recv.dlFailed') : (e as Error).message || t('ph.recv.dlFailed')
     li.classList.add('err')
     if (!serverSaw) reportFail('pc_to_phone', item.mime, reason, item.id)
   }
@@ -769,6 +887,139 @@ function startPolling() {
   void pollOutbox()
   if (pollTimer) clearInterval(pollTimer)
   pollTimer = window.setInterval(() => void pollOutbox(), 6000)
+}
+
+
+// ---------- test de vitesse ----------
+// Le réseau seul dans chaque sens (octets aléatoires, aucun fichier), puis la
+// vitesse de chiffrement de ce téléphone, puis comment le PC est relié. Le
+// verdict dit en mots simples qui freine et quoi faire (speedverdict.ts).
+
+const SPEED_MS = 4000
+const sleepMs = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/** octets/s du PC vers le téléphone, mesurés pendant ~4 s */
+async function measureDown(): Promise<number> {
+  const r = await fetch('/api/phone/speedtest/down', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-wd-device': pair!.id },
+    body: envelope('speedtest-down', { bytes: 64 * 1024 * 1024 }),
+  })
+  if (!r.ok || !r.body) throw new Error('down ' + r.status)
+  const reader = r.body.getReader()
+  let got = 0
+  let t0 = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (value) {
+      // le chrono part au premier octet : l'attente de la réponse n'est pas du débit
+      if (!t0) t0 = performance.now()
+      else got += value.length
+    }
+    if (done) break
+    if (t0 && performance.now() - t0 > SPEED_MS) {
+      void reader.cancel().catch(() => {})
+      break
+    }
+  }
+  const ms = performance.now() - t0
+  if (!t0 || ms <= 0) throw new Error('down vide')
+  return (got * 1000) / ms
+}
+
+/** octets/s du téléphone vers le PC : morceaux de 2 Mo, 3 à la fois, ~4 s */
+async function measureUp(): Promise<number> {
+  const PIECE = 2 * 1024 * 1024
+  const body = new Uint8Array(PIECE)
+  let sent = 0
+  const t0 = performance.now()
+  const lane = async () => {
+    while (performance.now() - t0 < SPEED_MS && sent < 96 * 1024 * 1024) {
+      const auth = sealJSON(key!, { bytes: PIECE, ts: Date.now(), jti: jti() }, aad('speedtest-up'))
+      const r = await fetch('/api/phone/speedtest/up', {
+        method: 'POST',
+        headers: { 'content-type': 'application/octet-stream', 'x-wd-device': pair!.id, 'x-wd-auth': auth },
+        body: body as unknown as BodyInit,
+      })
+      if (!r.ok) throw new Error('up ' + r.status)
+      await r.arrayBuffer()
+      sent += PIECE
+    }
+  }
+  await Promise.all([lane(), lane(), lane()])
+  return (sent * 1000) / (performance.now() - t0)
+}
+
+/** octets/s que ce téléphone chiffre, avec tous ses Workers */
+async function measureCrypto(): Promise<number> {
+  const k = rand32()
+  const PIECE = 4 * 1024 * 1024
+  // mise en route (démarrage des Workers, compilation) hors chrono
+  await Promise.all([0, 1, 2, 3].map(() => pool.seal(k, new Uint8Array(64 * 1024), 'speedtest')))
+  let done = 0
+  const t0 = performance.now()
+  const lane = async () => {
+    while (performance.now() - t0 < 2500 && done < 64 * 1024 * 1024) {
+      await pool.seal(k, new Uint8Array(PIECE), 'speedtest')
+      done += PIECE
+    }
+  }
+  await Promise.all([lane(), lane(), lane(), lane()])
+  return (done * 1000) / (performance.now() - t0)
+}
+
+function rand32(): Uint8Array {
+  const b = new Uint8Array(32)
+  crypto.getRandomValues(b)
+  return b
+}
+
+let speedRunning = false
+async function runSpeedTest() {
+  if (speedRunning || !hello) return
+  speedRunning = true
+  const out = $('speedResult')
+  const btn = $('btnSpeedStart') as unknown as HTMLButtonElement
+  btn.disabled = true
+  const step = (key: string) => {
+    out.innerHTML = ''
+    const p = document.createElement('p')
+    p.textContent = t(key)
+    out.appendChild(p)
+  }
+  try {
+    step('st.running.down')
+    const down = await measureDown()
+    await sleepMs(200)
+    step('st.running.up')
+    const up = await measureUp()
+    step('st.running.crypto')
+    const cryptoRate = await measureCrypto()
+    step('st.running.pc')
+    const pc = await post<{ link?: PcLink }>('/api/phone/speedtest/pc', 'speedtest-pc', {})
+      .then((r) => r.link ?? null)
+      .catch(() => null)
+    const facts = { down, up, crypto: cryptoRate, noWasm: typeof WebAssembly !== 'object', ios: isIOS(), pc }
+    out.innerHTML = ''
+    for (const line of speedVerdict(lang, facts)) {
+      const p = document.createElement('p')
+      p.textContent = line.text
+      if (line.strong) p.className = 'verdict'
+      out.appendChild(p)
+    }
+    btn.textContent = t('st.again')
+  } catch {
+    step('st.failed')
+  } finally {
+    btn.disabled = false
+    speedRunning = false
+  }
+}
+
+function openSpeedSheet() {
+  $('menuSheet').classList.add('hidden')
+  $('speedIntro').textContent = t('st.intro', { name: hello?.desktopName ?? 'PC' })
+  $('speedSheet').classList.remove('hidden')
 }
 
 // ---------- historique du presse-papiers (synchro depuis le PC) ----------
@@ -967,6 +1218,9 @@ function initUI() {
     $('installSheet').classList.remove('hidden')
   }
   $('btnInstall').onclick = openInstallSheet
+  $('btnSpeed').onclick = openSpeedSheet
+  $('btnSpeedStart').onclick = () => void runSpeedTest()
+  $('speedClose').onclick = () => $('speedSheet').classList.add('hidden')
   $('installClose').onclick = () => $('installSheet').classList.add('hidden')
 
   // bannière « ajouter à l'écran d'accueil » (affichée une fois après appairage)

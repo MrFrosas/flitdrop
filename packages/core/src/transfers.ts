@@ -32,6 +32,9 @@ export interface Transfer {
   chunkSize: number
   received: number
   bytes: number
+  /** octets de morceaux en cours de réception (pas encore écrits) : la page
+   *  du PC montre la progression et la vitesse sans attendre 8 Mo complets */
+  inflight?: number
   /** indices déjà écrits : permet un envoi PARALLÈLE (hors ordre) tout en
    *  restant idempotent et vérifiable à la reprise. */
   have: Set<number>
@@ -181,12 +184,21 @@ export class TransferManager {
     t.received = t.have.size
     t.lastActivity = Date.now()
     this.activity?.update(`up:${t.id}`, t.bytes, t.size)
+    this.pushProgress(t, t.received === t.chunks)
+  }
 
+  /** Octets d'un morceau qui arrivent (positif) ou qui ne comptent plus
+   *  (négatif : morceau écrit, refusé ou coupé). */
+  noteInflight(t: Transfer, delta: number): void {
+    t.inflight = Math.max(0, (t.inflight ?? 0) + delta)
+    if (delta > 0 && t.status === 'active') this.pushProgress(t, false)
+  }
+
+  private pushProgress(t: Transfer, force: boolean) {
     const last = this.lastProgressPush.get(t.id) ?? 0
-    if (Date.now() - last > 400 || t.received === t.chunks) {
-      this.lastProgressPush.set(t.id, Date.now())
-      this.hub.broadcast('transfer-progress', { id: t.id, bytes: t.bytes, size: t.size })
-    }
+    if (!force && Date.now() - last <= 400) return
+    this.lastProgressPush.set(t.id, Date.now())
+    this.hub.broadcast('transfer-progress', { id: t.id, bytes: Math.min(t.size, t.bytes + (t.inflight ?? 0)), size: t.size })
   }
 
   async finish(t: Transfer): Promise<string> {
