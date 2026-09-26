@@ -22,3 +22,6 @@ export const PENDING_PAIRING_TTL_MS = 3 * 60 * 1000
 // hygiène : on oublie automatiquement un appareil appairé resté inactif au-delà
 // de ce délai (évite l'accumulation d'anciens appairages sur une machine).
 export const DEVICE_MAX_IDLE_MS = 60 * 24 * 60 * 60 * 1000
+// Windows : QR d'appairage visible depuis ce délai sans qu'aucun téléphone ait
+// ouvert la page du PC : une vérification du pare-feu (firewall.ts).
+export const FIREWALL_CHECK_AFTER_MS = 45 * 1000

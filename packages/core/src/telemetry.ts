@@ -53,6 +53,11 @@ export const EVENTS: Record<string, { tier: Tier; props: readonly string[] }> = 
   qr_shown: { tier: 'basic', props: ['renewed'] },
   pairing_view_closed: { tier: 'basic', props: ['scanned'] },
   qr_expired_scan: { tier: 'basic', props: [] },
+  // pare-feu de Windows : vérification automatique (QR visible 45 s sans
+  // téléphone) et réparation demandée par la personne. Type de réseau et
+  // oui/non seulement, jamais de nom de réseau, de règle ni de chemin.
+  firewall_check: { tier: 'basic', props: ['network', 'blocked', 'allowed'] },
+  firewall_repair: { tier: 'basic', props: ['result'] },
   welcome_shown: { tier: 'full', props: [] },
   welcome_pair_clicked: { tier: 'full', props: [] },
   welcome_skipped: { tier: 'full', props: [] },

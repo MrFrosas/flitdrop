@@ -69,6 +69,25 @@
       </div>
     </div>
 
+    <!-- Windows : le pare-feu empêche peut-être le téléphone de joindre le PC.
+         Vérifié une fois quand le QR reste 45 s sans téléphone ; « Réparer »
+         demande l'accord de Windows. Une carte, jamais une fenêtre. -->
+    <div class="card consent-card fw-card hidden" id="fwCard">
+      <b class="consent-title fw-title" data-i18n="fw.title">Windows bloque peut-être ton téléphone</b>
+      <p class="cardhint fw-body"></p>
+      <p class="fw-status hidden" aria-live="polite"></p>
+      <div class="consent-actions fw-actions">
+        <button class="btn fw-fix" type="button" data-i18n="fw.fix">Réparer</button>
+        <button class="btn fw-later" type="button" data-i18n="fw.later">Plus tard</button>
+      </div>
+      <small class="consent-note fw-note" data-i18n="fw.fixNote">Windows va te demander ton accord. Rien d’autre ne change sur ton PC.</small>
+      <details class="fw-manual">
+        <summary data-i18n="fw.manual">Faire moi-même</summary>
+        <ol class="steps fw-steps"></ol>
+        <button class="btn fw-again" type="button" data-i18n="fw.again">C’est fait, vérifier</button>
+      </details>
+    </div>
+
     <!-- Demande de note, après 3 transferts réussis (pas une fenêtre) -->
     <div class="card consent-card hidden" id="rateCard">
       <b class="consent-title" data-i18n="rate.title">Flitdrop t’aide ? Laisse une note</b>
@@ -333,6 +352,21 @@
         <div class="pairurl" id="pairUrlText"></div>
         <!-- le code se renouvelle tout seul tant que cette fenêtre est visible -->
         <div class="pair-renew" id="pairRenew" aria-live="polite"></div>
+      </div>
+      <!-- même carte du pare-feu, là où la personne regarde -->
+      <div class="card consent-card fw-card hidden" id="pairFw">
+        <b class="consent-title fw-title" data-i18n="fw.title">Windows bloque peut-être ton téléphone</b>
+        <p class="cardhint fw-body"></p>
+        <p class="fw-status hidden" aria-live="polite"></p>
+        <div class="consent-actions fw-actions">
+          <button class="btn fw-fix" type="button" data-i18n="fw.fix">Réparer</button>
+        </div>
+        <small class="consent-note fw-note" data-i18n="fw.fixNote">Windows va te demander ton accord. Rien d’autre ne change sur ton PC.</small>
+        <details class="fw-manual">
+          <summary data-i18n="fw.manual">Faire moi-même</summary>
+          <ol class="steps fw-steps"></ol>
+          <button class="btn fw-again" type="button" data-i18n="fw.again">C’est fait, vérifier</button>
+        </details>
       </div>
       <div class="pairstate" id="pairState"><span class="spin"></span></div>
       <!-- premier appairage : la prochaine étape, en grand -->

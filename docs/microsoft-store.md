@@ -16,7 +16,9 @@
 
 Une app qui écoute sur le LAN déclenche normalement l'invite du Pare-feu Windows au premier lancement. Piège vérifié par l'audit : si l'utilisateur clique « Annuler », Windows crée des **règles de blocage persistantes** que le grand public ne saura jamais annuler.
 
-La parade : un MSIX peut **déclarer ses règles de pare-feu dans le manifeste** (extension `desktop2:Extension` catégorie `windows.firewallRules`), ce qui supprime entièrement l'invite. À ajouter au manifeste généré par electron-builder (post-traitement du AppxManifest.xml) avant la soumission, et à valider en certification.
+Après la 0.6.6 (installeur .exe, donc aussi l'installation par le Store) : quand le QR reste visible 45 s sans qu'aucun téléphone ouvre la page, l'app lit une fois le pare-feu et le type de réseau, et montre la carte « Windows bloque peut-être ton téléphone » avec « Réparer » (une seule demande des droits administrateur : règles de blocage de Flitdrop retirées, une règle d'autorisation limitée au réseau local ajoutée ; le type de réseau n'est jamais changé) et « Faire moi-même ». Détails : `docs/securite.md`, code : `packages/core/src/firewall.ts`.
+
+Autre parade, pour un MSIX : **déclarer ses règles de pare-feu dans le manifeste** (extension `desktop2:Extension` catégorie `windows.firewallRules`), ce qui supprime entièrement l'invite. À ajouter au manifeste généré par electron-builder (post-traitement du AppxManifest.xml) avant la soumission, et à valider en certification.
 
 Second piège vérifié : sur un réseau marqué « Public » dans Windows, mDNS et l'écoute locale sont bloqués par défaut. L'onboarding doit détecter ce cas et guider vers « réseau privé ».
 

@@ -167,6 +167,32 @@ test('chemin de connexion : qr_shown, pairing_view_closed, qr_expired_scan au ni
   for (const leak of ['abcdefghijkl', 'should-be-ignored']) assert.ok(!raw.includes(leak), leak)
 })
 
+test('pare-feu : firewall_check et firewall_repair au niveau de base, valeurs de la liste seulement', async () => {
+  await call(env('basic', 'firewall_check', { ...COMMON, network: 'public', blocked: true, allowed: false, rule: 'flitdrop.exe', path: 'C:\\Users\\zoe\\x' }, { iid: 'should-be-ignored-123' }))
+  await call(env('basic', 'firewall_repair', { ...COMMON, result: 'cancelled' }))
+  await call(env('basic', 'firewall_check', { network: 'Livebox-1234', blocked: 'oui', allowed: 1 }))
+  await call(env('basic', 'firewall_repair', { result: 'admin' }))
+  assert.equal(sent.length, 4)
+  assert.deepEqual(sent.map((x) => x.body.event), ['firewall_check', 'firewall_repair', 'firewall_check', 'firewall_repair'])
+  for (const x of sent) {
+    assert.equal(x.body.properties.tier, 'basic')
+    assert.equal(x.body.properties.$process_person_profile, false)
+  }
+  assert.equal(sent[0].body.properties.network, 'public')
+  assert.equal(sent[0].body.properties.blocked, true)
+  assert.equal(sent[0].body.properties.allowed, false)
+  assert.equal(sent[0].body.properties.rule, undefined)
+  assert.equal(sent[0].body.properties.path, undefined)
+  assert.equal(sent[1].body.properties.result, 'cancelled')
+  // valeurs hors liste ou du mauvais type : retirées
+  assert.equal(sent[2].body.properties.network, undefined)
+  assert.equal(sent[2].body.properties.blocked, undefined)
+  assert.equal(sent[2].body.properties.allowed, undefined)
+  assert.equal(sent[3].body.properties.result, undefined)
+  const raw = JSON.stringify(sent.map((x) => x.body))
+  for (const leak of ['Livebox', 'flitdrop.exe', 'zoe', 'should-be-ignored']) assert.ok(!raw.includes(leak), leak)
+})
+
 test('app_daily_active : autostart booléen seulement', async () => {
   await call(env('basic', 'app_daily_active', { ...COMMON, paired_devices: 1, autostart: true }))
   await call(env('basic', 'app_daily_active', { ...COMMON, paired_devices: 1, autostart: 'yes' }))

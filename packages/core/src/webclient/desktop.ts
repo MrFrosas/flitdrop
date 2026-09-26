@@ -1,6 +1,7 @@
 import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '../i18n.js'
 import { applyI18n } from '../i18n-dom.js'
-import { pairCodeState, fmtCountdown } from './onboarding.js'
+import { pairCodeState, fmtCountdown, firewallCheckDue, addVisibleMs } from './onboarding.js'
+import { FIREWALL_CHECK_AFTER_MS } from '../constants.js'
 
 // langue courante : détectée d'abord, puis alignée sur le réglage serveur.
 let lang: Lang = langFrom(navigator.language)
@@ -84,6 +85,16 @@ interface State {
   /** carte de demande de note à montrer */
   rate?: boolean
   hostname: string
+  /** pare-feu de Windows ; null ou absent : pas de vérification possible
+   *  (Mac, Linux, ligne de commande, coeur plus ancien) */
+  firewall?: {
+    checking: boolean
+    repairing: boolean
+    problem: 'public' | 'rule' | null
+    network: string | null
+    repair: 'ok' | 'cancelled' | 'failed' | null
+    fixed: boolean
+  } | null
   /** signalé par l'app de bureau (absent d'un coeur plus ancien) */
   host?: { macUpdate: { version: string; reveal?: number } | null; loginItemNeedsApproval: boolean }
   ips: string[]
@@ -109,6 +120,11 @@ let pairGuide = false
 let pairRenewedAt = 0
 let pairRenewing = false
 let pairTimer: ReturnType<typeof setTimeout> | undefined
+// pare-feu : temps de QR visible depuis l'ouverture, dernier battement du
+// compte à rebours, vérification déjà demandée pour cette ouverture
+let pairVisibleMs = 0
+let pairLastTick = 0
+let pairFwAsked = false
 
 // destinataire choisi dans « Envoyer » (plusieurs téléphones) : 'all' ou un
 // identifiant. null : celui que propose le PC (le dernier utilisé).
@@ -650,6 +666,79 @@ function renderHost() {
   $('macUpdateCard').classList.toggle('hidden', !upd || macUpdateKey(upd) === macUpdateLater)
   if (upd) $('macUpdateBody').textContent = t('macupd.body', { v: upd.version })
   $('loginApproval').classList.toggle('hidden', !host?.loginItemNeedsApproval)
+  renderFirewall()
+}
+
+// ---------- pare-feu de Windows ----------
+
+// « Plus tard » sur la carte du Radar : cachée jusqu'au prochain résultat
+let fwLaterKey = ''
+const fwKey = (f: NonNullable<State['firewall']>) => `${f.problem}|${f.repair}|${f.fixed}`
+
+/** Carte « Windows bloque peut-être ton téléphone », sur le Radar et dans la
+ *  fenêtre d'appairage : ce qui bloque, « Réparer », et les 3 étapes à faire
+ *  soi-même. Rien sans vérification (Mac, Linux) ni problème trouvé. */
+function renderFirewall() {
+  const f = state?.firewall ?? null
+  const busy = !!f && (f.checking || f.repairing)
+  const show = !!f && (!!f.problem || f.fixed)
+  for (const id of ['fwCard', 'pairFw']) {
+    const root = $(id)
+    const hidden = !show || (id === 'fwCard' && !!f && fwKey(f) === fwLaterKey)
+    root.classList.toggle('hidden', hidden)
+    if (hidden || !f) continue
+    const q = <T extends HTMLElement = HTMLElement>(sel: string) => root.querySelector(sel) as T
+    const fixed = f.fixed && !f.problem
+    root.classList.toggle('fixed', fixed)
+    q('.fw-title').textContent = fixed ? t('fw.titleFixed') : t('fw.title')
+    q('.fw-body').textContent = fixed ? t('fw.bodyFixed') : t(f.problem === 'public' ? 'fw.body.public' : 'fw.body.rule')
+    // ligne d'état : en cours, refusé, raté
+    let status = ''
+    if (f.repairing) status = t('fw.repairing')
+    else if (f.checking) status = t('fw.checking')
+    else if (f.problem && f.repair === 'cancelled') status = t('fw.cancelled')
+    else if (f.problem && f.repair === 'failed') status = t('fw.failed')
+    else if (f.problem && f.repair === 'ok') status = t('fw.notYet')
+    const st = q('.fw-status')
+    st.textContent = status
+    st.classList.toggle('hidden', !status)
+    const fix = q<HTMLButtonElement>('.fw-fix')
+    fix.classList.toggle('hidden', fixed)
+    fix.disabled = busy
+    q('.fw-note').classList.toggle('hidden', fixed)
+    const later = root.querySelector<HTMLButtonElement>('.fw-later')
+    if (later) later.textContent = fixed ? t('fw.ok') : t('fw.later')
+    const manual = q<HTMLDetailsElement>('.fw-manual')
+    manual.classList.toggle('hidden', fixed)
+    // les étapes suivent ce qui bloque : type de réseau, ou règle du pare-feu
+    const kind = f.problem === 'public' ? 'pub' : 'rule'
+    const steps = q('.fw-steps')
+    if (steps.dataset.kind !== kind + lang) {
+      steps.dataset.kind = kind + lang
+      steps.innerHTML = [1, 2, 3].map((n) => `<li>${t(`fw.${kind}.step${n}`)}</li>`).join('')
+    }
+    // réparation refusée par Windows ou sans effet : les étapes s'ouvrent
+    if (f.problem && !busy && (f.repair === 'failed' || f.repair === 'ok')) manual.open = true
+    q<HTMLButtonElement>('.fw-again').disabled = busy
+  }
+}
+
+async function firewallRepair() {
+  try {
+    await postJSON('/firewall/repair', {})
+  } catch (e) {
+    toast((e as Error).message)
+  }
+  void refresh()
+}
+
+async function firewallAgain() {
+  try {
+    await postJSON('/firewall/check', {})
+  } catch (e) {
+    toast((e as Error).message)
+  }
+  void refresh()
 }
 
 const hostAction = (action: 'openMacUpdate' | 'openLoginItems') =>
@@ -957,8 +1046,20 @@ async function showPairCode(renew: boolean) {
 function tickPair() {
   clearTimeout(pairTimer)
   pairTimer = undefined
-  if (!isPairOpen() || pairPaired || document.hidden || pairRenewing) return
+  if (!isPairOpen() || pairPaired || document.hidden || pairRenewing) {
+    // le temps fenêtre cachée ou réduite ne compte pas pour le pare-feu
+    pairLastTick = 0
+    return
+  }
   const now = Date.now()
+  pairVisibleMs = addVisibleMs(pairVisibleMs, pairLastTick, now)
+  pairLastTick = now
+  // Windows : QR visible 45 s et toujours aucun téléphone. Une seule
+  // vérification par ouverture ; le PC refuse si un téléphone a ouvert la page.
+  if (firewallCheckDue({ visibleMs: pairVisibleMs, asked: pairFwAsked, paired: pairPaired, available: !!state?.firewall, afterMs: FIREWALL_CHECK_AFTER_MS })) {
+    pairFwAsked = true
+    void postJSON('/firewall/check', { auto: true }).catch(() => {})
+  }
   const st = pairCodeState(now, pairExpiresAt)
   const el = $('pairRenew')
   if (st.renewNow) {
@@ -986,6 +1087,9 @@ async function openPairModal() {
   pairPaired = false
   pairGuide = false
   pairRenewedAt = 0
+  pairVisibleMs = 0
+  pairLastTick = 0
+  pairFwAsked = false
   await showPairCode(false)
   const st = $('pairState')
   st.classList.remove('ok')
@@ -1080,6 +1184,17 @@ function initUI() {
       toast(t('set.saveFailed'), (e as Error).message)
     }
     void refresh()
+  }
+  for (const id of ['fwCard', 'pairFw']) {
+    const root = $(id)
+    ;(root.querySelector('.fw-fix') as HTMLButtonElement).onclick = () => void firewallRepair()
+    ;(root.querySelector('.fw-again') as HTMLButtonElement).onclick = () => void firewallAgain()
+    const later = root.querySelector<HTMLButtonElement>('.fw-later')
+    if (later)
+      later.onclick = () => {
+        if (state?.firewall) fwLaterKey = fwKey(state.firewall)
+        renderFirewall()
+      }
   }
   $('btnRate').onclick = () => void answerRate('rate')
   $('btnRateLater').onclick = () => void answerRate('later')

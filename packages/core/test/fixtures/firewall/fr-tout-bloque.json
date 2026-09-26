@@ -1,0 +1,1 @@
+{"v":1,"ifIndex":12,"current":2,"profiles":[{"i":12,"c":"Private","v4":"Internet"}],"fw":[{"p":1,"on":true,"inAllow":0,"blockAll":false},{"p":2,"on":true,"inAllow":0,"blockAll":true},{"p":4,"on":true,"inAllow":0,"blockAll":false}],"rules":[{"app":"c:\\users\\thomas\\appdata\\local\\programs\\flitdrop\\flitdrop.exe","a":1,"d":1,"e":true,"p":6,"proto":6}],"errors":[]}

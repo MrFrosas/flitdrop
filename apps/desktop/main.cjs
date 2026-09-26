@@ -382,6 +382,15 @@ if (!gotLock) {
       // lancement à l'ouverture de session : proposé coché sur l'écran
       // d'accueil d'une installation neuve, jamais changé sans réponse
       autostart: { get: () => isAutoStart(), set: (on) => setAutoStart(on) },
+      // Windows : pare-feu vérifié une fois quand aucun téléphone n'arrive, et
+      // réparé seulement sur « Réparer » (règles de cet exécutable)
+      firewall:
+        process.platform === 'win32' && bundle.checkWindowsFirewall && bundle.repairWindowsFirewall
+          ? {
+              check: (ip) => bundle.checkWindowsFirewall({ exe: process.execPath, ip }),
+              repair: () => bundle.repairWindowsFirewall({ exe: process.execPath }),
+            }
+          : undefined,
     })
     watchClipboard(ClipboardWatcher)
     watchTransfers()

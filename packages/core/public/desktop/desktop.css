@@ -476,3 +476,19 @@ html[data-platform='mac'] .chip.on { color: #fff; }
    tant que la fenêtre d'appairage est ouverte et visible */
 .pair-renew { min-height: 1.4em; text-align: center; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .pair-renew.fresh { color: var(--ok); font-weight: 600; }
+
+/* ---------- pare-feu de Windows : carte en aplats unis, jamais une fenêtre ---------- */
+.fw-card { border-color: color-mix(in srgb, var(--danger) 45%, var(--stroke)); }
+.fw-card.fixed { border-color: color-mix(in srgb, var(--ok) 55%, var(--stroke)); }
+.fw-card.fixed .fw-title { color: var(--ok); }
+/* « Réparer » : l'action attendue, en aplat d'accent (sans le dégradé du bouton principal Mac) */
+.fw-card .btn.fw-fix { background: var(--accent); border: 1px solid transparent; color: light-dark(#fff, #003a63); }
+.fw-card .btn.fw-fix:hover { background: var(--accent-2); }
+.fw-card .btn.fw-fix:disabled { opacity: 0.6; cursor: default; }
+.fw-status { font-size: 13px; font-weight: 600; color: var(--text); }
+.fw-manual summary { cursor: pointer; font-size: 13px; color: var(--accent-text); text-decoration: underline; }
+.fw-manual[open] summary { margin-bottom: 8px; }
+.fw-steps { margin: 0 0 10px; }
+/* fenêtre d'appairage : la carte s'ajoute au QR, la fenêtre défile si besoin */
+#pairModal .modal-card { max-height: calc(100vh - 48px); overflow-y: auto; }
+#pairModal .fw-card { padding: 14px; backdrop-filter: none; -webkit-backdrop-filter: none; }

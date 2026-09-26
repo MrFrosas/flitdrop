@@ -19,6 +19,7 @@ import {
   PENDING_PAIRING_TTL_MS,
   DEVICE_MAX_IDLE_MS,
   DEFAULT_PORT,
+  FIREWALL_CHECK_AFTER_MS,
 } from './constants.js'
 import { loadConfig, saveConfig, flitdropHome, clampInt, type Config } from './config.js'
 import { DeviceStore, type Device } from './pairing.js'
@@ -31,6 +32,7 @@ import { createClipboardText, type ClipboardTextBackend } from './clip.js'
 import { ClipHistory } from './cliphistory.js'
 import { TransferActivity } from './activity.js'
 import { HOST_ACTIONS, type HostAction, type HostPatch, type HostState } from './host.js'
+import type { FirewallStatus, RepairResult } from './firewall.js'
 import { saveMultipartFiles } from './uploads.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
 import { answerRating, countTransfer, ratingDue } from './rating.js'
@@ -66,6 +68,7 @@ export {
   type HostState,
   type HostAction,
 } from './host.js'
+export { checkWindowsFirewall, repairWindowsFirewall, type FirewallStatus, type RepairResult } from './firewall.js'
 
 // réglages dont le NOM (jamais la valeur) peut remonter dans settings_changed
 const SETTINGS_KEYS = [
@@ -185,6 +188,15 @@ export interface StartOptions {
   // fourni par l'app de bureau : lancement à l'ouverture de session (lu et
   // réglé dans le système). Sans lui (CLI, tests), la page ne le propose pas.
   autostart?: { get: () => boolean; set: (on: boolean) => void }
+  // fourni par l'app de bureau sous Windows : vérification du pare-feu pour
+  // l'adresse du QR code, et réparation (demande des droits administrateur).
+  // Sans lui (Mac, Linux, CLI, tests), rien ne tourne et la page ne montre rien.
+  firewall?: {
+    check: (ip: string | undefined) => Promise<FirewallStatus | null>
+    repair: () => Promise<RepairResult>
+    /** QR visible depuis au moins ce délai avant la vérification (45 s ; tests) */
+    afterMs?: number
+  }
 }
 
 export interface RunningServer {
@@ -435,7 +447,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // Fenêtre d'appairage ouverte sur le PC, pour les statistiques du chemin de
   // connexion : les codes montrés depuis son ouverture (renouvelés compris),
   // qr_shown déjà compté ou non, un téléphone l'a-t-il scannée. En mémoire.
-  let pairView: { ids: Set<string>; qrSent: boolean; scanned: boolean } | null = null
+  let pairView: { ids: Set<string>; qrSent: boolean; scanned: boolean; openedAt: number; fwAsked: boolean } | null = null
   // une fois par ouverture : au premier renouvellement (renewed vrai), sinon
   // au scan réussi ou à la fermeture (renewed faux)
   const reportQrShown = (renewed: boolean) => {
@@ -448,6 +460,81 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     reportQrShown(false)
     telemetry.track('pairing_view_closed', { scanned: pairView.scanned })
     pairView = null
+  }
+
+  // Pare-feu de Windows (app de bureau sous Windows seulement, voir
+  // firewall.ts). Vérifié UNE fois quand le QR est resté visible 45 s sans
+  // qu'aucun téléphone ouvre la page, jamais en boucle ; réparé seulement
+  // quand la personne clique « Réparer ». En mémoire, jamais sur le disque.
+  const fw = {
+    status: null as FirewallStatus | null,
+    checking: false,
+    repairing: false,
+    // résultat de la dernière réparation (montré dans la carte)
+    repair: null as RepairResult | null,
+    // un problème vu a disparu à la vérification suivante
+    fixed: false,
+    // dernière vérification automatique, et dernier téléphone arrivé
+    lastAutoAt: 0,
+    reachedAt: 0,
+  }
+  // au plus une vérification automatique toutes les 10 minutes (la fenêtre
+  // d'appairage rouverte plusieurs fois de suite garde le dernier résultat)
+  const FIREWALL_AUTO_GAP_MS = 10 * 60 * 1000
+  // `kind` : automatique (compté), « Vérifier à nouveau », ou juste après une
+  // réparation (seule celle-ci garde le résultat de la réparation affiché)
+  const runFirewallCheck = async (kind: 'auto' | 'again' | 'afterRepair'): Promise<void> => {
+    if (!opts.firewall) return
+    const startedAt = Date.now()
+    if (kind !== 'afterRepair') fw.repair = null
+    fw.checking = true
+    hub.broadcast('host-changed', {})
+    let st: FirewallStatus | null = null
+    try {
+      st = await opts.firewall.check(bestIp())
+    } catch {
+      st = null
+    }
+    fw.checking = false
+    if (st) {
+      if (kind === 'auto') telemetry.track('firewall_check', { network: st.network, blocked: st.blocked, allowed: st.allowed })
+      // un téléphone est arrivé pendant la vérification : rien à montrer
+      const reached = fw.reachedAt >= startedAt
+      const had = !!fw.status?.problem
+      fw.status = reached ? null : st
+      fw.fixed = had && !fw.status?.problem
+    }
+    hub.broadcast('host-changed', {})
+  }
+  const runFirewallRepair = async (): Promise<void> => {
+    if (!opts.firewall) return
+    fw.repairing = true
+    fw.repair = null
+    fw.fixed = false
+    hub.broadcast('host-changed', {})
+    let result: RepairResult = 'failed'
+    try {
+      result = await opts.firewall.repair()
+    } catch {
+      result = 'failed'
+    }
+    if (result !== 'ok' && result !== 'cancelled') result = 'failed'
+    fw.repairing = false
+    fw.repair = result
+    telemetry.track('firewall_repair', { result })
+    // règle posée : on revérifie tout de suite ; refus ou échec : la carte
+    // reste, avec les étapes à faire soi-même
+    if (result === 'ok') await runFirewallCheck('afterRepair')
+    else hub.broadcast('host-changed', {})
+  }
+  const firewallReached = () => {
+    fw.reachedAt = Date.now()
+    if (fw.status || fw.fixed || fw.repair) {
+      fw.status = null
+      fw.fixed = false
+      fw.repair = null
+      hub.broadcast('host-changed', {})
+    }
   }
 
   const pendingApprovals = new Map<string, (ok: boolean) => void>()
@@ -571,10 +658,14 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     return devices.listPublic().some((d) => d.status === 'pending' && now - Date.parse(d.createdAt) <= PENDING_PAIRING_TTL_MS)
   }
   app.use('/s', (req, _res, next) => {
-    if (req.method === 'GET' && (req.path === '/' || req.path === '/index.html') && !isLoopback(req.socket.remoteAddress) && pairingShown()) {
-      const ua = req.headers['user-agent']
-      telemetry.phonePageOpened(req.socket.remoteAddress ?? '?', typeof ua === 'string' ? ua : undefined)
-      if (pairView) pairView.scanned = true
+    if (req.method === 'GET' && (req.path === '/' || req.path === '/index.html') && !isLoopback(req.socket.remoteAddress)) {
+      // un téléphone joint le PC : le pare-feu ne le bloque pas sur ce réseau
+      firewallReached()
+      if (pairingShown()) {
+        const ua = req.headers['user-agent']
+        telemetry.phonePageOpened(req.socket.remoteAddress ?? '?', typeof ua === 'string' ? ua : undefined)
+        if (pairView) pairView.scanned = true
+      }
     }
     next()
   })
@@ -1307,6 +1398,17 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       autostart: (autostartOn = readAutostart()),
       // carte « Flitdrop t'aide ? Laisse une note » (app de bureau seulement)
       rate: !!opts.onHostAction && ratingDue(cfg),
+      // pare-feu de Windows : null hors app de bureau sous Windows
+      firewall: opts.firewall
+        ? {
+            checking: fw.checking,
+            repairing: fw.repairing,
+            problem: fw.status?.problem ?? null,
+            network: fw.status?.network ?? null,
+            repair: fw.repair,
+            fixed: fw.fixed,
+          }
+        : null,
       hostname: os.hostname(),
       host,
       ips: localIPv4s(),
@@ -1412,7 +1514,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     } else {
       // fenêtre précédente jamais refermée (page rechargée) : terminée ici
       closePairView()
-      pairView = { ids: new Set([d.id]), qrSent: false, scanned: false }
+      pairView = { ids: new Set([d.id]), qrSent: false, scanned: false, openedAt: Date.now(), fwAsked: false }
       telemetry.track('pair_qr_shown')
     }
     res.json({ deviceId: d.id, url: pairUrl(d), ttlMs: PENDING_PAIRING_TTL_MS })
@@ -1430,6 +1532,37 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const on = (req.body as { enabled?: unknown } | undefined)?.enabled
     if (typeof on !== 'boolean' || !setAutostart(on)) return res.status(400).json({ code: 'internal' })
     res.json({ ok: true, enabled: autostartOn })
+  })
+
+  // Pare-feu de Windows. `auto` : demandé par la fenêtre d'appairage après
+  // 45 s de QR visible ; accepté seulement si cette fenêtre est bien ouverte
+  // depuis ce délai, qu'aucun téléphone n'a ouvert la page, une fois par
+  // ouverture. Sans `auto` : « Vérifier à nouveau » dans la carte.
+  admin.post('/firewall/check', jsonSmall, (req, res) => {
+    if (!opts.firewall) return res.status(400).json({ code: 'internal' })
+    const auto = (req.body as { auto?: unknown } | undefined)?.auto === true
+    if (fw.checking || fw.repairing) return res.json({ ok: true, started: false })
+    if (auto) {
+      const now = Date.now()
+      const after = opts.firewall.afterMs ?? FIREWALL_CHECK_AFTER_MS
+      if (!pairView || pairView.scanned || pairView.fwAsked || now - pairView.openedAt < after) {
+        return res.json({ ok: true, started: false })
+      }
+      pairView.fwAsked = true
+      if (fw.lastAutoAt > 0 && now - fw.lastAutoAt < FIREWALL_AUTO_GAP_MS) return res.json({ ok: true, started: false })
+      fw.lastAutoAt = now
+    }
+    void runFirewallCheck(auto ? 'auto' : 'again')
+    res.json({ ok: true, started: true })
+  })
+
+  // « Réparer » : seulement sur un clic de la personne, et seulement quand la
+  // dernière vérification a trouvé un blocage. Windows demande son accord.
+  admin.post('/firewall/repair', (_req, res) => {
+    if (!opts.firewall || !fw.status?.problem) return res.status(400).json({ code: 'internal' })
+    if (fw.checking || fw.repairing) return res.json({ ok: true, started: false })
+    void runFirewallRepair()
+    res.json({ ok: true, started: true })
   })
 
   // Carte de demande de note : « Noter » ouvre la bonne page (choisie par

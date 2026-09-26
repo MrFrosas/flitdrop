@@ -44,3 +44,21 @@ export function connectError(o: { status?: number; code?: string; fresh: boolean
 export function shouldSuggestInstall(o: { standalone: boolean; dismissed: boolean; firstTransferDone: boolean }): boolean {
   return !o.standalone && !o.dismissed && o.firstTransferDone
 }
+
+// ---------- pare-feu de Windows (page du PC) ----------
+
+/** Une seule vérification par ouverture de la fenêtre d'appairage, après
+ *  45 s de QR visible (fenêtre réduite ou cachée : le temps ne compte pas),
+ *  tant qu'aucun téléphone n'est appairé, et seulement sous Windows (l'app
+ *  de bureau fournit la vérification). */
+export function firewallCheckDue(o: { visibleMs: number; asked: boolean; paired: boolean; available: boolean; afterMs: number }): boolean {
+  return o.available && !o.asked && !o.paired && o.visibleMs >= o.afterMs
+}
+
+/** Temps de QR visible ajouté à chaque battement du compte à rebours (une
+ *  fois par seconde). Un battement très en retard (PC en veille, onglet
+ *  gelé) ne compte que pour 2 s. */
+export function addVisibleMs(visibleMs: number, lastTick: number, now: number): number {
+  if (!(lastTick > 0) || now <= lastTick) return visibleMs
+  return visibleMs + Math.min(now - lastTick, 2000)
+}

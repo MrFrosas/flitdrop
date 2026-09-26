@@ -1,0 +1,1 @@
+{"v":1,"ifIndex":17,"current":4,"profiles":[{"i":17,"c":"Public","v4":"Internet"}],"fw":[{"p":1,"on":true,"inAllow":0,"blockAll":false},{"p":2,"on":true,"inAllow":0,"blockAll":false},{"p":4,"on":false,"inAllow":0,"blockAll":false}],"rules":[],"errors":[]}
