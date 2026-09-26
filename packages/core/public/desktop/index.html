@@ -80,7 +80,7 @@
         <button class="btn fw-fix" type="button" data-i18n="fw.fix">Réparer</button>
         <button class="btn fw-later" type="button" data-i18n="fw.later">Plus tard</button>
       </div>
-      <small class="consent-note fw-note" data-i18n="fw.fixNote">Windows va te demander ton accord. Rien d’autre ne change sur ton PC.</small>
+      <small class="consent-note fw-note"></small>
       <details class="fw-manual">
         <summary data-i18n="fw.manual">Faire moi-même</summary>
         <ol class="steps fw-steps"></ol>
@@ -350,8 +350,11 @@
       <div class="pair-scan" id="pairScan">
         <div class="qrbox"><img id="qrImg" alt=""></div>
         <div class="pairurl" id="pairUrlText"></div>
-        <!-- le code se renouvelle tout seul tant que cette fenêtre est visible -->
-        <div class="pair-renew" id="pairRenew" aria-live="polite"></div>
+        <!-- le code se renouvelle tout seul tant que cette fenêtre est visible.
+             Le compte à rebours n'est pas lu à voix haute (il change chaque
+             seconde) : seul le renouvellement est annoncé, à part. -->
+        <div class="pair-renew" id="pairRenew"></div>
+        <div class="sr-only" id="pairRenewSr" aria-live="polite"></div>
       </div>
       <!-- même carte du pare-feu, là où la personne regarde -->
       <div class="card consent-card fw-card hidden" id="pairFw">
@@ -361,7 +364,7 @@
         <div class="consent-actions fw-actions">
           <button class="btn fw-fix" type="button" data-i18n="fw.fix">Réparer</button>
         </div>
-        <small class="consent-note fw-note" data-i18n="fw.fixNote">Windows va te demander ton accord. Rien d’autre ne change sur ton PC.</small>
+        <small class="consent-note fw-note"></small>
         <details class="fw-manual">
           <summary data-i18n="fw.manual">Faire moi-même</summary>
           <ol class="steps fw-steps"></ol>

@@ -2,7 +2,7 @@ import { b64uToBytes, seal, sealJSON, openJSON, open, jti } from './wdcrypto.js'
 import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '../i18n.js'
 import { applyI18n } from '../i18n-dom.js'
 import { KeyedNodes, VersionedList, reconcile } from './lists.js'
-import { connectError, shouldSuggestInstall } from './onboarding.js'
+import { afterExpiredCode, connectError, shouldSuggestInstall } from './onboarding.js'
 
 const LANG_KEY = 'wd_lang'
 let lang: Lang = resolveLang(localStorage.getItem(LANG_KEY) || undefined, langFrom(navigator.language))
@@ -371,14 +371,23 @@ async function connect() {
   } catch (e) {
     const err = e as ApiFail
     const kind = connectError({ status: err.status, code: err.code, fresh: freshPairing, standalone: isStandalone() })
+    // « Oublier ce PC » n'a pas de sens sur un code expiré : il effacerait
+    // l'appairage d'avant, tout juste remis
+    $('btnForget').classList.toggle('hidden', kind === 'expired')
     if (kind === 'expired') {
       // le PC a déjà remplacé ce code : on le dit, et l'appairage d'avant
-      // (s'il y en avait un) reste celui de ce téléphone
+      // (s'il y en avait un) redevient celui de ce téléphone, en mémoire
+      // aussi : « Réessayer » repart avec lui, pas avec le code expiré
       $('errTitle').textContent = t('ph.err.expired')
       $('errMsg').textContent = t('ph.err.expiredMsg')
       $('altHosts').classList.add('hidden')
-      if (previousPairing) localStorage.setItem(PAIR_KEY, previousPairing)
+      const back = afterExpiredCode<Pairing>(previousPairing)
+      if (back.pairing && previousPairing) localStorage.setItem(PAIR_KEY, previousPairing)
       else localStorage.removeItem(PAIR_KEY)
+      pair = back.pairing
+      key = pair ? b64uToBytes(pair.keyB64) : null
+      freshPairing = false
+      previousPairing = null
     } else if (kind === 'wrongPc') {
       $('errTitle').textContent = t('ph.err.wrongPc')
       $('errMsg').textContent = t('ph.err.wrongPcMsg')
@@ -928,6 +937,11 @@ function initUI() {
 
   $('btnRetry').onclick = () => {
     show('scan')
+    // plus d'appairage (code expiré sans appairage d'avant) : on rescanne
+    if (!pair || !key) {
+      if (isStandalone()) $('scanPaste')?.classList.remove('hidden')
+      return
+    }
     void connect()
   }
   $('btnForget').onclick = forget

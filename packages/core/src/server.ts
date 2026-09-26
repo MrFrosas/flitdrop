@@ -32,7 +32,7 @@ import { createClipboardText, type ClipboardTextBackend } from './clip.js'
 import { ClipHistory } from './cliphistory.js'
 import { TransferActivity } from './activity.js'
 import { HOST_ACTIONS, type HostAction, type HostPatch, type HostState } from './host.js'
-import type { FirewallStatus, RepairResult } from './firewall.js'
+import { repairProfiles, type FirewallStatus, type RepairResult } from './firewall.js'
 import { saveMultipartFiles } from './uploads.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
 import { answerRating, countTransfer, ratingDue } from './rating.js'
@@ -193,7 +193,8 @@ export interface StartOptions {
   // Sans lui (Mac, Linux, CLI, tests), rien ne tourne et la page ne montre rien.
   firewall?: {
     check: (ip: string | undefined) => Promise<FirewallStatus | null>
-    repair: () => Promise<RepairResult>
+    /** `status` : la dernière vérification (la règle suit son réseau) */
+    repair: (status: FirewallStatus) => Promise<RepairResult>
     /** QR visible depuis au moins ce délai avant la vérification (45 s ; tests) */
     afterMs?: number
   }
@@ -506,7 +507,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
     hub.broadcast('host-changed', {})
   }
-  const runFirewallRepair = async (): Promise<void> => {
+  const runFirewallRepair = async (status: FirewallStatus): Promise<void> => {
     if (!opts.firewall) return
     fw.repairing = true
     fw.repair = null
@@ -514,7 +515,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     hub.broadcast('host-changed', {})
     let result: RepairResult = 'failed'
     try {
-      result = await opts.firewall.repair()
+      result = await opts.firewall.repair(status)
     } catch {
       result = 'failed'
     }
@@ -785,6 +786,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     // différent) est refusé, même s'il se présente sur le même wifi.
     if (dev.instanceId && dev.instanceId !== cfg.instanceId)
       return res.status(409).json({ code: 'wrongPc' })
+    // QR scanné mais pas encore de hello : rien d'autre que le hello. Sans
+    // cela, une photo du QR (ou une page modifiée qui saute le hello) lirait
+    // ce qui attend le premier téléphone. La page du téléphone, anciennes
+    // versions comprises, commence toujours par le hello.
+    if (dev.status !== 'active' && req.path !== '/hello') return res.status(403).json({ code: 'authRefused' })
     next()
   })
 
@@ -802,10 +808,16 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     // vrai téléphone confirme (1re requête sous la nouvelle clé -> promotion).
     if (wasPending) devices.beginRotation(dev.id)
     // un téléphone de plus : ce qui attendait « tous » reste aux téléphones
-    // déjà appairés, le nouveau ne voit pas ce qui a été envoyé avant lui
+    // déjà appairés, le nouveau ne voit pas ce qui a été envoyé avant lui.
+    // Le même téléphone rescanné, lui, retrouve ce qui attendait son ancien
+    // appairage (même système, même nom).
     if (wasPending) {
-      const others = activePhones().filter((d) => d.id !== dev.id).map((d) => d.id)
-      if (others.length > 0) outbox.restrictUntargeted(others)
+      const twins = devices.twinIds(dev.id)
+      if (twins.length > 0) outbox.shareTargets(twins, dev.id)
+      else {
+        const others = activePhones().filter((d) => d.id !== dev.id).map((d) => d.id)
+        if (others.length > 0) outbox.restrictUntargeted(others)
+      }
     }
     const rotatedKey = devices.pendingKey(dev.id)
     const fresh = devices.get(dev.id)
@@ -1405,6 +1417,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
             repairing: fw.repairing,
             problem: fw.status?.problem ?? null,
             network: fw.status?.network ?? null,
+            // « Réparer » est-il utile, et la règle couvrira-t-elle aussi les
+            // réseaux publics (la carte le dit avant le clic)
+            blocker: fw.status?.blocker ?? null,
+            noRule: fw.status?.noRule === true,
+            publicToo: !!fw.status?.problem && (repairProfiles(fw.status) & 4) !== 0,
             repair: fw.repair,
             fixed: fw.fixed,
           }
@@ -1503,6 +1520,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   admin.post('/pair/new', jsonSmall, (req, res) => {
     const renew = (req.body as { renew?: unknown } | undefined)?.renew === true
     prunePending()
+    // un téléphone de plus va peut-être arriver : dès maintenant, ce qui
+    // attend « tous » est réservé aux téléphones déjà appairés (le hello le
+    // refait pour ce qui arrivera d'ici là)
+    const already = activePhones().map((p) => p.id)
+    if (already.length > 0) outbox.restrictUntargeted(already)
     const d = devices.create(cfg.instanceId)
     if (renew) {
       // renouvellement arrivé après la fermeture : un code de plus, sans
@@ -1559,9 +1581,12 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // « Réparer » : seulement sur un clic de la personne, et seulement quand la
   // dernière vérification a trouvé un blocage. Windows demande son accord.
   admin.post('/firewall/repair', (_req, res) => {
-    if (!opts.firewall || !fw.status?.problem) return res.status(400).json({ code: 'internal' })
+    // rien à réparer, ou rien qu'une règle puisse réparer (tout bloquer,
+    // pare-feu géré par l'entreprise) : pas de demande des droits pour rien
+    const status = fw.status
+    if (!opts.firewall || !status?.problem || status.blocker) return res.status(400).json({ code: 'internal' })
     if (fw.checking || fw.repairing) return res.json({ ok: true, started: false })
-    void runFirewallRepair()
+    void runFirewallRepair(status)
     res.json({ ok: true, started: true })
   })
 

@@ -260,30 +260,44 @@ describe('mot de passe marqué par un gestionnaire', () => {
 })
 
 describe('appairages d’avant le partage par téléphone', () => {
-  it('le premier téléphone appairé garde le presse-papiers, les autres non', () => {
+  it('tous les téléphones déjà appairés gardent le presse-papiers (ils le voyaient tous)', () => {
     const h = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-mig-'))
-    const dev = (id: string, createdAt: string, status = 'active') => ({
+    const dev = (id: string, createdAt: string, status = 'active', lastSeenAt?: string) => ({
       id,
       name: id,
       keyB64: b64u.enc(new Uint8Array(32)),
       shortcutToken: randomToken(18),
       status,
       createdAt,
+      lastSeenAt,
     })
+    // « premier » : une trace morte du même téléphone, rescanné depuis ;
+    // « deuxieme » : le téléphone vraiment utilisé. Il ne perd rien.
     fs.writeFileSync(
       path.join(h, 'devices.json'),
-      JSON.stringify([dev('deuxieme', '2026-05-02T10:00:00Z'), dev('premier', '2026-04-01T10:00:00Z'), dev('attente', '2026-01-01T10:00:00Z', 'pending')])
+      JSON.stringify([
+        dev('deuxieme', '2026-05-02T10:00:00Z', 'active', '2026-09-25T10:00:00Z'),
+        dev('premier', '2026-04-01T10:00:00Z', 'active', '2026-04-02T10:00:00Z'),
+        dev('attente', '2026-01-01T10:00:00Z', 'pending'),
+      ])
     )
     const store = new DeviceStore(h)
+    expect(store.clipShared('deuxieme')).toBe(true)
     expect(store.clipShared('premier')).toBe(true)
-    expect(store.clipShared('deuxieme')).toBe(false)
+    // un QR jamais scanné n'a rien
+    expect(store.clipShared('attente')).toBe(false)
     // écrit sur le disque : le choix ne bouge plus au lancement suivant
     const again = new DeviceStore(h)
     expect(again.clipShared('premier')).toBe(true)
-    expect(again.clipShared('deuxieme')).toBe(false)
+    expect(again.clipShared('deuxieme')).toBe(true)
     // un réglage déjà fait n'est jamais écrasé
-    again.setClipShare('deuxieme', true)
+    again.setClipShare('premier', false)
+    expect(new DeviceStore(h).clipShared('premier')).toBe(false)
     expect(new DeviceStore(h).clipShared('deuxieme')).toBe(true)
+    // un téléphone appairé après la mise à jour part sans (il y en a déjà)
+    const fresh = again.create()
+    again.activate(fresh.id, { name: 'Pixel 8', platform: 'android' })
+    expect(again.clipShared(fresh.id)).toBe(false)
     fs.rmSync(h, { recursive: true, force: true })
   })
 
@@ -297,6 +311,26 @@ describe('appairages d’avant le partage par téléphone', () => {
     expect(box.visibleTo(old, 'A')).toBe(true)
     expect(box.visibleTo(old, 'B')).toBe(false)
     expect(box.listForPhone('B')).toEqual([])
+    fs.rmSync(h, { recursive: true, force: true })
+  })
+
+  it('file d’envoi : le même téléphone rescanné retrouve ce qui attendait son ancien appairage', () => {
+    const h = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-ob-'))
+    const box = new Outbox(h)
+    const forA = box.addText('pour A', 'text', ['A'])
+    const forB = box.addText('pour B', 'text', ['B'])
+    const all = box.addText('pour tous')
+    const v = box.version
+    box.shareTargets(['A'], 'A2')
+    expect(box.version).toBeGreaterThan(v)
+    expect(box.visibleTo(forA, 'A2')).toBe(true)
+    expect(box.visibleTo(forB, 'A2')).toBe(false)
+    expect(all.to).toBeUndefined()
+    // deux fois : pas de doublon, pas de changement annoncé
+    const v2 = box.version
+    box.shareTargets(['A'], 'A2')
+    expect(forA.to).toEqual(['A', 'A2'])
+    expect(box.version).toBe(v2)
     fs.rmSync(h, { recursive: true, force: true })
   })
 })

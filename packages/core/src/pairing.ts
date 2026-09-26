@@ -43,14 +43,16 @@ export class DeviceStore {
     this.migrateClipShare()
   }
 
-  /** Appairages d'avant le partage par téléphone : le premier téléphone
-   *  appairé garde ce qu'il voyait (le presse-papiers du PC), les suivants ne
-   *  le voient plus tant qu'on ne l'active pas pour eux. */
+  /** Appairages d'avant le partage par téléphone : tous les téléphones déjà
+   *  appairés voyaient le presse-papiers du PC, ils le gardent. Seuls les
+   *  téléphones appairés après la mise à jour partent sans (le premier
+   *  excepté). Choisir « le plus ancien » donnait souvent le presse-papiers à
+   *  une trace morte du même téléphone (rescanné) et le retirait à celui qu'on
+   *  utilise vraiment. */
   private migrateClipShare(): void {
     const active = [...this.devices.values()].filter((d) => d.status === 'active')
     if (!active.some((d) => typeof d.clipShare !== 'boolean')) return
-    const first = [...active].sort((a, b) => (Date.parse(a.createdAt) || 0) - (Date.parse(b.createdAt) || 0))[0]
-    for (const d of active) if (typeof d.clipShare !== 'boolean') d.clipShare = d.id === first?.id
+    for (const d of active) if (typeof d.clipShare !== 'boolean') d.clipShare = true
     try {
       this.save()
     } catch {
@@ -137,15 +139,39 @@ export class DeviceStore {
     if (!d) return false
     const wasPending = d.status === 'pending'
     if (wasPending && info.name) d.name = info.name.slice(0, 40)
+    if (info.platform) d.platform = info.platform.slice(0, 24)
     // premier téléphone de ce PC : il voit le presse-papiers du PC, comme
     // avant. Un téléphone de plus (celui d'un proche, par exemple) part sans.
-    if (wasPending || typeof d.clipShare !== 'boolean')
-      d.clipShare = ![...this.devices.values()].some((o) => o.id !== id && o.status === 'active')
-    if (info.platform) d.platform = info.platform.slice(0, 24)
+    // Le même téléphone rescanné (données du navigateur effacées, « Oublier
+    // ce PC ») reprend ce qu'avait son ancien appairage, sinon le seul
+    // téléphone de la maison perdrait le presse-papiers.
+    if (wasPending || typeof d.clipShare !== 'boolean') {
+      const twins = wasPending ? this.twinsOf(id) : []
+      d.clipShare =
+        twins.length > 0
+          ? twins.some((o) => o.clipShare === true)
+          : ![...this.devices.values()].some((o) => o.id !== id && o.status === 'active')
+    }
     d.status = 'active'
     d.lastSeenAt = new Date().toISOString()
     this.save()
     return wasPending
+  }
+
+  /** Anciens appairages qui ressemblent au même téléphone : actifs, même
+   *  système et même nom que celui-ci (le nom donné par le téléphone, jamais
+   *  renommé sur le PC depuis). */
+  private twinsOf(id: string): Device[] {
+    const d = this.devices.get(id)
+    if (!d || !d.platform) return []
+    return [...this.devices.values()].filter(
+      (o) => o.id !== id && o.status === 'active' && o.platform === d.platform && o.name === d.name
+    )
+  }
+
+  /** Identifiants des anciens appairages du même téléphone (voir twinsOf). */
+  twinIds(id: string): string[] {
+    return this.twinsOf(id).map((o) => o.id)
   }
 
   touch(id: string): void {

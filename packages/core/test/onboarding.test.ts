@@ -7,7 +7,8 @@ import { loadConfig, type Config } from '../src/config.js'
 import { Telemetry, type Envelope } from '../src/telemetry.js'
 import { RATE_AGAIN, RATE_FIRST, answerRating, countTransfer, ratingDue } from '../src/rating.js'
 import { reviewUrl } from '../src/host.js'
-import { PAIR_RENEW_BEFORE_MS, connectError, fmtCountdown, pairCodeState, shouldSuggestInstall } from '../src/webclient/onboarding.js'
+import { PAIR_RENEW_BEFORE_MS, afterExpiredCode, connectError, firewallStepKeys, fmtCountdown, pairCodeState, shouldSuggestInstall } from '../src/webclient/onboarding.js'
+import { messages } from '../src/i18n.js'
 import { sealJSON, openJSON, randomToken } from '../src/crypto.js'
 import { b64u } from '../src/util.js'
 
@@ -122,6 +123,50 @@ describe('erreur de connexion (page du téléphone)', () => {
     expect(connectError({ ...base, status: 409, code: 'wrongPc' })).toBe('wrongPc')
     expect(connectError({ ...base })).toBe('notFound')
     expect(connectError({ ...base, status: 500 })).toBe('notFound')
+  })
+})
+
+describe('code expiré scanné : retour à l’appairage d’avant (page du téléphone)', () => {
+  it('l’appairage d’avant redevient celui du téléphone : « Réessayer » repart avec lui', () => {
+    const before = JSON.stringify({ id: 'ancien', keyB64: 'clé-ancienne', instanceId: 'pc' })
+    const back = afterExpiredCode<{ id: string; keyB64: string; instanceId?: string }>(before)
+    expect(back.retry).toBe('connect')
+    expect(back.pairing).toEqual({ id: 'ancien', keyB64: 'clé-ancienne', instanceId: 'pc' })
+  })
+  it('pas d’appairage d’avant (ou illisible) : « Réessayer » ramène au scan, jamais au code expiré', () => {
+    for (const bad of [null, '', 'null', '{pas du json', '{"id":"x"}', '{"id":"","keyB64":"k"}', '[]']) {
+      expect(afterExpiredCode(bad), String(bad)).toEqual({ pairing: null, retry: 'scan' })
+    }
+  })
+})
+
+describe('pare-feu : étapes « Faire moi-même » (page du PC)', () => {
+  it('suivent ce qui bloque, et chaque étape existe dans toutes les langues', () => {
+    expect(firewallStepKeys('public', null, false)).toEqual(['fw.pub.step1', 'fw.pub.step2', 'fw.pub.step3'])
+    expect(firewallStepKeys('rule', null, false)).toEqual(['fw.rule.step1', 'fw.rule.step2', 'fw.rule.step3'])
+    // Flitdrop absent de « Applications autorisées » : l'y ajouter d'abord
+    expect(firewallStepKeys('rule', null, true)).toEqual(['fw.rule.step1', 'fw.rule.step2', 'fw.rule.step3add'])
+    expect(firewallStepKeys('rule', 'blockAll', false)).toEqual(['fw.rule.step1', 'fw.block.step2', 'fw.block.step3'])
+    expect(firewallStepKeys('rule', 'managed', true)).toEqual(['fw.managed.step1'])
+    // wifi public : passer en réseau privé reste la solution, même bloqué partout
+    expect(firewallStepKeys('public', 'blockAll', false)).toEqual(['fw.pub.step1', 'fw.pub.step2', 'fw.pub.step3'])
+    for (const lang of ['en', 'fr', 'de'] as const) {
+      for (const k of [
+        ...firewallStepKeys('rule', null, true),
+        ...firewallStepKeys('rule', 'blockAll', false),
+        ...firewallStepKeys('rule', 'managed', false),
+        'fw.cols.private',
+        'fw.cols.both',
+        'fw.cols.domain',
+        'fw.body.blockAll',
+        'fw.body.managed',
+        'fw.fixNotePublic',
+      ]) {
+        expect(messages[lang][k], `${lang}.${k}`).toBeTruthy()
+      }
+      // la note du réseau public dit ce que la règle ouvre, avant le clic
+      expect(messages[lang]['fw.fixNotePublic']).not.toBe(messages[lang]['fw.fixNote'])
+    }
   })
 })
 

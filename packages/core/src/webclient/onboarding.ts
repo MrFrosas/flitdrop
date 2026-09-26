@@ -37,6 +37,21 @@ export function connectError(o: { status?: number; code?: string; fresh: boolean
   return 'notFound'
 }
 
+/** « Code expiré » : l'appairage d'avant (texte gardé tel quel avant le scan)
+ *  redevient celui du téléphone, en mémoire comme dans le stockage, pour que
+ *  « Réessayer » reparte avec lui et non avec le code expiré. Sans appairage
+ *  d'avant valable, il n'y a rien à réessayer : retour à l'écran de scan. */
+export function afterExpiredCode<T extends { id: string; keyB64: string }>(previous: string | null): { pairing: T | null; retry: 'connect' | 'scan' } {
+  let pairing: T | null = null
+  try {
+    const v = JSON.parse(previous || 'null') as Partial<T> | null
+    if (v && typeof v.id === 'string' && v.id && typeof v.keyB64 === 'string' && v.keyB64) pairing = v as T
+  } catch {
+    pairing = null
+  }
+  return { pairing, retry: pairing ? 'connect' : 'scan' }
+}
+
 // ---------- icône d'écran d'accueil (page du téléphone) ----------
 
 /** L'icône n'est proposée qu'après un premier transfert réussi, jamais dans
@@ -61,4 +76,17 @@ export function firewallCheckDue(o: { visibleMs: number; asked: boolean; paired:
 export function addVisibleMs(visibleMs: number, lastTick: number, now: number): number {
   if (!(lastTick > 0) || now <= lastTick) return visibleMs
   return visibleMs + Math.min(now - lastTick, 2000)
+}
+
+// ---------- pare-feu de Windows (carte du PC) ----------
+
+/** Étapes « Faire moi-même » de la carte du pare-feu, en clés de traduction.
+ *  Wifi public : le passer en réseau privé. Règle : l'autoriser dans
+ *  « Applications autorisées », en l'y ajoutant d'abord s'il n'y est pas.
+ *  « Tout bloquer » : le décocher. Pare-feu géré : demander à qui le gère. */
+export function firewallStepKeys(problem: 'public' | 'rule' | null, blocker: 'blockAll' | 'managed' | null, noRule: boolean): string[] {
+  if (problem === 'public') return ['fw.pub.step1', 'fw.pub.step2', 'fw.pub.step3']
+  if (blocker === 'managed') return ['fw.managed.step1']
+  if (blocker === 'blockAll') return ['fw.rule.step1', 'fw.block.step2', 'fw.block.step3']
+  return ['fw.rule.step1', 'fw.rule.step2', noRule ? 'fw.rule.step3add' : 'fw.rule.step3']
 }

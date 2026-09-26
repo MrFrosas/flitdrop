@@ -100,6 +100,18 @@ export class Outbox {
     if (changed) this.version++
   }
 
+  /** Le même téléphone rescanné (nouvel appairage) : ce qui attendait son
+   *  ancien appairage lui revient aussi. */
+  shareTargets(fromIds: string[], deviceId: string): void {
+    let changed = false
+    for (const item of this.items) {
+      if (!item.to || item.to.includes(deviceId) || !item.to.some((id) => fromIds.includes(id))) continue
+      item.to.push(deviceId)
+      changed = true
+    }
+    if (changed) this.version++
+  }
+
   get(id: string): OutboxItem | undefined {
     return this.items.find((i) => i.id === id)
   }

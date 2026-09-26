@@ -17,6 +17,8 @@ import {
   powershellPath,
   psArgs,
   psQuote,
+  profileNames,
+  repairProfiles,
   repairResultOf,
   repairWindowsFirewall,
   runPowerShell,
@@ -51,19 +53,21 @@ const decode = (b64: string) => Buffer.from(b64, 'base64').toString('utf16le')
 
 describe('pare-feu : lecture des réponses du script', () => {
   it('Windows anglais, wifi public, « Annuler » à l’invite : bloqué, à autoriser dans le pare-feu', () => {
-    expect(verdict('en-public-annule.json', EXE_EN)).toEqual({ network: 'public', blocked: true, allowed: false, problem: 'rule' })
+    expect(verdict('en-public-annule.json', EXE_EN)).toEqual({ network: 'public', blocked: true, allowed: false, problem: 'rule', profiles: 4, noRule: false, blocker: null })
   })
 
   it('Windows français, dossier avec accents et apostrophe, « Privé » seul coché, wifi public : passer en réseau privé suffit', () => {
-    expect(verdict('fr-public-prive-seul.json', EXE_FR)).toEqual({ network: 'public', blocked: true, allowed: false, problem: 'public' })
+    expect(verdict('fr-public-prive-seul.json', EXE_FR)).toEqual({ network: 'public', blocked: true, allowed: false, problem: 'public', profiles: 4, noRule: false, blocker: null })
   })
 
   it('Windows français, réseau privé, règle écrite avec %LOCALAPPDATA% : rien à signaler', () => {
-    expect(verdict('fr-prive-autorise.json', EXE_ZOE)).toEqual({ network: 'private', blocked: false, allowed: true, problem: null })
+    expect(verdict('fr-prive-autorise.json', EXE_ZOE)).toEqual({ network: 'private', blocked: false, allowed: true, problem: null, profiles: 2, noRule: false, blocker: null })
   })
 
   it('réseau privé, invite jamais répondue (aucune règle) : bloqué par défaut', () => {
-    expect(verdict('en-prive-sans-regle.json', EXE_EN)).toEqual({ network: 'private', blocked: false, allowed: false, problem: 'rule' })
+    // aucune règle : Flitdrop n'est pas dans « Applications autorisées », la
+    // carte dit de l'y ajouter (« Autoriser une autre application »)
+    expect(verdict('en-prive-sans-regle.json', EXE_EN)).toEqual({ network: 'private', blocked: false, allowed: false, problem: 'rule', profiles: 2, noRule: true, blocker: null })
   })
 
   it('Windows PowerShell 5.1 : tableau d’un seul élément, tableaux emballés, nombres et noms mélangés', () => {
@@ -72,27 +76,52 @@ describe('pare-feu : lecture des réponses du script', () => {
     expect(rep.fw.size).toBe(3)
     expect(rep.rules).toHaveLength(1)
     expect(rep.rulesKnown).toBe(true)
-    expect(evaluateFirewall(rep, EXE_EN, ENV)).toEqual({ network: 'public', blocked: true, allowed: false, problem: 'rule' })
+    expect(evaluateFirewall(rep, EXE_EN, ENV)).toEqual({ network: 'public', blocked: true, allowed: false, problem: 'rule', profiles: 4, noRule: false, blocker: null })
   })
 
   it('plusieurs cartes réseau : le réseau est celui qui porte l’adresse du QR code', () => {
-    expect(verdict('fr-plusieurs-reseaux.json', EXE_EN)).toEqual({ network: 'public', blocked: false, allowed: false, problem: 'public' })
+    expect(verdict('fr-plusieurs-reseaux.json', EXE_EN)).toEqual({ network: 'public', blocked: false, allowed: false, problem: 'public', profiles: 4, noRule: false, blocker: null })
   })
 
   it('pare-feu coupé sur ce réseau : rien à signaler', () => {
-    expect(verdict('en-pare-feu-coupe.json', EXE_EN)).toEqual({ network: 'public', blocked: false, allowed: false, problem: null })
+    expect(verdict('en-pare-feu-coupe.json', EXE_EN)).toEqual({ network: 'public', blocked: false, allowed: false, problem: null, profiles: 4, noRule: true, blocker: null })
   })
 
   it('règles hors sujet ignorées : autre dossier, désactivée, sortante, UDP seul', () => {
-    expect(verdict('en-regles-hors-sujet.json', EXE_EN)).toEqual({ network: 'public', blocked: false, allowed: true, problem: null })
+    expect(verdict('en-regles-hors-sujet.json', EXE_EN)).toEqual({ network: 'public', blocked: false, allowed: true, problem: null, profiles: 4, noRule: false, blocker: null })
   })
 
-  it('« Bloquer toutes les connexions entrantes » : bloqué malgré l’autorisation', () => {
-    expect(verdict('fr-tout-bloque.json', EXE_EN)).toEqual({ network: 'private', blocked: false, allowed: true, problem: 'rule' })
+  it('« Bloquer toutes les connexions entrantes » : bloqué malgré l’autorisation, et « Réparer » n’y peut rien', () => {
+    expect(verdict('fr-tout-bloque.json', EXE_EN)).toEqual({ network: 'private', blocked: false, allowed: true, problem: 'rule', profiles: 2, noRule: false, blocker: 'blockAll' })
+  })
+
+  it('pare-feu géré par une stratégie de groupe (entreprise, école) : « Réparer » n’y peut rien', () => {
+    const rep = parseFirewallReport(fixture('en-prive-sans-regle.json'))!
+    expect(rep.lpm).toBeNull()
+    for (const lpm of [1, 2]) {
+      rep.lpm = lpm
+      expect(evaluateFirewall(rep, EXE_EN, ENV)).toMatchObject({ problem: 'rule', blocker: 'managed' })
+    }
+    rep.lpm = 0
+    expect(evaluateFirewall(rep, EXE_EN, ENV).blocker).toBeNull()
+    // lu dans la réponse du script
+    const raw = JSON.parse(fixture('en-prive-sans-regle.json')) as Record<string, unknown>
+    expect(parseFirewallReport(JSON.stringify({ ...raw, lpm: 1 }))!.lpm).toBe(1)
+    // rien à signaler : pas de blocage à expliquer non plus
+    expect(verdict('fr-prive-autorise.json', EXE_ZOE).blocker).toBeNull()
+  })
+
+  it('réseau de domaine (travail) : vérifié et réparé pour le profil Domaine', () => {
+    const rep = parseFirewallReport(fixture('en-prive-sans-regle.json'))!
+    rep.profiles[0]!.category = 'domain'
+    const st = evaluateFirewall(rep, EXE_EN, ENV)
+    expect(st).toMatchObject({ network: 'domain', problem: 'rule', profiles: 1, blocker: null })
+    expect(profileNames(repairProfiles(st))).toEqual(['Domain', 'Private'])
+    expect(firewallRepairScript(EXE_EN, st.profiles)).toContain('-Profile Domain, Private -RemoteAddress LocalSubnet')
   })
 
   it('règles illisibles, bruit autour du JSON : seul le réseau public est signalé', () => {
-    expect(verdict('fr-regles-illisibles.json', EXE_EN)).toEqual({ network: 'public', blocked: false, allowed: false, problem: 'public' })
+    expect(verdict('fr-regles-illisibles.json', EXE_EN)).toEqual({ network: 'public', blocked: false, allowed: false, problem: 'public', profiles: 4, noRule: false, blocker: null })
     const rep = parseFirewallReport(fixture('fr-regles-illisibles.json'))!
     rep.profiles[0]!.category = 'private'
     expect(evaluateFirewall(rep, EXE_EN, ENV).problem).toBeNull()
@@ -108,8 +137,11 @@ describe('pare-feu : lecture des réponses du script', () => {
     const st = evaluateFirewall(rep, EXE_EN, ENV)
     expect(st.network).toBe('unknown')
     expect(st.problem).toBe('rule')
+    // les deux profils actifs sont vérifiés, et la règle les couvrira
+    expect(st.profiles).toBe(6)
+    expect(profileNames(repairProfiles(st))).toEqual(['Private', 'Public'])
     rep.current = null
-    expect(evaluateFirewall(rep, EXE_EN, ENV)).toEqual({ network: 'unknown', blocked: false, allowed: false, problem: 'rule' })
+    expect(evaluateFirewall(rep, EXE_EN, ENV)).toEqual({ network: 'unknown', blocked: false, allowed: false, problem: 'rule', profiles: 4, noRule: true, blocker: null })
   })
 
   it('réponses illisibles : null, jamais d’erreur', () => {
@@ -181,8 +213,21 @@ describe('pare-feu : guillemets et commandes PowerShell', () => {
     expect(firewallDetectScript(EXE_EN)).toContain("$ip = ''")
   })
 
+  it('profils de la règle : le réseau utilisé plus les réseaux privés, le public seulement sur un réseau public', () => {
+    expect(profileNames(repairProfiles({ profiles: 2 }))).toEqual(['Private'])
+    expect(profileNames(repairProfiles({ profiles: 4 }))).toEqual(['Private', 'Public'])
+    expect(profileNames(repairProfiles({ profiles: 1 }))).toEqual(['Domain', 'Private'])
+    // inconnu ou absurde : jamais plus que les réseaux privés
+    expect(profileNames(repairProfiles(null))).toEqual(['Private'])
+    expect(profileNames(repairProfiles({ profiles: 0 }))).toEqual(['Private'])
+    expect(profileNames(repairProfiles({ profiles: 8 }))).toEqual(['Private'])
+    // réseau privé : la règle n'ouvre rien sur les réseaux publics
+    expect(firewallRepairScript(EXE_EN, 2)).toContain('-Profile Private -RemoteAddress LocalSubnet')
+    expect(firewallRepairScript(EXE_EN, 2)).not.toContain('Public')
+  })
+
   it('réparation : bloque retirés pour cet exécutable seulement, une règle d’autorisation limitée au réseau local', () => {
-    const s = firewallRepairScript(EXE_FR)
+    const s = firewallRepairScript(EXE_FR, 4)
     expect(s).toContain("$exe = 'C:\\Users\\Zoé L’’Hôte\\AppData\\Local\\Programs\\flitdrop\\Flitdrop.exe'")
     expect(s).toContain(`$name = '${FIREWALL_RULE_NAME}'`)
     expect(FIREWALL_RULE_NAME).toBe('Flitdrop (réseau local)')
@@ -202,17 +247,28 @@ describe('pare-feu : guillemets et commandes PowerShell', () => {
 
   it('lanceur : une seule demande d’élévation, le script élevé passé encodé, refus rendu en 1223', () => {
     const psExe = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe'
-    const l = firewallRepairLauncher(EXE_FR, psExe)
-    expect(l.match(/-Verb RunAs/g)).toHaveLength(1)
-    expect(l).toContain(`-FilePath '${psExe}'`)
-    expect(l).toContain('-WindowStyle Hidden')
-    expect(l).toContain(`exit ${UAC_CANCELLED}`)
+    const l = firewallRepairLauncher(EXE_FR, psExe, 4)
+    // élévation par Process.Start (verbe runas) : sous Windows PowerShell 5.1,
+    // Start-Process remplace le refus (1223) par une erreur sans cause, et le
+    // refus passait pour un échec
+    expect(l).not.toContain('Start-Process')
+    expect(l.match(/\[System\.Diagnostics\.Process\]::Start\(\$psi\)/g)).toHaveLength(1)
+    expect(l.match(/runas/gi)).toHaveLength(1)
+    expect(l).toContain("$psi.Verb = 'runas'")
+    expect(l).toContain('$psi.UseShellExecute = $true')
+    expect(l).toContain(`New-Object System.Diagnostics.ProcessStartInfo '${psExe}'`)
+    expect(l).toContain('[System.Diagnostics.ProcessWindowStyle]::Hidden')
+    // le refus est cherché dans les causes, par son code, jamais par le
+    // message (traduit par Windows)
+    expect(l).toContain(`if ($e.NativeErrorCode -eq ${UAC_CANCELLED}) { exit ${UAC_CANCELLED} }`)
+    expect(l).toContain('$e = $e.InnerException')
+    expect(l).not.toMatch(/Message|canceled|annul/i)
     // le lanceur lui-même ne touche pas au pare-feu
     expect(l).not.toMatch(/NetFirewallRule/)
-    const inner = l.match(/'-EncodedCommand', '([A-Za-z0-9+/=]+)'/)
+    const inner = l.match(/\$psi\.Arguments = '-NoProfile -NonInteractive -EncodedCommand ([A-Za-z0-9+/=]+)'/)
     expect(inner).not.toBeNull()
-    expect(decode(inner![1]!)).toBe(firewallRepairScript(EXE_FR))
-    expect(firewallRepairLauncher(EXE_EN, 'D:\\Mon Windows\\powershell.exe')).toContain("-FilePath 'D:\\Mon Windows\\powershell.exe'")
+    expect(decode(inner![1]!)).toBe(firewallRepairScript(EXE_FR, 4))
+    expect(firewallRepairLauncher(EXE_EN, 'D:\\Mon Windows\\powershell.exe')).toContain("ProcessStartInfo 'D:\\Mon Windows\\powershell.exe'")
   })
 
   it('résultat de la réparation d’après le code de sortie', () => {
@@ -234,7 +290,7 @@ describe('pare-feu : exécution (PowerShell simulé)', () => {
       return { code: 0, stdout: fixture('fr-public-prive-seul.json'), timedOut: false }
     }
     const st = await checkWindowsFirewall({ exe: EXE_FR, ip: '192.168.1.20', env: ENV, run })
-    expect(st).toEqual({ network: 'public', blocked: true, allowed: false, problem: 'public' })
+    expect(st).toEqual({ network: 'public', blocked: true, allowed: false, problem: 'public', profiles: 4, noRule: false, blocker: null })
     expect(calls).toHaveLength(1)
     expect(calls[0]!.timeout).toBe(8000)
     expect(decode(calls[0]!.args[3]!)).toBe(firewallDetectScript(EXE_FR, '192.168.1.20'))
@@ -261,6 +317,13 @@ describe('pare-feu : exécution (PowerShell simulé)', () => {
       }
     expect(await repairWindowsFirewall({ exe: EXE_FR, env: ENV, run: withCode(0) })).toBe('ok')
     expect(decode(seen[3]!)).toBe(firewallRepairLauncher(EXE_FR, powershellPath(ENV)))
+    // la règle suit le réseau de la vérification : public, ou privé seul
+    const pub = { network: 'public', blocked: true, allowed: false, problem: 'public', profiles: 4, noRule: false, blocker: null } as FirewallStatus
+    await repairWindowsFirewall({ exe: EXE_FR, env: ENV, run: withCode(0), status: pub })
+    expect(decode(seen[3]!)).toBe(firewallRepairLauncher(EXE_FR, powershellPath(ENV), 4))
+    const priv: FirewallStatus = { ...pub, network: 'private', profiles: 2 }
+    await repairWindowsFirewall({ exe: EXE_FR, env: ENV, run: withCode(0), status: priv })
+    expect(decode(seen[3]!)).toBe(firewallRepairLauncher(EXE_FR, powershellPath(ENV), 2))
     expect(await repairWindowsFirewall({ exe: EXE_FR, env: ENV, run: withCode(UAC_CANCELLED) })).toBe('cancelled')
     expect(await repairWindowsFirewall({ exe: EXE_FR, env: ENV, run: withCode(2) })).toBe('failed')
     expect(await repairWindowsFirewall({ exe: EXE_FR, env: ENV, run: withCode(null, true) })).toBe('failed')
@@ -284,6 +347,16 @@ describe.runIf(process.platform === 'win32')('pare-feu : Windows réel', () => {
     const rep = parseFirewallReport(res.stdout)
     expect(rep).not.toBeNull()
     expect(Array.isArray(rep!.profiles)).toBe(true)
+    // la moitié COM (HNetCfg.FwPolicy2) doit vraiment marcher sous
+    // PowerShell 5.1 : sinon la production retombe en silence sur « règles
+    // inconnues » et le cas « règle » n'est plus jamais vu. Le service du
+    // pare-feu tourne sur le runner, même profils coupés.
+    const raw = JSON.parse(res.stdout.slice(res.stdout.indexOf('{'), res.stdout.lastIndexOf('}') + 1)) as { errors?: unknown }
+    const errors = (Array.isArray(raw.errors) ? raw.errors : raw.errors ? [raw.errors] : []).map(String)
+    for (const part of ['rules', 'lpm', 'profiles']) expect(errors, part).not.toContain(part)
+    expect(rep!.rulesKnown).toBe(true)
+    expect(rep!.fw.size).toBe(3)
+    expect([0, 1, 2, 3]).toContain(rep!.lpm)
   }, 90_000)
 
   it('checkWindowsFirewall rend un résultat bien formé ou null, sans lever d’erreur', async () => {
@@ -299,7 +372,7 @@ describe.runIf(process.platform === 'win32')('pare-feu : Windows réel', () => {
 
   it('les scripts de réparation sont du PowerShell valide (analysés, jamais lancés)', async () => {
     const exe = 'C:\\Users\\Zoé L’Hôte\\App Data\\Flitdrop.exe'
-    for (const script of [firewallRepairScript(exe), firewallRepairLauncher(exe)]) {
+    for (const script of [firewallRepairScript(exe), firewallRepairScript(exe, 5), firewallRepairLauncher(exe), firewallRepairLauncher(exe, powershellPath(), 1)]) {
       const checker = [
         `$src = [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String(${psQuote(encodePowerShell(script))}))`,
         '$errs = $null',

@@ -13,7 +13,10 @@ import path from 'node:path'
 // - la réparation, lancée seulement quand la personne clique « Réparer » :
 //   une seule demande des droits administrateur (UAC), qui retire les règles
 //   de blocage de Flitdrop et ajoute une règle d'autorisation limitée au
-//   réseau local. Le type de réseau (Privé ou Public) n'est jamais changé.
+//   réseau local, pour le type du réseau utilisé (plus les réseaux privés).
+//   Le type de réseau (Privé ou Public) n'est jamais changé. Elle n'est pas
+//   proposée quand une règle ne peut rien y faire (tout bloquer, pare-feu
+//   géré par l'entreprise ou l'école).
 // macOS : son pare-feu est coupé par défaut et rien de bloquant n'a été
 // constaté. Linux : rien (pas de pare-feu actif par défaut sur les bureaux
 // courants, et aucune façon commune de le régler).
@@ -31,6 +34,14 @@ export interface FirewallStatus {
    *  wifi en réseau privé suffirait), « rule » (il faut autoriser Flitdrop
    *  dans le pare-feu), ou null (rien trouvé). */
   problem: 'public' | 'rule' | null
+  /** profils vérifiés (1 domaine, 2 privé, 4 public) : ceux du réseau utilisé */
+  profiles: number
+  /** aucune règle de Flitdrop : il n'est pas dans « Applications autorisées » */
+  noRule: boolean
+  /** ce qui rend « Réparer » inutile : « blockAll » (le pare-feu bloque toutes
+   *  les connexions entrantes, règles comprises), « managed » (pare-feu géré
+   *  par l'entreprise ou l'école : les règles de ce PC n'y changent rien) */
+  blocker: 'blockAll' | 'managed' | null
 }
 
 export type RepairResult = 'ok' | 'cancelled' | 'failed'
@@ -81,6 +92,8 @@ const IPV4 = /^(?:\d{1,3}\.){3}\d{1,3}$/
  * - ifIndex : l'interface qui porte l'adresse du QR code ;
  * - profiles : type de chaque réseau connecté (Get-NetConnectionProfile) ;
  * - current, fw : profils actifs et réglages du pare-feu par profil ;
+ * - lpm : LocalPolicyModifyState (0 : les règles de ce PC comptent ;
+ *   1 ou 2 : une stratégie de groupe les écrase) ;
  * - rules : règles dont le programme porte le nom de l'exécutable de
  *   Flitdrop (le chemin exact est comparé ensuite, en Node).
  * Les règles sont lues par l'objet COM du pare-feu (HNetCfg.FwPolicy2) :
@@ -97,7 +110,7 @@ export function firewallDetectScript(exe: string, ip?: string): string {
     'try { Remove-TypeData System.Array -ErrorAction SilentlyContinue } catch {}',
     `$leaf = ${psQuote(leaf)}`,
     `$ip = ${psQuote(addr)}`,
-    '$out = [ordered]@{ v = 1; ifIndex = $null; current = $null; profiles = @(); fw = @(); rules = @(); errors = @() }',
+    '$out = [ordered]@{ v = 1; ifIndex = $null; current = $null; lpm = $null; profiles = @(); fw = @(); rules = @(); errors = @() }',
     'try {',
     '  if ($ip) {',
     '    $a = @(Get-NetIPAddress -IPAddress $ip -ErrorAction SilentlyContinue) | Select-Object -First 1',
@@ -115,6 +128,7 @@ export function firewallDetectScript(exe: string, ip?: string): string {
     '  $out.fw = @(foreach ($b in 1, 2, 4) {',
     '    [ordered]@{ p = $b; on = [bool]$fw.FirewallEnabled($b); inAllow = [int]$fw.DefaultInboundAction($b); blockAll = [bool]$fw.BlockAllInboundTraffic($b) }',
     '  })',
+    '  try { $out.lpm = [int]$fw.LocalPolicyModifyState } catch { $out.errors += \'lpm\' }',
     '  $out.rules = @($fw.Rules | Where-Object { $_.ApplicationName -and ([string]$_.ApplicationName).EndsWith($leaf, [StringComparison]::OrdinalIgnoreCase) } | ForEach-Object {',
     '    [ordered]@{ app = [string]$_.ApplicationName; a = [int]$_.Action; d = [int]$_.Direction; e = [bool]$_.Enabled; p = [int]$_.Profiles; proto = [int]$_.Protocol }',
     '  })',
@@ -133,6 +147,8 @@ export interface FirewallReport {
   fw: Map<number, { on: boolean; inboundAllow: boolean; blockAll: boolean }>
   rules: Array<{ app: string; allow: boolean; inbound: boolean; enabled: boolean; profiles: number; tcp: boolean }>
   rulesKnown: boolean
+  /** LocalPolicyModifyState ; null : inconnu */
+  lpm: number | null
 }
 
 // Windows PowerShell 5.1 : un tableau d'un seul élément sort parfois comme
@@ -267,6 +283,7 @@ export function parseFirewallReport(stdout: string): FirewallReport | null {
     fw,
     rules,
     rulesKnown: !errors.includes('rules') && fw.size > 0,
+    lpm: num(raw.lpm),
   }
 }
 
@@ -336,7 +353,35 @@ export function evaluateFirewall(rep: FirewallReport, exe: string, env: NodeJS.P
   } else if (!check.every(reachable)) {
     problem = network === 'public' && reachable(BIT.private) ? 'public' : 'rule'
   }
-  return { network, blocked, allowed, problem }
+  // une règle d'autorisation n'y changerait rien : stratégie de groupe qui
+  // écrase les règles de ce PC, ou « bloquer toutes les connexions entrantes »
+  let blocker: FirewallStatus['blocker'] = null
+  if (problem && rep.rulesKnown) {
+    // « tout bloquer » d'abord : Windows rend aussi 2 (connexions entrantes
+    // bloquées) dans ce cas, sans que ce soit une stratégie de groupe
+    if (check.some((b) => !reachable(b) && rep.fw.get(b)?.blockAll)) blocker = 'blockAll'
+    else if (rep.lpm === 1 || rep.lpm === 2) blocker = 'managed'
+  }
+  const noRule = rep.rulesKnown && !rep.rules.some((r) => r.inbound && winPathKey(r.app, env) === want)
+  const profiles = check.reduce((m, b) => m | b, 0)
+  return { network, blocked, allowed, problem, profiles, noRule, blocker }
+}
+
+/** Profils de la règle posée par « Réparer » : ceux du réseau utilisé, plus
+ *  les réseaux privés (la maison). Le public n'y est que si le réseau
+ *  utilisé est public : la carte le dit alors avant le clic. */
+export function repairProfiles(st: Pick<FirewallStatus, 'profiles'> | null | undefined): number {
+  const p = typeof st?.profiles === 'number' && st.profiles > 0 ? st.profiles & 7 : 0
+  return (p || 2) | 2
+}
+
+/** Noms des profils pour New-NetFirewallRule -Profile. */
+export function profileNames(mask: number): string[] {
+  const out: string[] = []
+  if (mask & 1) out.push('Domain')
+  if (mask & 2) out.push('Private')
+  if (mask & 4) out.push('Public')
+  return out
 }
 
 // ---------- exécution ----------
@@ -395,12 +440,13 @@ export async function checkWindowsFirewall(o: {
 /**
  * Script lancé AVEC les droits administrateur. Il retire seulement les règles
  * qui bloquent les connexions entrantes vers cet exécutable, puis ajoute une
- * règle d'autorisation : connexions entrantes TCP, réseaux privés et publics,
- * appareils du réseau local seulement. La règle du même nom est d'abord
- * retirée : réparer deux fois ne crée pas de doublon. Rien d'autre ne change
- * (ni le type de réseau, ni les autres programmes).
+ * règle d'autorisation : connexions entrantes TCP, profils `profiles` (voir
+ * repairProfiles), appareils du réseau local seulement. La règle du même nom
+ * est d'abord retirée : réparer deux fois ne crée pas de doublon. Rien
+ * d'autre ne change (ni le type de réseau, ni les autres programmes).
  */
-export function firewallRepairScript(exe: string): string {
+export function firewallRepairScript(exe: string, profiles: number = 2): string {
+  const names = profileNames(repairProfiles({ profiles }))
   return [
     "$ErrorActionPreference = 'Stop'",
     "$ProgressPreference = 'SilentlyContinue'",
@@ -415,7 +461,7 @@ export function firewallRepairScript(exe: string): string {
     "    Where-Object { $_.Direction -eq 'Inbound' -and $_.Action -eq 'Block' } |",
     '    Remove-NetFirewallRule',
     '  Get-NetFirewallRule -DisplayName $name -ErrorAction SilentlyContinue | Remove-NetFirewallRule',
-    "  New-NetFirewallRule -DisplayName $name -Group 'Flitdrop' -Direction Inbound -Action Allow -Program $exe -Protocol TCP -Profile Private, Public -RemoteAddress LocalSubnet | Out-Null",
+    `  New-NetFirewallRule -DisplayName $name -Group 'Flitdrop' -Direction Inbound -Action Allow -Program $exe -Protocol TCP -Profile ${names.join(', ')} -RemoteAddress LocalSubnet | Out-Null`,
     '  exit 0',
     '} catch {',
     '  exit 2',
@@ -424,20 +470,28 @@ export function firewallRepairScript(exe: string): string {
 }
 
 /**
- * Script lancé SANS droits : il demande l'élévation (Start-Process -Verb
- * RunAs, la fenêtre de Windows) pour le script ci-dessus, attend sa fin et
- * rend son code. Refus de la personne : 1223.
+ * Script lancé SANS droits : il demande l'élévation (verbe « runas », la
+ * fenêtre de Windows) pour le script ci-dessus, attend sa fin et rend son
+ * code. Refus de la personne : 1223.
+ * Par Process.Start et pas Start-Process : sous Windows PowerShell 5.1,
+ * Start-Process remplace l'erreur 1223 par une autre, sans cause attachée,
+ * et un refus passait pour un échec. Process.Start la laisse remonter (en
+ * cause d'une MethodInvocationException), la boucle ci-dessous la trouve.
+ * Le message de l'erreur, traduit par Windows, n'est jamais lu.
  */
-export function firewallRepairLauncher(exe: string, psExe: string = powershellPath()): string {
-  const inner = encodePowerShell(firewallRepairScript(exe))
+export function firewallRepairLauncher(exe: string, psExe: string = powershellPath(), profiles: number = 2): string {
+  const inner = encodePowerShell(firewallRepairScript(exe, profiles))
   return [
     "$ErrorActionPreference = 'Stop'",
     'try {',
-    `  $p = Start-Process -FilePath ${psQuote(psExe)} -Verb RunAs -WindowStyle Hidden -PassThru -ArgumentList '-NoProfile', '-NonInteractive', '-EncodedCommand', ${psQuote(inner)}`,
-    // sans lire Handle tout de suite, ExitCode peut rester vide
-    '  $null = $p.Handle',
+    `  $psi = New-Object System.Diagnostics.ProcessStartInfo ${psQuote(psExe)}`,
+    `  $psi.Arguments = ${psQuote('-NoProfile -NonInteractive -EncodedCommand ' + inner)}`,
+    "  $psi.Verb = 'runas'",
+    '  $psi.UseShellExecute = $true',
+    '  $psi.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Hidden',
+    '  $p = [System.Diagnostics.Process]::Start($psi)',
+    '  if ($null -eq $p) { exit 3 }',
     '  $p.WaitForExit()',
-    '  if ($null -eq $p.ExitCode) { exit 3 }',
     '  exit $p.ExitCode',
     '} catch {',
     '  $e = $_.Exception',
@@ -455,17 +509,19 @@ export function repairResultOf(res: RunResult): RepairResult {
   return 'failed'
 }
 
-/** Répare le pare-feu pour `exe` (une demande des droits administrateur).
- *  Ne lève jamais d'erreur. */
+/** Répare le pare-feu pour `exe` (une demande des droits administrateur),
+ *  pour le réseau de la dernière vérification `status`. Ne lève jamais
+ *  d'erreur. */
 export async function repairWindowsFirewall(o: {
   exe: string
+  status?: Pick<FirewallStatus, 'profiles'> | null
   env?: NodeJS.ProcessEnv
   run?: PsRunner
   timeoutMs?: number
 }): Promise<RepairResult> {
   try {
     const run = o.run ?? runPowerShell
-    const script = firewallRepairLauncher(o.exe, powershellPath(o.env ?? process.env))
+    const script = firewallRepairLauncher(o.exe, powershellPath(o.env ?? process.env), repairProfiles(o.status))
     return repairResultOf(await run(psArgs(script), o.timeoutMs ?? FIREWALL_REPAIR_TIMEOUT_MS))
   } catch {
     return 'failed'

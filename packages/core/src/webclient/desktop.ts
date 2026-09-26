@@ -1,6 +1,6 @@
 import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '../i18n.js'
 import { applyI18n } from '../i18n-dom.js'
-import { pairCodeState, fmtCountdown, firewallCheckDue, addVisibleMs } from './onboarding.js'
+import { pairCodeState, fmtCountdown, firewallCheckDue, addVisibleMs, firewallStepKeys } from './onboarding.js'
 import { FIREWALL_CHECK_AFTER_MS } from '../constants.js'
 
 // langue courante : détectée d'abord, puis alignée sur le réglage serveur.
@@ -92,6 +92,12 @@ interface State {
     repairing: boolean
     problem: 'public' | 'rule' | null
     network: string | null
+    /** « Réparer » n'y peut rien (absent d'un coeur plus ancien) */
+    blocker?: 'blockAll' | 'managed' | null
+    /** Flitdrop n'est pas dans « Applications autorisées » */
+    noRule?: boolean
+    /** la règle de « Réparer » couvrira aussi les réseaux publics */
+    publicToo?: boolean
     repair: 'ok' | 'cancelled' | 'failed' | null
     fixed: boolean
   } | null
@@ -340,6 +346,9 @@ function outboxTargetLabel(item: OutboxEntry): string | undefined {
   if (!state) return undefined
   const active = activePhones()
   if (!item.to) return active.length >= 2 ? t('outbox.forAll') : undefined
+  // un seul téléphone, et l'élément est pour lui (réservé à l'ouverture de la
+  // fenêtre d'appairage) : rien à préciser
+  if (active.length === 1 && item.to.includes(active[0]!.id)) return undefined
   if (active.length >= 2 && active.every((d) => item.to!.includes(d.id))) return t('outbox.forAll')
   const names = item.to.map((id) => state!.devices.find((d) => d.id === id)?.name).filter((n): n is string => !!n)
   return names.length ? t('outbox.for', { name: names.join(', ') }) : t('outbox.forRemoved')
@@ -691,7 +700,19 @@ function renderFirewall() {
     const fixed = f.fixed && !f.problem
     root.classList.toggle('fixed', fixed)
     q('.fw-title').textContent = fixed ? t('fw.titleFixed') : t('fw.title')
-    q('.fw-body').textContent = fixed ? t('fw.bodyFixed') : t(f.problem === 'public' ? 'fw.body.public' : 'fw.body.rule')
+    // ce que la carte propose : « Réparer », ou seulement les étapes quand
+    // une règle n'y changerait rien (tout bloquer, pare-feu géré)
+    const blocker = f.problem ? (f.blocker ?? null) : null
+    const body = fixed
+      ? 'fw.bodyFixed'
+      : f.problem === 'public'
+        ? 'fw.body.public'
+        : blocker === 'blockAll'
+          ? 'fw.body.blockAll'
+          : blocker === 'managed'
+            ? 'fw.body.managed'
+            : 'fw.body.rule'
+    q('.fw-body').textContent = t(body)
     // ligne d'état : en cours, refusé, raté
     let status = ''
     if (f.repairing) status = t('fw.repairing')
@@ -703,22 +724,33 @@ function renderFirewall() {
     st.textContent = status
     st.classList.toggle('hidden', !status)
     const fix = q<HTMLButtonElement>('.fw-fix')
-    fix.classList.toggle('hidden', fixed)
+    fix.classList.toggle('hidden', fixed || !!blocker)
     fix.disabled = busy
-    q('.fw-note').classList.toggle('hidden', fixed)
+    // dit avant le clic ce que la règle ouvre : sur un réseau public, tous
+    // les réseaux publics (café, hôtel)
+    const note = q('.fw-note')
+    note.classList.toggle('hidden', fixed || !!blocker)
+    note.textContent = t(f.publicToo ? 'fw.fixNotePublic' : 'fw.fixNote')
     const later = root.querySelector<HTMLButtonElement>('.fw-later')
     if (later) later.textContent = fixed ? t('fw.ok') : t('fw.later')
     const manual = q<HTMLDetailsElement>('.fw-manual')
     manual.classList.toggle('hidden', fixed)
-    // les étapes suivent ce qui bloque : type de réseau, ou règle du pare-feu
-    const kind = f.problem === 'public' ? 'pub' : 'rule'
+    // les étapes suivent ce qui bloque : type de réseau, règle du pare-feu,
+    // « tout bloquer » ou pare-feu géré
+    const keys = firewallStepKeys(f.problem, blocker, !!f.noRule)
+    const cols = t(f.network === 'domain' ? 'fw.cols.domain' : f.publicToo ? 'fw.cols.both' : 'fw.cols.private')
     const steps = q('.fw-steps')
-    if (steps.dataset.kind !== kind + lang) {
-      steps.dataset.kind = kind + lang
-      steps.innerHTML = [1, 2, 3].map((n) => `<li>${t(`fw.${kind}.step${n}`)}</li>`).join('')
+    const stepsKey = keys.join(',') + cols + lang
+    const changed = steps.dataset.kind !== stepsKey
+    if (changed) {
+      steps.dataset.kind = stepsKey
+      steps.innerHTML = keys.map((k) => `<li>${t(k, { cols })}</li>`).join('')
     }
-    // réparation refusée par Windows ou sans effet : les étapes s'ouvrent
+    // réparation refusée par Windows ou sans effet, ou rien à réparer d'un
+    // clic : les étapes s'ouvrent. Wifi public : passer en réseau privé est
+    // la vraie solution, les étapes sont montrées d'emblée.
     if (f.problem && !busy && (f.repair === 'failed' || f.repair === 'ok')) manual.open = true
+    if (f.problem && changed && (f.problem === 'public' || blocker)) manual.open = true
     q<HTMLButtonElement>('.fw-again').disabled = busy
   }
 }
@@ -1067,6 +1099,11 @@ function tickPair() {
     void showPairCode(true)
       .then(() => {
         pairRenewing = false
+        // annoncé une fois aux lecteurs d'écran (vidé d'abord : le même texte
+        // deux fois de suite ne serait pas relu)
+        const sr = $('pairRenewSr')
+        sr.textContent = ''
+        setTimeout(() => (sr.textContent = t('pair.renewed')), 50)
         tickPair()
       })
       .catch(() => {
@@ -1100,6 +1137,7 @@ async function openPairModal() {
   $('pairCopy').classList.remove('hidden')
   $('pairNext').classList.add('hidden')
   $('pairRenew').textContent = ''
+  $('pairRenewSr').textContent = ''
   $('pairModal').classList.remove('hidden')
   tickPair()
 }

@@ -26,6 +26,9 @@ type FwState = {
   repairing: boolean
   problem: 'public' | 'rule' | null
   network: string | null
+  blocker: 'blockAll' | 'managed' | null
+  noRule: boolean
+  publicToo: boolean
   repair: RepairResult | null
   fixed: boolean
 } | null
@@ -36,19 +39,21 @@ interface Harness {
   fw: () => Promise<FwState>
   checks: Array<string | undefined>
   repairs: number
+  repairStatuses: FirewallStatus[]
   nextCheck: Array<FirewallStatus | null>
   nextRepair: RepairResult
   sent: Envelope[]
   settle: () => Promise<void>
 }
 
-const PUBLIC_BLOCKED: FirewallStatus = { network: 'public', blocked: true, allowed: false, problem: 'public' }
-const FINE: FirewallStatus = { network: 'public', blocked: false, allowed: true, problem: null }
+const PUBLIC_BLOCKED: FirewallStatus = { network: 'public', blocked: true, allowed: false, problem: 'public', profiles: 4, noRule: false, blocker: null }
+const FINE: FirewallStatus = { network: 'public', blocked: false, allowed: true, problem: null, profiles: 4, noRule: false, blocker: null }
 
 async function harness(o: { firewall?: boolean; afterMs?: number } = {}): Promise<Harness> {
   const h = {
     checks: [] as Array<string | undefined>,
     repairs: 0,
+    repairStatuses: [] as FirewallStatus[],
     nextCheck: [] as Array<FirewallStatus | null>,
     nextRepair: 'ok' as RepairResult,
     sent: [] as Envelope[],
@@ -71,8 +76,9 @@ async function harness(o: { firewall?: boolean; afterMs?: number } = {}): Promis
               h.checks.push(ip)
               return h.nextCheck.length ? (h.nextCheck.shift() ?? null) : PUBLIC_BLOCKED
             },
-            repair: async () => {
+            repair: async (st) => {
               h.repairs++
+              h.repairStatuses.push(st)
               return h.nextRepair
             },
             afterMs: o.afterMs ?? 0,
@@ -159,7 +165,18 @@ describe('pare-feu : vérification automatique', () => {
     await h.settle()
     // vérifiée pour l'adresse du QR code
     expect(h.checks).toEqual([new URL(url).hostname])
-    expect(await h.fw()).toEqual({ checking: false, repairing: false, problem: 'public', network: 'public', repair: null, fixed: false })
+    expect(await h.fw()).toEqual({
+      checking: false,
+      repairing: false,
+      problem: 'public',
+      network: 'public',
+      blocker: null,
+      noRule: false,
+      // réseau public : la règle couvrira aussi les réseaux publics, la carte le dit
+      publicToo: true,
+      repair: null,
+      fixed: false,
+    })
     // même ouverture : pas une deuxième fois
     expect(await started(await h.admin('/firewall/check', { auto: true }))).toBe(false)
     await h.settle()
@@ -249,7 +266,9 @@ describe('pare-feu : réparation', () => {
     await h.settle()
     expect(h.repairs).toBe(1)
     expect(h.checks).toHaveLength(2)
-    expect(await h.fw()).toEqual({ checking: false, repairing: false, problem: null, network: 'public', repair: 'ok', fixed: true })
+    expect(await h.fw()).toEqual({ checking: false, repairing: false, problem: null, network: 'public', blocker: null, noRule: false, publicToo: false, repair: 'ok', fixed: true })
+    // la réparation a reçu la vérification qui l'a motivée (sa règle suit ce réseau)
+    expect(h.repairStatuses).toEqual([PUBLIC_BLOCKED])
     const ev = events(h, 'firewall_repair')
     expect(ev.map((e) => e.props.result)).toEqual(['ok'])
     expect(ev[0]!.tier).toBe('basic')
@@ -291,5 +310,36 @@ describe('pare-feu : réparation', () => {
     await h.settle()
     expect(await h.fw()).toMatchObject({ problem: 'public', repair: 'failed' })
     expect(events(h, 'firewall_repair').map((e) => e.props.result)).toEqual(['failed'])
+  })
+})
+
+describe('pare-feu : quand une règle n’y peut rien', () => {
+  it('« tout bloquer » ou pare-feu géré : pas de « Réparer », jamais de demande des droits', async () => {
+    for (const blocker of ['blockAll', 'managed'] as const) {
+      const h = await open()
+      h.nextCheck.push({ network: 'private', blocked: false, allowed: true, problem: 'rule', profiles: 2, noRule: false, blocker })
+      await h.admin('/pair/new', {})
+      await h.admin('/firewall/check', { auto: true })
+      await h.settle()
+      expect(await h.fw()).toMatchObject({ problem: 'rule', network: 'private', blocker, publicToo: false })
+      expect((await h.admin('/firewall/repair', {})).status).toBe(400)
+      await h.settle()
+      expect(h.repairs).toBe(0)
+      expect(events(h, 'firewall_repair')).toHaveLength(0)
+    }
+  })
+
+  it('réseau privé sans règle : la carte sait que Flitdrop n’est pas dans la liste, la règle reste privée', async () => {
+    const h = await open()
+    const st: FirewallStatus = { network: 'private', blocked: false, allowed: false, problem: 'rule', profiles: 2, noRule: true, blocker: null }
+    h.nextCheck.push(st)
+    await h.admin('/pair/new', {})
+    await h.admin('/firewall/check', { auto: true })
+    await h.settle()
+    expect(await h.fw()).toMatchObject({ problem: 'rule', noRule: true, publicToo: false, blocker: null })
+    h.nextRepair = 'cancelled'
+    await h.admin('/firewall/repair', {})
+    await h.settle()
+    expect(h.repairStatuses).toEqual([st])
   })
 })

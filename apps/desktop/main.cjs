@@ -383,12 +383,13 @@ if (!gotLock) {
       // d'accueil d'une installation neuve, jamais changé sans réponse
       autostart: { get: () => isAutoStart(), set: (on) => setAutoStart(on) },
       // Windows : pare-feu vérifié une fois quand aucun téléphone n'arrive, et
-      // réparé seulement sur « Réparer » (règles de cet exécutable)
+      // réparé seulement sur « Réparer » (règles de cet exécutable, pour le
+      // réseau de la dernière vérification)
       firewall:
         process.platform === 'win32' && bundle.checkWindowsFirewall && bundle.repairWindowsFirewall
           ? {
               check: (ip) => bundle.checkWindowsFirewall({ exe: process.execPath, ip }),
-              repair: () => bundle.repairWindowsFirewall({ exe: process.execPath }),
+              repair: (status) => bundle.repairWindowsFirewall({ exe: process.execPath, status }),
             }
           : undefined,
     })

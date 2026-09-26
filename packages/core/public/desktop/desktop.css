@@ -492,3 +492,6 @@ html[data-platform='mac'] .chip.on { color: #fff; }
 /* fenêtre d'appairage : la carte s'ajoute au QR, la fenêtre défile si besoin */
 #pairModal .modal-card { max-height: calc(100vh - 48px); overflow-y: auto; }
 #pairModal .fw-card { padding: 14px; backdrop-filter: none; -webkit-backdrop-filter: none; }
+
+/* lu par les lecteurs d'écran seulement (annonce du code renouvelé) */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
