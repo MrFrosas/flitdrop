@@ -460,3 +460,19 @@ html.paused .rpulse, html.paused .wring, html.paused .spin { animation-play-stat
 label.check.dev-share { padding-top: 6px; align-items: flex-start; }
 label.check.dev-share input { margin-top: 3px; }
 html[data-platform='mac'] .chip.on { color: #fff; }
+
+/* ---------- premier envoi guidé : une seule grande étape, aplats unis ---------- */
+.guide-card { flex-direction: row; align-items: center; gap: 18px; max-width: 680px; border-color: color-mix(in srgb, var(--accent) 45%, var(--stroke)); }
+.guide-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.guide-title { font-family: var(--font); font-weight: 600; font-size: 17px; }
+.guide-art { flex: none; display: flex; align-items: center; gap: 6px; color: var(--accent); }
+.guide-art .guide-arrow { color: var(--muted); }
+.pair-next { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 16px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--stroke)); border-radius: var(--r-card); background: var(--control); }
+.pair-next .guide-title { font-size: 19px; }
+.pair-next.done { border-color: color-mix(in srgb, var(--ok) 55%, var(--stroke)); }
+.pair-next.done .guide-art { color: var(--ok); }
+.pair-scan { display: flex; flex-direction: column; gap: 14px; }
+/* compte à rebours du code : texte seul, mis à jour une fois par seconde
+   tant que la fenêtre d'appairage est ouverte et visible */
+.pair-renew { min-height: 1.4em; text-align: center; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.pair-renew.fresh { color: var(--ok); font-weight: 600; }

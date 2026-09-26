@@ -1,5 +1,6 @@
 import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '../i18n.js'
 import { applyI18n } from '../i18n-dom.js'
+import { pairCodeState, fmtCountdown } from './onboarding.js'
 
 // langue courante : détectée d'abord, puis alignée sur le réglage serveur.
 let lang: Lang = langFrom(navigator.language)
@@ -70,10 +71,18 @@ interface State {
     telemetryConsent: boolean
     telemetryAsked: boolean
     basicNoticeShown: boolean
+    /** la question du lancement à l'ouverture de session a reçu une réponse */
+    autostartAsked?: boolean
+    /** un premier transfert a réussi (fin du premier envoi guidé) */
+    firstTransferDone?: boolean
     port: number
   }
   /** destinataire proposé quand plusieurs téléphones sont appairés ('all' ou un identifiant) */
   sendTo?: string
+  /** lancement à l'ouverture de session ; null ou absent : hors app de bureau */
+  autostart?: boolean | null
+  /** carte de demande de note à montrer */
+  rate?: boolean
   hostname: string
   /** signalé par l'app de bureau (absent d'un coeur plus ancien) */
   host?: { macUpdate: { version: string; reveal?: number } | null; loginItemNeedsApproval: boolean }
@@ -90,6 +99,17 @@ let state: State | null = null
 let currentPairingId: string | null = null
 let currentPairUrl = ''
 let currentDeviceId: string | null = null
+// fenêtre d'appairage : codes montrés depuis l'ouverture (renouvelés
+// compris), heure d'expiration du code affiché (horloge de cette page),
+// téléphone appairé, guide montré
+let pairIds = new Set<string>()
+let pairExpiresAt = 0
+let pairPaired = false
+let pairGuide = false
+let pairRenewedAt = 0
+let pairRenewing = false
+let pairTimer: ReturnType<typeof setTimeout> | undefined
+
 // destinataire choisi dans « Envoyer » (plusieurs téléphones) : 'all' ou un
 // identifiant. null : celui que propose le PC (le dernier utilisé).
 let sendChoice: string | null = null
@@ -364,6 +384,10 @@ function renderSettings() {
   ;($('setClipDays') as unknown as HTMLSelectElement).value = String(state.config.clipHistoryMaxDays)
   ;($('setBasicStats') as unknown as HTMLInputElement).checked = state.config.basicStats || state.config.telemetryConsent
   ;($('setTelemetry') as unknown as HTMLInputElement).checked = state.config.telemetryConsent
+  // réglage du système : seulement dans l'app de bureau
+  const autostart = state.autostart
+  $('setAutostartRow').classList.toggle('hidden', typeof autostart !== 'boolean')
+  ;($('setAutostart') as unknown as HTMLInputElement).checked = autostart === true
   renderShortcutSection()
 }
 
@@ -555,6 +579,46 @@ function renderAll() {
   renderClipHistory()
   renderSettings()
   renderHost()
+  renderGuide()
+}
+
+// ---------- premier envoi guidé ----------
+
+/** Un téléphone appairé et rien encore échangé : une seule grande étape
+ *  (carte du radar). Dans la fenêtre d'appairage qui vient de réussir, la
+ *  même étape en grand, puis « ça marche » dès que le premier envoi arrive. */
+function renderGuide() {
+  if (!state) return
+  // absent d'un coeur plus ancien : pas de guide
+  const done = state.config.firstTransferDone !== false
+  $('guideCard').classList.toggle('hidden', done || activePhones().length === 0)
+  const next = $('pairNext')
+  next.classList.toggle('hidden', !(pairPaired && pairGuide))
+  next.classList.toggle('done', done)
+  $('pairNextTitle').textContent = done ? t('guide.done') : t('guide.title')
+  $('pairNextBody').textContent = done ? t('guide.doneBody') : t('guide.body')
+}
+
+// ---------- demande de note ----------
+
+/** Petite carte après 3 transferts réussis (jamais par-dessus l'accueil ni
+ *  en même temps que la question des statistiques). */
+function renderRate() {
+  const welcomeOpen = !$('welcomeModal').classList.contains('hidden')
+  const consentShown = !$('consentCard').classList.contains('hidden')
+  $('rateCard').classList.toggle('hidden', !state?.rate || welcomeOpen || consentShown)
+}
+
+async function answerRate(action: 'rate' | 'later') {
+  $('rateCard').classList.add('hidden')
+  if (state) state.rate = false
+  try {
+    await postJSON('/rate', { action })
+    if (action === 'rate') toast(t('rate.thanks'))
+  } catch {
+    // déjà répondu ailleurs : la carte reste cachée
+  }
+  void refresh()
 }
 
 // Fenêtre cachée (barre des tâches, démarrage caché) : on ne redessine rien
@@ -570,6 +634,7 @@ async function refresh() {
   state = await api<State>('/state')
   renderAll()
   renderConsentCard()
+  renderRate()
   wakeRadar()
 }
 
@@ -605,6 +670,8 @@ function wakeRadar() {
 }
 function syncVisibility() {
   document.documentElement.classList.toggle('paused', document.hidden || !document.hasFocus())
+  // compte à rebours du code d'appairage : arrêté fenêtre cachée, repris ici
+  tickPair()
   if (document.hidden) return
   if (dirty) void refresh()
   // les points « en ligne » dépendent de l'heure : on les remet à jour
@@ -756,12 +823,23 @@ function connectWS() {
     const data = msg.data
     switch (msg.type) {
       case 'device-paired': {
-        if (currentPairingId && (data as { id?: string }).id === currentPairingId) {
+        // le code scanné peut être l'un des codes renouvelés de cette fenêtre
+        const pid = (data as { id?: string }).id
+        if (pid && pairIds.has(pid) && isPairOpen()) {
+          currentPairingId = pid
+          pairPaired = true
+          // premier téléphone et rien encore échangé : la prochaine étape en grand
+          pairGuide = state?.config.firstTransferDone === false
+          clearTimeout(pairTimer)
+          $('pairHint').classList.add('hidden')
+          $('pairScan').classList.add('hidden')
+          $('pairCopy').classList.add('hidden')
           const st = $('pairState')
           st.classList.add('ok')
           st.textContent = t('pair.connected')
           $('pairRenameRow').classList.remove('hidden')
           ;($('pairRenameInput') as unknown as HTMLInputElement).value = (data as { name?: string }).name ?? ''
+          renderGuide()
         }
         toast(t('toast.devicePaired'), (data as { name?: string }).name)
         void refresh()
@@ -771,6 +849,8 @@ function connectWS() {
       case 'device-revoked':
       case 'settings-changed':
       case 'host-changed':
+      // premier transfert réussi, demande de note due ou répondue
+      case 'milestone':
         void refresh()
         break
       case 'transfer-start':
@@ -850,17 +930,83 @@ function openDeviceModal(id: string) {
   $('devModal').classList.remove('hidden')
 }
 
-async function openPairModal() {
-  const res = await api<{ deviceId: string; url: string }>('/pair/new', { method: 'POST' })
+// ---------- fenêtre d'appairage ----------
+
+// déclaration de fonction : syncVisibility l'appelle dès le chargement
+function isPairOpen(): boolean {
+  return !$('pairModal').classList.contains('hidden')
+}
+
+/** Demande un code au PC et l'affiche. `renew` : remplace le code d'une
+ *  fenêtre restée ouverte, avant qu'il expire. */
+async function showPairCode(renew: boolean) {
+  const res = (await postJSON('/pair/new', { renew })) as unknown as { deviceId: string; url: string; ttlMs?: number }
+  pairIds.add(res.deviceId)
   currentPairingId = res.deviceId
   currentPairUrl = res.url
+  pairExpiresAt = Date.now() + (typeof res.ttlMs === 'number' && res.ttlMs > 0 ? res.ttlMs : 3 * 60 * 1000)
+  if (renew) pairRenewedAt = Date.now()
   ;($('qrImg') as unknown as HTMLImageElement).src = `/api/admin/pair/${res.deviceId}/qr.svg`
   $('pairUrlText').textContent = res.url.split('#')[0] + t('pair.orScan')
+}
+
+/** Une fois par seconde, seulement fenêtre d'appairage ouverte, téléphone
+ *  pas encore appairé et page visible : compte à rebours, puis nouveau code
+ *  30 s avant l'expiration de l'ancien. Rien ne tourne sinon (fenêtre
+ *  fermée, réduite ou cachée) ; syncVisibility relance au retour. */
+function tickPair() {
+  clearTimeout(pairTimer)
+  pairTimer = undefined
+  if (!isPairOpen() || pairPaired || document.hidden || pairRenewing) return
+  const now = Date.now()
+  const st = pairCodeState(now, pairExpiresAt)
+  const el = $('pairRenew')
+  if (st.renewNow) {
+    pairRenewing = true
+    void showPairCode(true)
+      .then(() => {
+        pairRenewing = false
+        tickPair()
+      })
+      .catch(() => {
+        // PC injoignable un instant : nouvel essai dans 5 s, pas plus souvent
+        pairRenewing = false
+        pairTimer = setTimeout(tickPair, 5000)
+      })
+    return
+  }
+  const fresh = now - pairRenewedAt < 5000
+  el.classList.toggle('fresh', fresh)
+  el.textContent = fresh ? t('pair.renewed') : t('pair.renewIn', { time: fmtCountdown(st.renewInMs) })
+  pairTimer = setTimeout(tickPair, 1000)
+}
+
+async function openPairModal() {
+  pairIds = new Set()
+  pairPaired = false
+  pairGuide = false
+  pairRenewedAt = 0
+  await showPairCode(false)
   const st = $('pairState')
   st.classList.remove('ok')
   st.innerHTML = '<span class="spin"></span>' + t('pair.waiting')
   $('pairRenameRow').classList.add('hidden')
+  $('pairHint').classList.remove('hidden')
+  $('pairScan').classList.remove('hidden')
+  $('pairCopy').classList.remove('hidden')
+  $('pairNext').classList.add('hidden')
+  $('pairRenew').textContent = ''
   $('pairModal').classList.remove('hidden')
+  tickPair()
+}
+
+/** Ferme la fenêtre d'appairage (Fermer, Terminer) et le signale au PC. */
+function closePairModal() {
+  currentPairingId = null
+  clearTimeout(pairTimer)
+  pairTimer = undefined
+  $('pairModal').classList.add('hidden')
+  void postJSON('/pair/close', {}).catch(() => {})
 }
 
 // ---------- interactions ----------
@@ -873,8 +1019,8 @@ function initUI() {
   $('btnPair').onclick = () => void openPairModal()
   $('btnPair2').onclick = () => void openPairModal()
   $('btnPairCancel').onclick = () => {
-    currentPairingId = null
-    $('pairModal').classList.add('hidden')
+    closePairModal()
+    void refresh()
   }
   $('btnCopyPairLink').onclick = async () => {
     if (!currentPairUrl) return
@@ -889,8 +1035,7 @@ function initUI() {
   $('btnPairDone').onclick = async () => {
     const name = ($('pairRenameInput') as unknown as HTMLInputElement).value.trim()
     if (currentPairingId && name) await postJSON(`/device/${currentPairingId}/rename`, { name }).catch(() => {})
-    currentPairingId = null
-    $('pairModal').classList.add('hidden')
+    closePairModal()
     void refresh()
   }
 
@@ -924,6 +1069,20 @@ function initUI() {
     }
     void refresh()
   }
+  // lancement à l'ouverture de session : réglage du système, appliqué aussitôt
+  ;($('setAutostart') as unknown as HTMLInputElement).onchange = async () => {
+    const box = $('setAutostart') as unknown as HTMLInputElement
+    try {
+      await postJSON('/autostart', { enabled: box.checked })
+      toast(t('set.saved'))
+    } catch (e) {
+      box.checked = !box.checked
+      toast(t('set.saveFailed'), (e as Error).message)
+    }
+    void refresh()
+  }
+  $('btnRate').onclick = () => void answerRate('rate')
+  $('btnRateLater').onclick = () => void answerRate('later')
   $('btnDevShortcut').onclick = () => {
     $('devModal').classList.add('hidden')
     switchView('settings')
@@ -1152,9 +1311,15 @@ async function uploadOutbox(files: FileList) {
 // ---------- démarrage ----------
 
 function maybeWelcome() {
-  if (localStorage.getItem('fd_onboard') === '1') return
+  // nouvelle installation (aucun réglage enregistré) dans l'app de bureau :
+  // la question du lancement à l'ouverture de session, cochée par défaut,
+  // n'est appliquée qu'au moment où la personne continue
+  const autostartOffer = typeof state?.autostart === 'boolean' && state.config.autostartAsked === false
+  if (localStorage.getItem('fd_onboard') === '1' && !autostartOffer) return
   $('welcomeModal').classList.remove('hidden')
+  $('welcomeAutostart').classList.toggle('hidden', !autostartOffer)
   renderConsentCard()
+  renderRate()
   // la question n'est posée qu'une fois : déjà répondue, on ne la remontre pas
   const asked = state?.config.telemetryAsked === true
   $('welcomeConsent').classList.toggle('hidden', asked)
@@ -1179,8 +1344,16 @@ function maybeWelcome() {
   const close = () => {
     localStorage.setItem('fd_onboard', '1')
     $('welcomeModal').classList.add('hidden')
+    if (autostartOffer) {
+      const enabled = ($('welcomeAutostartBox') as unknown as HTMLInputElement).checked
+      if (state) state.config.autostartAsked = true
+      void postJSON('/autostart', { enabled })
+        .catch(() => {})
+        .then(() => refresh())
+    }
     // pas de réponse dans l'accueil : la carte reprend la question, une fois
     renderConsentCard()
+    renderRate()
   }
   $('btnWelcome').onclick = () => {
     uiEvent('welcome_pair_clicked')

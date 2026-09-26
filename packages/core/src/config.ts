@@ -74,6 +74,18 @@ export interface Config {
   // sont appairés : 'all' ou l'identifiant d'un téléphone ('' = pas encore
   // choisi). Proposé par défaut au prochain envoi.
   lastSendTo: string
+  // la question « Lancer Flitdrop à l'ouverture de ma session » (écran
+  // d'accueil) a reçu une réponse. Faux seulement pour une installation neuve
+  // (aucun config.json) : une installation existante garde son réglage.
+  autostartAsked: boolean
+  // transferts réussis comptés pour la demande de note, puis plus rien : le
+  // compteur s'arrête dès que la carte est due (au plus 23 écritures en tout)
+  okTransfers: number
+  // demande de note : '' pas encore montrée ou sans réponse, 'later' reportée
+  // une fois (« Plus tard »), 'done' plus jamais (« Noter », ou 2e « Plus tard »)
+  rateState: '' | 'later' | 'done'
+  // valeur de okTransfers au moment du premier « Plus tard »
+  rateLaterAt: number
 }
 
 export function flitdropHome(override?: string): string {
@@ -134,6 +146,12 @@ export function loadConfig(home: string): Config {
     lastDailyActiveDay: typeof stored.lastDailyActiveDay === 'string' ? stored.lastDailyActiveDay.slice(0, 10) : '',
     firstPhonePageDone: false,
     lastSendTo: typeof stored.lastSendTo === 'string' && /^(all|[A-Za-z0-9_-]{1,40})$/.test(stored.lastSendTo) ? stored.lastSendTo : '',
+    // absent d'un config.json existant : installation d'avant cette question,
+    // son réglage de démarrage reste tel quel (jamais changé en silence)
+    autostartAsked: typeof stored.autostartAsked === 'boolean' ? stored.autostartAsked : existed,
+    okTransfers: clampInt(stored.okTransfers, 0, 1_000_000, 0),
+    rateState: stored.rateState === 'later' || stored.rateState === 'done' ? stored.rateState : '',
+    rateLaterAt: clampInt(stored.rateLaterAt, 0, 1_000_000, 0),
   }
   // migration : absent d'un config.json plus ancien. Une installation qui a
   // déjà appairé un téléphone ou transféré quelque chose a forcément vu la page

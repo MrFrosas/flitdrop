@@ -306,3 +306,12 @@ html[data-os='android'] .install-banner { backdrop-filter: none; -webkit-backdro
   color: var(--text); font: 400 15px var(--font); padding: 13px 14px; outline: none;
 }
 .scan-paste input:focus { border-color: color-mix(in srgb, var(--blue) 55%, transparent); }
+
+/* juste après le premier appairage : le bouton d'envoi est mis en avant une
+   seule fois (trois pulsations d'un anneau uni, puis plus rien) */
+.bigsend.hint { animation: sendhint 1.2s ease-in-out 3; }
+@keyframes sendhint {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--blue) 0%, transparent); }
+  50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--blue) 38%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) { .bigsend.hint { animation: none; outline: 3px solid var(--blue); outline-offset: 3px; } }

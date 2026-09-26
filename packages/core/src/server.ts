@@ -33,6 +33,7 @@ import { TransferActivity } from './activity.js'
 import { HOST_ACTIONS, type HostAction, type HostPatch, type HostState } from './host.js'
 import { saveMultipartFiles } from './uploads.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
+import { answerRating, countTransfer, ratingDue } from './rating.js'
 import { t as tr, resolveLang, langFrom, acceptLang } from './i18n.js'
 import {
   b64u,
@@ -61,6 +62,7 @@ export {
   setLinuxAutostart,
   refreshLinuxAutostart,
   followRenamedAppImage,
+  reviewUrl,
   type HostState,
   type HostAction,
 } from './host.js'
@@ -180,6 +182,9 @@ export interface StartOptions {
   // fourni par l'app de bureau uniquement : version, canal d'installation et
   // langue du système. Sans lui (CLI, tests), la télémétrie reste éteinte.
   telemetry?: TelemetryOptions
+  // fourni par l'app de bureau : lancement à l'ouverture de session (lu et
+  // réglé dans le système). Sans lui (CLI, tests), la page ne le propose pas.
+  autostart?: { get: () => boolean; set: (on: boolean) => void }
 }
 
 export interface RunningServer {
@@ -211,6 +216,10 @@ export interface RunningServer {
   /** L'app de bureau signale un état du système à la page (nouvelle version
    *  sur Mac, démarrage automatique à autoriser) : la page se redessine. */
   setHost: (patch: HostPatch) => void
+  /** Allume ou coupe le lancement à l'ouverture de session (menu de l'icône,
+   *  écran d'accueil, réglages) : la question est alors considérée comme
+   *  répondue. false sans opts.autostart. */
+  setAutostart: (on: boolean) => boolean
   close: () => Promise<void>
 }
 
@@ -258,6 +267,19 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // seulement, sans toucher au port mémorisé
   const wantedPort = opts.port ?? cfg.port
 
+  // lancement à l'ouverture de session, tel que le système le rapporte
+  // (null : inconnu, hors app de bureau). Relu à chaque /state et après un
+  // changement ; la statistique du jour lit cette valeur.
+  const readAutostart = (): boolean | null => {
+    if (!opts.autostart) return null
+    try {
+      return opts.autostart.get() === true
+    } catch {
+      return null
+    }
+  }
+  let autostartOn = readAutostart()
+
   const devices = new DeviceStore(home)
   // hygiène au démarrage : on oublie les appairages inactifs de longue date
   devices.pruneIdle(DEVICE_MAX_IDLE_MS)
@@ -269,7 +291,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const transfers = new TransferManager(() => cfg, history, hub, activity)
   const clipHistory = new ClipHistory(home)
   const telemetry = new Telemetry(
-    { home, cfg, pairedDevices: () => devices.listPublic().filter((d) => d.status === 'active').length },
+    { home, cfg, pairedDevices: () => devices.listPublic().filter((d) => d.status === 'active').length, autostart: () => autostartOn },
     opts.telemetry ?? { version: VERSION, channel: 'dev', disabled: true }
   )
   // un transfert téléphone -> PC qui échoue (refus, disque, expiration…) est
@@ -277,6 +299,23 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   transfers.failureHook = (t, status, reason) => telemetry.transferFail('phone_to_pc', kindOf(t.mime), status, reason)
   // textes de la file d'envoi déjà comptés comme reçus par tel téléphone
   const textDelivered = new Set<string>()
+  // Transfert réussi, dans un sens ou dans l'autre : statistique, premier
+  // transfert (fin du premier envoi guidé) et compteur de la demande de note.
+  // La page du PC est prévenue quand l'un des deux change ce qu'elle montre.
+  const transferOk = (direction: Direction, kind: Kind, bytes?: number): void => {
+    const first = !cfg.firstTransferDone
+    telemetry.transferOk(direction, kind, bytes)
+    cfg.firstTransferDone = true
+    const counted = countTransfer(cfg)
+    if (first || counted.changed) {
+      try {
+        saveConfig(home, cfg)
+      } catch {
+        // non critique : recompté au prochain transfert
+      }
+    }
+    if (first || counted.due) hub.broadcast('milestone', {})
+  }
 
   // ---------- surveillance du presse-papiers du PC ----------
   // Le seul sens réellement automatisable côté PC : on lit notre propre presse-
@@ -381,9 +420,35 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   }, 10 * 60 * 1000)
   clipPurgeTimer.unref?.()
   // expire les QR d'appairage non scannés (fenêtre d'exploitation d'une photo
-  // du QR minimale, indépendamment des clics sur « Appairer »)
-  const pendingTimer = setInterval(() => devices.prunePending(PENDING_PAIRING_TTL_MS), 60 * 1000)
+  // du QR minimale, indépendamment des clics sur « Appairer »). Les codes
+  // expirés sont gardés en mémoire une heure (identifiant seul, jamais sur le
+  // disque) : un téléphone qui en scanne un apprend que le code a expiré.
+  const expiredPairings = new Map<string, { ts: number; reported: boolean }>()
+  const prunePending = () => {
+    const now = Date.now()
+    for (const id of devices.prunePending(PENDING_PAIRING_TTL_MS)) expiredPairings.set(id, { ts: now, reported: false })
+    for (const [id, v] of expiredPairings) if (now - v.ts > 60 * 60 * 1000 || expiredPairings.size > 200) expiredPairings.delete(id)
+  }
+  const pendingTimer = setInterval(prunePending, 60 * 1000)
   pendingTimer.unref?.()
+
+  // Fenêtre d'appairage ouverte sur le PC, pour les statistiques du chemin de
+  // connexion : les codes montrés depuis son ouverture (renouvelés compris),
+  // qr_shown déjà compté ou non, un téléphone l'a-t-il scannée. En mémoire.
+  let pairView: { ids: Set<string>; qrSent: boolean; scanned: boolean } | null = null
+  // une fois par ouverture : au premier renouvellement (renewed vrai), sinon
+  // au scan réussi ou à la fermeture (renewed faux)
+  const reportQrShown = (renewed: boolean) => {
+    if (!pairView || pairView.qrSent) return
+    pairView.qrSent = true
+    telemetry.track('qr_shown', { renewed })
+  }
+  const closePairView = () => {
+    if (!pairView) return
+    reportQrShown(false)
+    telemetry.track('pairing_view_closed', { scanned: pairView.scanned })
+    pairView = null
+  }
 
   const pendingApprovals = new Map<string, (ok: boolean) => void>()
   transfers.approvalHook = (info) =>
@@ -509,6 +574,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (req.method === 'GET' && (req.path === '/' || req.path === '/index.html') && !isLoopback(req.socket.remoteAddress) && pairingShown()) {
       const ua = req.headers['user-agent']
       telemetry.phonePageOpened(req.socket.remoteAddress ?? '?', typeof ua === 'string' ? ua : undefined)
+      if (pairView) pairView.scanned = true
     }
     next()
   })
@@ -611,7 +677,19 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   app.use('/api/phone', (req, res, next) => {
     const id = String(req.headers['x-wd-device'] ?? '')
     const dev = id ? devices.get(id) : undefined
-    if (!dev) return res.status(403).json({ code: 'deviceUnknown' })
+    if (!dev) {
+      // QR scanné après son expiration : le téléphone dit « code expiré,
+      // rescanne le nouveau code » au lieu de « téléphone retiré »
+      const gone = id ? expiredPairings.get(id) : undefined
+      if (gone) {
+        if (!gone.reported) {
+          gone.reported = true
+          telemetry.track('qr_expired_scan')
+        }
+        return res.status(403).json({ code: 'pairingExpired' })
+      }
+      return res.status(403).json({ code: 'deviceUnknown' })
+    }
     // liaison au PC : un appairage créé sur une autre machine (instanceId
     // différent) est refusé, même s'il se présente sur le même wifi.
     if (dev.instanceId && dev.instanceId !== cfg.instanceId)
@@ -645,6 +723,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     // compté côté serveur : une seule fois par appairage, même avec plusieurs onglets
     if (wasPending) telemetry.pairingSuccess(fresh?.platform)
     else telemetry.phoneConnect(dev.id, fresh?.platform)
+    // scanné depuis la fenêtre d'appairage ouverte (premier code ou renouvelé)
+    if (wasPending && pairView?.ids.has(dev.id)) {
+      pairView.scanned = true
+      reportQrShown(false)
+    }
     res.json({
       p: sealJSON(
         key,
@@ -769,7 +852,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     try {
       const finalPath = await transfers.finish(t)
       devices.touch(dev.id)
-      telemetry.transferOk('phone_to_pc', kindOf(t.mime), t.size)
+      transferOk('phone_to_pc', kindOf(t.mime), t.size)
       res.json({ p: sealJSON(key, { ok: true, name: path.basename(finalPath) }, aad(dev.id, 'finish:res')) })
     } catch (e) {
       const err = e as ApiError
@@ -819,7 +902,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       text: text.length <= 32_000 ? text : text.slice(0, 32_000),
     })
     devices.touch(dev.id)
-    telemetry.transferOk('phone_to_pc', mode === 'clip' ? 'clipboard' : 'text')
+    transferOk('phone_to_pc', mode === 'clip' ? 'clipboard' : 'text')
     res.json({ p: sealJSON(key, { ok: true, copied }, aad(dev.id, 'text:res')) })
   })
 
@@ -845,7 +928,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       if (item.kind !== 'text' || !outbox.visibleTo(item, dev.id) || textDelivered.has(`${item.id}|${dev.id}`)) continue
       if (textDelivered.size > 2000) textDelivered.clear()
       textDelivered.add(`${item.id}|${dev.id}`)
-      telemetry.transferOk('pc_to_phone', item.origin === 'clipboard' ? 'clipboard' : 'text')
+      transferOk('pc_to_phone', item.origin === 'clipboard' ? 'clipboard' : 'text')
     }
     const v = outboxTag()
     const body = payload.since === v ? { unchanged: true, v } : { desktopName: cfg.deviceName, items: outbox.listForPhone(dev.id), v }
@@ -890,7 +973,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       hub.broadcast('outbox-changed', {})
     } else {
       // le texte part dans la réponse et le téléphone le copie aussitôt
-      telemetry.transferOk('pc_to_phone', 'clipboard')
+      transferOk('pc_to_phone', 'clipboard')
     }
     res.json({ p: sealJSON(key, { ok: true, kind: entry.kind }, aad(dev.id, 'clip-tophone:res')) })
   })
@@ -1017,7 +1100,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const waiting = itemKey ? awaitingPhoneOk.get(itemKey) : undefined
     if (payload.event === 'transfer_ok' && direction === 'pc_to_phone' && itemKey && waiting) {
       awaitingPhoneOk.delete(itemKey)
-      telemetry.transferOk('pc_to_phone', waiting.kind, waiting.size)
+      transferOk('pc_to_phone', waiting.kind, waiting.size)
     }
     const recent = (reportBudget.get(dev.id) ?? []).filter((ts) => now - ts < 60 * 60 * 1000)
     if (payload.event === 'transfer_fail' && direction && reason && recent.length < 30) {
@@ -1065,7 +1148,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         return res.status(400).type('text/plain; charset=utf-8').send(st(req, 'srv.scNoFile'))
       }
       for (const f of saved) {
-        telemetry.transferOk('phone_to_pc', kindOf(f.mime), f.size)
+        transferOk('phone_to_pc', kindOf(f.mime), f.size)
         history.add({
           dir: 'in',
           kind: 'file',
@@ -1104,7 +1187,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     history.add({ dir: 'in', kind: 'clip', preview: text.slice(0, 160), deviceId: dev.id, deviceName: dev.name, status: 'ok' })
     hub.broadcast('text-received', { deviceName: dev.name, mode: 'clip', copied, text: text.slice(0, 32_000) })
     devices.touch(dev.id)
-    telemetry.transferOk('phone_to_pc', 'clipboard')
+    transferOk('phone_to_pc', 'clipboard')
     res.type('text/plain; charset=utf-8').send(st(req, 'srv.scCopied', { pc: cfg.deviceName }))
   })
 
@@ -1119,7 +1202,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const text = await clip.read().catch(() => '')
     history.add({ dir: 'out', kind: 'clip', preview: text.slice(0, 160), deviceId: dev.id, deviceName: dev.name, status: 'ok' })
     devices.touch(dev.id)
-    if (text) telemetry.transferOk('pc_to_phone', 'clipboard')
+    if (text) transferOk('pc_to_phone', 'clipboard')
     res.type('text/plain; charset=utf-8').send(text)
   })
 
@@ -1139,6 +1222,24 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   // état du système signalé par l'app de bureau (vide en CLI et en tests)
   const host: HostState = { macUpdate: null, loginItemNeedsApproval: false }
+  const setAutostart = (on: boolean): boolean => {
+    if (!opts.autostart) return false
+    cfg.autostartAsked = true
+    try {
+      saveConfig(home, cfg)
+    } catch {
+      // non critique : la question reviendrait au prochain lancement
+    }
+    try {
+      opts.autostart.set(on)
+    } catch {
+      // l'état réel est relu juste après
+    }
+    autostartOn = readAutostart()
+    hub.broadcast('host-changed', {})
+    return true
+  }
+
   const setHost = (patch: HostPatch): void => {
     let changed = false
     if (patch.macUpdate !== undefined || patch.revealMacUpdate) {
@@ -1196,10 +1297,16 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         telemetryConsent: cfg.telemetryConsent,
         telemetryAsked: cfg.telemetryAsked,
         basicNoticeShown: cfg.basicNoticeShown,
+        autostartAsked: cfg.autostartAsked,
+        firstTransferDone: cfg.firstTransferDone,
         port: actualPort,
       },
       // destinataire proposé par défaut quand plusieurs téléphones sont appairés
       sendTo: defaultSendTo(),
+      // lancement à l'ouverture de session : null hors app de bureau
+      autostart: (autostartOn = readAutostart()),
+      // carte « Flitdrop t'aide ? Laisse une note » (app de bureau seulement)
+      rate: !!opts.onHostAction && ratingDue(cfg),
       hostname: os.hostname(),
       host,
       ips: localIPv4s(),
@@ -1288,11 +1395,63 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     res.json({ ok: true, removed })
   })
 
-  admin.post('/pair/new', (_req, res) => {
-    devices.prunePending(PENDING_PAIRING_TTL_MS)
+  // Nouveau code d'appairage. `renew` : la fenêtre d'appairage, restée
+  // ouverte et visible, remplace son code avant qu'il expire (l'ancien reste
+  // valable jusqu'au bout de ses 3 minutes). `ttlMs` : durée de validité.
+  admin.post('/pair/new', jsonSmall, (req, res) => {
+    const renew = (req.body as { renew?: unknown } | undefined)?.renew === true
+    prunePending()
     const d = devices.create(cfg.instanceId)
-    telemetry.track('pair_qr_shown')
-    res.json({ deviceId: d.id, url: pairUrl(d) })
+    if (renew) {
+      // renouvellement arrivé après la fermeture : un code de plus, sans
+      // rouvrir de fenêtre dans les statistiques
+      if (pairView) {
+        pairView.ids.add(d.id)
+        reportQrShown(true)
+      }
+    } else {
+      // fenêtre précédente jamais refermée (page rechargée) : terminée ici
+      closePairView()
+      pairView = { ids: new Set([d.id]), qrSent: false, scanned: false }
+      telemetry.track('pair_qr_shown')
+    }
+    res.json({ deviceId: d.id, url: pairUrl(d), ttlMs: PENDING_PAIRING_TTL_MS })
+  })
+
+  // La fenêtre d'appairage est refermée (Fermer, Terminer).
+  admin.post('/pair/close', (_req, res) => {
+    closePairView()
+    res.json({ ok: true })
+  })
+
+  // Lancement à l'ouverture de session : réponse de l'écran d'accueil ou
+  // interrupteur des réglages.
+  admin.post('/autostart', jsonSmall, (req, res) => {
+    const on = (req.body as { enabled?: unknown } | undefined)?.enabled
+    if (typeof on !== 'boolean' || !setAutostart(on)) return res.status(400).json({ code: 'internal' })
+    res.json({ ok: true, enabled: autostartOn })
+  })
+
+  // Carte de demande de note : « Noter » ouvre la bonne page (choisie par
+  // l'app de bureau, jamais une adresse venue de la page), « Plus tard » la
+  // reporte une fois.
+  admin.post('/rate', jsonSmall, (req, res) => {
+    const action = (req.body as { action?: unknown } | undefined)?.action
+    if (!opts.onHostAction || !answerRating(cfg, action)) return res.status(400).json({ code: 'internal' })
+    try {
+      saveConfig(home, cfg)
+    } catch {
+      // non critique : la carte est déjà cachée pour ce lancement
+    }
+    if (action === 'rate') {
+      try {
+        opts.onHostAction('openReview')
+      } catch {
+        // page impossible à ouvrir : la carte ne revient pas pour autant
+      }
+    }
+    hub.broadcast('milestone', {})
+    res.json({ ok: true })
   })
 
   admin.get('/pair/:id/qr.svg', async (req, res) => {
@@ -1655,6 +1814,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     telemetry,
     activity,
     setHost,
+    setAutostart,
     close: async () => {
       telemetry.stop()
       activity.close()

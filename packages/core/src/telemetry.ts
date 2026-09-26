@@ -42,11 +42,17 @@ export const COMMON_PROPS = ['os', 'arch', 'channel', 'locale', 'install_week', 
 export const EVENTS: Record<string, { tier: Tier; props: readonly string[] }> = {
   app_first_launch: { tier: 'basic', props: [] },
   app_updated: { tier: 'basic', props: ['from_version'] },
-  app_daily_active: { tier: 'basic', props: ['paired_devices', 'launches_today'] },
+  app_daily_active: { tier: 'basic', props: ['paired_devices', 'launches_today', 'autostart'] },
   pairing_success: { tier: 'basic', props: ['platform', 'first'] },
   phone_page_opened: { tier: 'basic', props: ['first', 'platform'] },
   transfer_ok: { tier: 'basic', props: ['direction', 'kind', 'size', 'first'] },
   transfer_fail: { tier: 'basic', props: ['direction', 'kind', 'status', 'reason'] },
+  // chemin de connexion : QR montré (une fois par ouverture de la fenêtre
+  // d'appairage ; `renewed` : le premier code a dû être renouvelé avant d'être
+  // scanné), fenêtre refermée avec ou sans scan, code expiré scanné
+  qr_shown: { tier: 'basic', props: ['renewed'] },
+  pairing_view_closed: { tier: 'basic', props: ['scanned'] },
+  qr_expired_scan: { tier: 'basic', props: [] },
   welcome_shown: { tier: 'full', props: [] },
   welcome_pair_clicked: { tier: 'full', props: [] },
   welcome_skipped: { tier: 'full', props: [] },
@@ -264,6 +270,9 @@ export interface TelemetryDeps {
   cfg: Config
   /** Nombre de téléphones appairés (0, 1, 2 et plus). */
   pairedDevices: () => number
+  /** Lancement à l'ouverture de session activé ? null : inconnu (ligne de
+   *  commande, tests), la propriété n'est alors pas envoyée. */
+  autostart?: () => boolean | null
 }
 
 const QUEUE_CAP = 50
@@ -497,8 +506,16 @@ export class Telemetry {
     const today = localDay(this.now())
     if (this.cfg.lastDailyActiveDay === today) return
     const n = this.deps.pairedDevices()
+    const props: Props = { paired_devices: n >= 2 ? 2 : n > 0 ? 1 : 0 }
+    let autostart: boolean | null = null
+    try {
+      autostart = this.deps.autostart?.() ?? null
+    } catch {
+      autostart = null
+    }
+    if (typeof autostart === 'boolean') props.autostart = autostart
     this.dailyInFlight = true
-    const queued = this.track('app_daily_active', { paired_devices: n >= 2 ? 2 : n > 0 ? 1 : 0 }, () => {
+    const queued = this.track('app_daily_active', props, () => {
       this.cfg.lastDailyActiveDay = today
       this.save()
     })

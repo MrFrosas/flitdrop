@@ -36,6 +36,10 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     lastDailyActiveDay: '',
     firstPhonePageDone: false,
     lastSendTo: '',
+    autostartAsked: true,
+    okTransfers: 0,
+    rateState: '',
+    rateLaterAt: 0,
   }
 }
 

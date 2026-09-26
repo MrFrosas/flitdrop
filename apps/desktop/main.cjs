@@ -179,8 +179,9 @@ function setAutoStart(on) {
       if (host) host.setLinuxAutostart(linuxAutostartPath(), on, linuxExec())
     } else {
       // démarre caché : Flitdrop attend en fond, comme AirDrop. Sur Mac les
-      // arguments ne passent pas : wasOpenedAtLogin le signale (voir plus bas).
-      app.setLoginItemSettings({ openAtLogin: on, args: AUTOSTART_ARGS })
+      // arguments ne passent pas : openAsHidden (macOS 12 et avant) et
+      // wasOpenedAtLogin (voir plus bas) le signalent.
+      app.setLoginItemSettings({ openAtLogin: on, openAsHidden: on, args: AUTOSTART_ARGS })
     }
   } catch {
     // le menu relit l'état réel ci-dessous
@@ -249,6 +250,12 @@ function onHostAction(action) {
     void shell.openExternal(macUpdate.url).catch(() => {})
   } else if (action === 'openLoginItems' && isMacOS) {
     void shell.openExternal('x-apple.systempreferences:com.apple.LoginItems-Settings.extension').catch(() => {})
+  } else if (action === 'openReview' && host && host.reviewUrl) {
+    // Store : fenêtre d'avis de l'app Microsoft Store ; autre Windows : fiche
+    // du Store ; Mac et Linux : page GitHub. Le canal « store » est gardé
+    // dans la config après une mise à jour.
+    const channel = core && core.telemetry ? core.telemetry.channel() : installChannel()
+    void shell.openExternal(host.reviewUrl(process.platform, channel)).catch(() => {})
   }
 }
 
@@ -289,7 +296,9 @@ function buildTrayMenu() {
       label: tr('tray.autostart'),
       type: 'checkbox',
       checked: isAutoStart(),
-      click: (item) => setAutoStart(item.checked),
+      // passe par le coeur : la question de l'écran d'accueil est alors
+      // répondue, et la fenêtre montre le nouvel état
+      click: (item) => (core && core.setAutostart ? core.setAutostart(item.checked) : setAutoStart(item.checked)),
     },
     {
       label: tr('tray.checkUpdates'),
@@ -367,8 +376,12 @@ if (!gotLock) {
       clipboardConcealed: () => !!bundle.isConcealedClipboard && bundle.isConcealedClipboard(clipboard, process.platform),
       // une fonction presse-papiers rallumée : vérification tout de suite
       onSettingsChanged: () => clipWatcher && clipWatcher.poke(),
-      // boutons de la page : .dmg d'une nouvelle version, réglages de macOS
+      // boutons de la page : .dmg d'une nouvelle version, réglages de macOS,
+      // page où laisser une note
       onHostAction,
+      // lancement à l'ouverture de session : proposé coché sur l'écran
+      // d'accueil d'une installation neuve, jamais changé sans réponse
+      autostart: { get: () => isAutoStart(), set: (on) => setAutoStart(on) },
     })
     watchClipboard(ClipboardWatcher)
     watchTransfers()

@@ -26,8 +26,23 @@ export type HostPatch = Partial<HostState> & { revealMacUpdate?: boolean }
 
 /** Actions que la page peut demander à l'app de bureau (jamais d'adresse
  *  fournie par la page : l'app sait elle-même quoi ouvrir). */
-export const HOST_ACTIONS = ['openMacUpdate', 'openLoginItems'] as const
+export const HOST_ACTIONS = ['openMacUpdate', 'openLoginItems', 'openReview'] as const
 export type HostAction = (typeof HOST_ACTIONS)[number]
+
+// ---------- page où laisser une note ----------
+
+/** Identifiant de Flitdrop dans le Microsoft Store. */
+export const STORE_PRODUCT_ID = 'XPDCK4DDN3LK69'
+export const REPO_PAGE = 'https://github.com/MrFrosas/flitdrop'
+
+/** Où laisser une note : la fenêtre d'avis de l'app Microsoft Store pour une
+ *  installation venue du Store, la fiche du Store dans le navigateur pour les
+ *  autres installations Windows, la page GitHub du projet ailleurs. */
+export function reviewUrl(platform: string, channel: string): string {
+  if (platform !== 'win32') return REPO_PAGE
+  if (channel === 'store') return `ms-windows-store://review/?ProductId=${STORE_PRODUCT_ID}`
+  return `https://apps.microsoft.com/detail/${STORE_PRODUCT_ID}`
+}
 
 // ---------- PC éveillé et progression sur l'icône ----------
 

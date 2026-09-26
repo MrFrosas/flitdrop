@@ -65,12 +65,19 @@ const COMMON_PROPS = {
 const BASIC_EVENTS = {
   app_first_launch: {},
   app_updated: { from_version: str(16) },
-  app_daily_active: { paired_devices: PAIRED, launches_today: COUNT },
+  // autostart : lancement à l'ouverture de session activé (app de bureau seulement)
+  app_daily_active: { paired_devices: PAIRED, launches_today: COUNT, autostart: BOOL },
   pairing_success: { platform: PLATFORM, first: BOOL },
   // un téléphone a ouvert la page Flitdrop du PC (QR scanné), compté par le PC
   phone_page_opened: { first: BOOL, platform: PLATFORM },
   transfer_ok: { direction: DIRECTION, kind: KIND, size: SIZE, first: BOOL },
   transfer_fail: { direction: DIRECTION, kind: KIND, status: INT, reason: REASON },
+  // chemin de connexion : QR montré (une fois par ouverture de la fenêtre
+  // d'appairage, renewed = le premier code a dû être renouvelé), fenêtre
+  // refermée avec ou sans scan, code expiré scanné par un téléphone
+  qr_shown: { renewed: BOOL },
+  pairing_view_closed: { scanned: BOOL },
+  qr_expired_scan: {},
   // évènement de contrôle après un déploiement (voir docs/telemetry.md)
   worker_deploy_test: {},
 }

@@ -186,16 +186,20 @@ export class DeviceStore {
     return ok
   }
 
-  prunePending(maxAgeMs: number): void {
-    let changed = false
+  /** Oublie les QR d'appairage non scannés à temps. Rend leurs identifiants :
+   *  le serveur s'en souvient un moment pour dire « code expiré » au
+   *  téléphone qui scanne trop tard, au lieu de « téléphone retiré ». */
+  prunePending(maxAgeMs: number): string[] {
+    const removed: string[] = []
     const now = Date.now()
     for (const d of [...this.devices.values()]) {
       if (d.status === 'pending' && now - Date.parse(d.createdAt) > maxAgeMs) {
         this.devices.delete(d.id)
-        changed = true
+        removed.push(d.id)
       }
     }
-    if (changed) this.save()
+    if (removed.length > 0) this.save()
+    return removed
   }
 
   /** Oublie les appareils inactifs depuis très longtemps (hygiène : évite qu'un

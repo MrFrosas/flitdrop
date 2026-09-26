@@ -69,8 +69,30 @@
       </div>
     </div>
 
+    <!-- Demande de note, après 3 transferts réussis (pas une fenêtre) -->
+    <div class="card consent-card hidden" id="rateCard">
+      <b class="consent-title" data-i18n="rate.title">Flitdrop t’aide ? Laisse une note</b>
+      <p class="cardhint" data-i18n="rate.body">Quelques étoiles aident d’autres personnes à trouver Flitdrop. Ça prend 10 secondes.</p>
+      <div class="consent-actions">
+        <button class="btn" id="btnRate" data-i18n="rate.yes">Noter</button>
+        <button class="btn" id="btnRateLater" data-i18n="rate.later">Plus tard</button>
+      </div>
+    </div>
+
     <!-- RADAR -->
     <section class="view" id="view-radar">
+      <!-- premier envoi guidé : un téléphone appairé, rien encore échangé -->
+      <div class="card guide-card hidden" id="guideCard">
+        <div class="guide-art" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="40" height="40"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8.8" y="6.5" width="6.4" height="5.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9.3 11.4l1.9-2 1.4 1.4 0.9-0.9 1.3 1.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>
+          <svg class="guide-arrow" viewBox="0 0 24 24" width="30" height="30"><path d="M4 12h15M14 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg viewBox="0 0 24 24" width="44" height="44"><rect x="3" y="5" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 20h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="guide-text">
+          <b class="guide-title" data-i18n="guide.title">Envoie une photo depuis ton téléphone</b>
+          <p class="cardhint" data-i18n="guide.body">Sur le téléphone, touche « Choisir des fichiers » et choisis une photo. Elle arrive ici, dans le dossier Flitdrop.</p>
+        </div>
+      </div>
       <div class="radar-wrap">
         <div class="radar" id="radar">
           <div class="rring rr1"></div>
@@ -213,6 +235,11 @@
           <input type="checkbox" id="setAutoUpdate">
           <span data-i18n="set.autoUpdate">Installer les mises à jour automatiquement</span>
         </label>
+        <!-- appliqué tout de suite (réglage du système), caché hors app de bureau -->
+        <label class="check stat-check hidden" id="setAutostartRow">
+          <input type="checkbox" id="setAutostart">
+          <span><b data-i18n="autostart.label">Lancer Flitdrop à l’ouverture de ma session</b><small data-i18n="set.autostartHint">Ton téléphone retrouve ce PC après un redémarrage. Flitdrop démarre discrètement en arrière-plan, sans fenêtre.</small></span>
+        </label>
         <div class="host-note hidden" id="loginApproval">
           <p class="cardhint" data-i18n="login.needsApproval">macOS attend encore ton accord pour lancer Flitdrop à l’ouverture de ta session. Ouvre les réglages et active Flitdrop dans la liste.</p>
           <button class="btn" id="btnLoginItems" type="button" data-i18n="login.openSettings">Ouvrir les réglages</button>
@@ -300,15 +327,29 @@
   <div class="modal hidden" id="pairModal">
     <div class="modal-card">
       <h2 data-i18n="pair.title">Appairer un téléphone</h2>
-      <p class="cardhint" data-i18n="pair.hint">Scanne ce QR code avec l’appareil photo du téléphone (même wifi que le PC).</p>
-      <div class="qrbox"><img id="qrImg" alt=""></div>
-      <div class="pairurl" id="pairUrlText"></div>
+      <p class="cardhint" id="pairHint" data-i18n="pair.hint">Scanne ce QR code avec l’appareil photo du téléphone (même wifi que le PC).</p>
+      <div class="pair-scan" id="pairScan">
+        <div class="qrbox"><img id="qrImg" alt=""></div>
+        <div class="pairurl" id="pairUrlText"></div>
+        <!-- le code se renouvelle tout seul tant que cette fenêtre est visible -->
+        <div class="pair-renew" id="pairRenew" aria-live="polite"></div>
+      </div>
       <div class="pairstate" id="pairState"><span class="spin"></span></div>
+      <!-- premier appairage : la prochaine étape, en grand -->
+      <div class="pair-next hidden" id="pairNext">
+        <div class="guide-art" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="40" height="40"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="8.8" y="6.5" width="6.4" height="5.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9.3 11.4l1.9-2 1.4 1.4 0.9-0.9 1.3 1.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>
+            <svg class="guide-arrow" viewBox="0 0 24 24" width="30" height="30"><path d="M4 12h15M14 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <svg viewBox="0 0 24 24" width="44" height="44"><rect x="3" y="5" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 20h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </div>
+        <b class="guide-title" id="pairNextTitle" data-i18n="guide.title">Envoie une photo depuis ton téléphone</b>
+        <p class="cardhint" id="pairNextBody" data-i18n="guide.body">Sur le téléphone, touche « Choisir des fichiers » et choisis une photo. Elle arrive ici, dans le dossier Flitdrop.</p>
+      </div>
       <div class="row hidden" id="pairRenameRow">
         <input id="pairRenameInput" maxlength="40" data-i18n-ph="pair.rename" placeholder="Nom de l’appareil">
         <button class="btn primary" id="btnPairDone" data-i18n="pair.done">Terminer</button>
       </div>
-      <details class="pair-copy">
+      <details class="pair-copy" id="pairCopy">
         <summary data-i18n="pair.cannotScan">Le téléphone n’arrive pas à scanner ?</summary>
         <p class="cardhint" data-i18n="pair.copyHint">Copie ce lien et ouvre-le sur le téléphone. Il contient la clé d’appairage : garde-le privé.</p>
         <button class="btn" id="btnCopyPairLink" data-i18n="pair.copyLink">Copier le lien d’appairage</button>
@@ -341,6 +382,12 @@
         <button class="consent-more" type="button" data-privacy-link data-i18n="consent.more">En savoir plus</button>
       </div>
       <small class="consent-note hidden" id="welcomeConsentDone" data-i18n="consent.saved">Choix enregistré. Tu peux le changer à tout moment dans les réglages.</small>
+      <!-- nouvelle installation : lancement à l'ouverture de session, coché,
+           appliqué seulement quand on continue -->
+      <label class="check stat-check hidden" id="welcomeAutostart">
+        <input type="checkbox" id="welcomeAutostartBox" checked>
+        <span><b data-i18n="autostart.label">Lancer Flitdrop à l’ouverture de ma session</b><small data-i18n="autostart.hint">Ton téléphone retrouve ce PC après un redémarrage. Flitdrop démarre discrètement en arrière-plan, sans fenêtre. Tu peux changer ça dans les réglages.</small></span>
+      </label>
       <button class="btn primary" id="btnWelcome" data-i18n="welcome.start">Appairer mon téléphone</button>
       <button class="btn ghost" id="btnWelcomeSkip" data-i18n="welcome.skip">Plus tard</button>
     </div>

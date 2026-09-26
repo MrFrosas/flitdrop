@@ -149,6 +149,31 @@ test('phone_page_opened : niveau de base, first et platform seulement', async ()
   assert.equal(sent[1].body.properties.platform, undefined)
 })
 
+test('chemin de connexion : qr_shown, pairing_view_closed, qr_expired_scan au niveau de base, booléens seulement', async () => {
+  await call(env('basic', 'qr_shown', { ...COMMON, renewed: true, device: 'abcdefghijkl' }, { iid: 'should-be-ignored-123' }))
+  await call(env('basic', 'pairing_view_closed', { ...COMMON, scanned: false }))
+  await call(env('basic', 'qr_expired_scan', { ...COMMON, device: 'abcdefghijkl' }))
+  await call(env('basic', 'qr_shown', { renewed: 'oui' }))
+  assert.equal(sent.length, 4)
+  assert.deepEqual(sent.map((x) => x.body.event), ['qr_shown', 'pairing_view_closed', 'qr_expired_scan', 'qr_shown'])
+  for (const x of sent) {
+    assert.equal(x.body.properties.tier, 'basic')
+    assert.equal(x.body.properties.$process_person_profile, false)
+  }
+  assert.equal(sent[0].body.properties.renewed, true)
+  assert.equal(sent[1].body.properties.scanned, false)
+  assert.equal(sent[3].body.properties.renewed, undefined)
+  const raw = JSON.stringify(sent.map((x) => x.body))
+  for (const leak of ['abcdefghijkl', 'should-be-ignored']) assert.ok(!raw.includes(leak), leak)
+})
+
+test('app_daily_active : autostart booléen seulement', async () => {
+  await call(env('basic', 'app_daily_active', { ...COMMON, paired_devices: 1, autostart: true }))
+  await call(env('basic', 'app_daily_active', { ...COMMON, paired_devices: 1, autostart: 'yes' }))
+  assert.equal(sent[0].body.properties.autostart, true)
+  assert.equal(sent[1].body.properties.autostart, undefined)
+})
+
 test('transfer_fail : raison nettoyée, status numérique', async () => {
   await call(env('basic', 'transfer_fail', { direction: 'phone_to_pc', kind: 'file', status: 507, reason: 'ENOSPC' }))
   await call(env('basic', 'transfer_fail', { direction: 'phone_to_pc', kind: 'file', status: '500', reason: "open 'C:\\Users\\thomas\\x.pdf'" }))

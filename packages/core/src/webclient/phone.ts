@@ -2,6 +2,7 @@ import { b64uToBytes, seal, sealJSON, openJSON, open, jti } from './wdcrypto.js'
 import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '../i18n.js'
 import { applyI18n } from '../i18n-dom.js'
 import { KeyedNodes, VersionedList, reconcile } from './lists.js'
+import { connectError, shouldSuggestInstall } from './onboarding.js'
 
 const LANG_KEY = 'wd_lang'
 let lang: Lang = resolveLang(localStorage.getItem(LANG_KEY) || undefined, langFrom(navigator.language))
@@ -40,6 +41,10 @@ const HOSTS_KEY = 'wd_hosts'
 const SKIN_KEY = 'wd_skin'
 const THEME_KEY = 'wd_theme'
 const INSTALL_KEY = 'wd_install_seen'
+// un premier transfert a réussi depuis ce téléphone (l'icône d'accueil n'est
+// proposée qu'après), et le bouton d'envoi a déjà été mis en avant une fois
+const FIRST_OK_KEY = 'wd_first_ok'
+const SEND_HINT_KEY = 'wd_send_hint'
 // 8 Mo = taille de chunk du serveur (CHUNK_SIZE) : moitié moins d'allers-retours.
 const SEND_CHUNK = 8 * 1024 * 1024
 // nombre de chunks envoyés EN PARALLÈLE : sature le wifi au lieu d'attendre
@@ -54,6 +59,13 @@ let hello: HelloRes | null = null
 let pollTimer: number | null = null
 let sending = false
 const downloadedIds = new Set<string>()
+// la page vient d'arriver avec un code d'appairage neuf pour ce téléphone
+// (QR scanné, lien collé), et l'appairage d'avant, à remettre si ce code a
+// expiré (sinon un vieux QR scanné par erreur ferait perdre le bon)
+let freshPairing = false
+let previousPairing: string | null = null
+// Android : proposition d'installation du navigateur, quand il en fait une
+let installPrompt: { prompt: () => Promise<unknown>; userChoice?: Promise<{ outcome?: string }> } | null = null
 
 // ---------- helpers ----------
 
@@ -230,6 +242,7 @@ function loadPairing(): Pairing | null {
   // (?k=, quand le raccourci PWA relance l'app depuis l'écran d'accueil).
   const incoming = parseToken(location.hash.slice(1)) || parseToken(new URLSearchParams(location.search).get('k') || '')
   if (incoming) {
+    notePairingSource(incoming)
     localStorage.setItem(PAIR_KEY, JSON.stringify(incoming))
     history.replaceState(null, '', location.pathname)
     return incoming
@@ -241,6 +254,39 @@ function loadPairing(): Pairing | null {
     // ignorer
   }
   return null
+}
+
+/** Avant d'enregistrer un appairage arrivé par l'adresse ou collé : est-ce un
+ *  code neuf pour ce téléphone ? On garde l'appairage d'avant au cas où. */
+function notePairingSource(incoming: Pairing) {
+  previousPairing = localStorage.getItem(PAIR_KEY)
+  let prevId = ''
+  try {
+    prevId = (JSON.parse(previousPairing || 'null') as Pairing | null)?.id ?? ''
+  } catch {
+    prevId = ''
+  }
+  freshPairing = prevId !== incoming.id
+}
+
+/** Premier transfert réussi depuis ce téléphone : c'est seulement maintenant
+ *  qu'on propose l'icône sur l'écran d'accueil. */
+function markTransferOk() {
+  if (localStorage.getItem(FIRST_OK_KEY) === '1') return
+  localStorage.setItem(FIRST_OK_KEY, '1')
+  maybeInstallBanner()
+}
+
+/** Juste après le premier appairage : le bouton d'envoi est mis en avant,
+ *  une seule fois (quelques pulsations, puis plus rien). */
+function hintSendOnce() {
+  if (localStorage.getItem(SEND_HINT_KEY) === '1' || localStorage.getItem(FIRST_OK_KEY) === '1') return
+  localStorage.setItem(SEND_HINT_KEY, '1')
+  const btn = $('btnPick')
+  btn.classList.add('hint')
+  const stop = () => btn.classList.remove('hint')
+  btn.addEventListener('animationend', stop, { once: true })
+  btn.addEventListener('click', stop, { once: true })
 }
 
 function forget() {
@@ -318,14 +364,26 @@ async function connect() {
     updateManifestForPairing()
     show('main')
     startPolling()
+    // appairage tout neuf (clé de session reçue) : le bouton d'envoi d'abord
+    if (hello.newKey) hintSendOnce()
+    freshPairing = false
     maybeInstallBanner()
   } catch (e) {
     const err = e as ApiFail
-    if (err.status === 409) {
+    const kind = connectError({ status: err.status, code: err.code, fresh: freshPairing, standalone: isStandalone() })
+    if (kind === 'expired') {
+      // le PC a déjà remplacé ce code : on le dit, et l'appairage d'avant
+      // (s'il y en avait un) reste celui de ce téléphone
+      $('errTitle').textContent = t('ph.err.expired')
+      $('errMsg').textContent = t('ph.err.expiredMsg')
+      $('altHosts').classList.add('hidden')
+      if (previousPairing) localStorage.setItem(PAIR_KEY, previousPairing)
+      else localStorage.removeItem(PAIR_KEY)
+    } else if (kind === 'wrongPc') {
       $('errTitle').textContent = t('ph.err.wrongPc')
       $('errMsg').textContent = t('ph.err.wrongPcMsg')
       $('altHosts').classList.add('hidden')
-    } else if (err.status === 403) {
+    } else if (kind === 'revoked') {
       $('errTitle').textContent = t('ph.err.revoked')
       $('errMsg').textContent = t('ph.err.revokedMsg')
       $('altHosts').classList.add('hidden')
@@ -472,6 +530,7 @@ async function sendFile(file: File): Promise<void> {
     ui.bar.style.width = '100%'
     ui.li.classList.add('done')
     ui.state.textContent = t('ph.send.arrived', { name: hello?.desktopName ?? 'PC' })
+    markTransferOk()
   } catch (e) {
     const err = e as ApiFail
     // le PC compte lui-même les échecs qu'il voit ; on ne signale que la coupure
@@ -534,6 +593,7 @@ function recvLine(item: OutboxItem): HTMLLIElement {
       const ok = copyText(item.text ?? '')
       downloadedIds.add(item.id)
       li.classList.add('done')
+      markTransferOk()
       toast(ok ? t('ph.recv.copied') : t('ph.recv.selectCopy'))
     }
   } else {
@@ -661,6 +721,7 @@ async function downloadInto(item: OutboxItem, li: HTMLLIElement) {
     const url = URL.createObjectURL(blob)
     downloadedIds.add(item.id)
     reportReceived(item.id)
+    markTransferOk()
     li.classList.add('done')
     state.textContent = t('ph.recv.done')
     if ((item.mime ?? '').startsWith('image/')) {
@@ -806,8 +867,12 @@ function stopClipPolling() {
 }
 
 function maybeInstallBanner() {
-  if (isStandalone() || localStorage.getItem(INSTALL_KEY) === '1') return
-  $('installBanner')?.classList.remove('hidden')
+  const ok = shouldSuggestInstall({
+    standalone: isStandalone(),
+    dismissed: localStorage.getItem(INSTALL_KEY) === '1',
+    firstTransferDone: localStorage.getItem(FIRST_OK_KEY) === '1',
+  })
+  if (ok) $('installBanner')?.classList.remove('hidden')
 }
 
 // ---------- interactions ----------
@@ -847,6 +912,7 @@ function initUI() {
     try {
       await post('/api/phone/text', 'text', { text: value, mode: 'clip' })
       btn.textContent = t('ph.text.done')
+      markTransferOk()
       txt.value = ''
       updateTxtCount()
       setTimeout(() => {
@@ -871,6 +937,16 @@ function initUI() {
   const openInstallSheet = () => {
     $('menuSheet').classList.add('hidden')
     $('installBanner')?.classList.add('hidden')
+    // Android : le navigateur propose lui-même l'installation quand il le peut
+    if (installPrompt) {
+      const p = installPrompt
+      installPrompt = null
+      void p.prompt().catch(() => {})
+      void p.userChoice?.then((c) => {
+        if (c?.outcome === 'accepted') localStorage.setItem(INSTALL_KEY, '1')
+      }).catch(() => {})
+      return
+    }
     const { platform } = platformLabel()
     $('installSteps').textContent =
       platform === 'iphone' || platform === 'ipad' ? t('ph.installSheet.ios') : t('ph.installSheet.android')
@@ -926,6 +1002,7 @@ function initUI() {
       return
     }
     pair = p
+    notePairingSource(p)
     localStorage.setItem(PAIR_KEY, JSON.stringify(p))
     key = b64uToBytes(p.keyB64)
     show('scan')
@@ -940,6 +1017,13 @@ function initUI() {
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && hello) void pollOutbox()
+  })
+
+  // Android (Chrome) : on garde la proposition d'installation pour le bouton
+  // « Ajouter », proposé seulement après un premier transfert réussi
+  window.addEventListener('beforeinstallprompt', (ev) => {
+    ev.preventDefault()
+    installPrompt = ev as unknown as typeof installPrompt
   })
 }
 
