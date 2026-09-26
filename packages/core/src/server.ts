@@ -18,6 +18,7 @@ import {
   MAX_TEXT_BYTES,
   PENDING_PAIRING_TTL_MS,
   DEVICE_MAX_IDLE_MS,
+  DEFAULT_PORT,
 } from './constants.js'
 import { loadConfig, saveConfig, flitdropHome, clampInt, type Config } from './config.js'
 import { DeviceStore, type Device } from './pairing.js'
@@ -46,7 +47,7 @@ import {
 
 // ré-exporté pour l'app Electron (main.cjs) : tray, notifications, dialogue.
 export { t, resolveLang, langFrom } from './i18n.js'
-export { ClipboardWatcher } from './clipwatch.js'
+export { ClipboardWatcher, isConcealedClipboard } from './clipwatch.js'
 export { TransferActivity, type TransferActivityState } from './activity.js'
 export {
   TransferKeepAwake,
@@ -83,6 +84,55 @@ const SETTINGS_KEYS = [
   'telemetryConsent',
 ] as const
 
+/** Ports essayés dans l'ordre : le port mémorisé, puis des ports fixes
+ *  voisins du port par défaut (retrouvés d'un lancement à l'autre même si la
+ *  config est perdue), puis 0 (port libre choisi par le système). Un port
+ *  imposé à 0 (tests) donne directement un port libre. */
+export function portCandidates(wanted: number): number[] {
+  if (wanted === 0) return [0]
+  const out = [wanted]
+  for (let p = DEFAULT_PORT; p <= DEFAULT_PORT + 10; p++) if (!out.includes(p)) out.push(p)
+  out.push(0)
+  return out
+}
+
+/** Nom du PC pour l'icône du téléphone : sans caractères de contrôle ni de
+ *  mise en forme, espaces resserrés, court (l'écran d'accueil coupe vite). */
+export function iconPcName(name: string): string {
+  const clean = [...String(name ?? '')
+    .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff<>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()]
+  const short = clean.length > 20 ? clean.slice(0, 19).join('').trimEnd() + '…' : clean.join('')
+  return short || 'PC'
+}
+
+/** Nom de l'icône et de la page : « Flitdrop · <PC> ». */
+export function phoneAppTitle(pcName: string): string {
+  return `${PRODUCT_NAME} · ${iconPcName(pcName)}`
+}
+
+const escapeHtml = (v: string): string =>
+  v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+
+/** Page du téléphone avec le nom du PC (titre et nom de l'icône iPhone). */
+export function phonePageHtml(html: string, pcName: string): string {
+  const title = escapeHtml(phoneAppTitle(pcName))
+  // fonctions de remplacement : un « $ » dans le nom du PC reste un « $ »
+  return html
+    .replace(/(<meta name="apple-mobile-web-app-title" content=")[^"]*(")/, (_m, a: string, b: string) => a + title + b)
+    .replace(/<title>[^<]*<\/title>/, () => `<title>${title}</title>`)
+}
+
+/** Manifeste du téléphone avec le nom du PC (icône Android). */
+export function phoneManifest(raw: string, pcName: string): string {
+  const m = JSON.parse(raw) as Record<string, unknown>
+  const title = phoneAppTitle(pcName)
+  m.name = title
+  m.short_name = title
+  return JSON.stringify(m, null, 2)
+}
+
 const PUBLIC_DIR = path.join(moduleDir(import.meta.url), '..', 'public')
 const ADMIN_COOKIE = 'wd_admin'
 
@@ -108,6 +158,10 @@ export interface StartOptions {
   home?: string
   quiet?: boolean
   disableClipboard?: boolean
+  // fourni par l'app de bureau : le presse-papiers contient-il un secret
+  // marqué par un gestionnaire de mots de passe (voir isConcealedClipboard) ?
+  // Un tel contenu n'est jamais envoyé aux téléphones.
+  clipboardConcealed?: () => boolean
   // fourni par l'app de bureau (Electron) pour recopier une image de
   // l'historique dans le presse-papiers du système.
   writeImageToClipboard?: (png: Buffer) => void
@@ -200,7 +254,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   if (opts.disableClipboard) process.env.FLITDROP_NO_CLIP = '1'
   const home = flitdropHome(opts.home)
   const cfg = loadConfig(home)
-  if (opts.port !== undefined) cfg.port = opts.port
+  // port imposé (tests, ligne de commande) : utilisé pour ce lancement
+  // seulement, sans toucher au port mémorisé
+  const wantedPort = opts.port ?? cfg.port
 
   const devices = new DeviceStore(home)
   // hygiène au démarrage : on oublie les appairages inactifs de longue date
@@ -234,6 +290,61 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // vient de recopier soi-même depuis l'historique.
   let lastImageHash = ''
   const imageHash = (png: Buffer): string => `${png.length}:${png.length > 64 ? png.subarray(0, 64).toString('hex') : png.toString('hex')}`
+  // ---------- destinataires (plusieurs téléphones) ----------
+  const activePhones = () => devices.listPublic().filter((d) => d.status === 'active')
+  // Téléphone proposé par défaut pour un envoi du PC : le dernier choisi,
+  // sinon le dernier téléphone vu. 'all' seulement si on l'a choisi.
+  const defaultSendTo = (): string => {
+    const active = activePhones()
+    if (cfg.lastSendTo === 'all') return 'all'
+    if (active.some((d) => d.id === cfg.lastSendTo)) return cfg.lastSendTo
+    const recent = [...active].sort(
+      (a, b) => (Date.parse(b.lastSeenAt ?? b.createdAt) || 0) - (Date.parse(a.lastSeenAt ?? a.createdAt) || 0) || (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0)
+    )[0]
+    return recent?.id ?? 'all'
+  }
+  // Destinataires d'un envoi du PC. `undefined` : tous, quand un seul
+  // téléphone (ou aucun) est appairé, comme avant. `null` : choix invalide
+  // (téléphone retiré entre-temps). Un choix explicite devient le défaut.
+  const sendTargets = (to: unknown): string[] | undefined | null => {
+    const active = activePhones()
+    const ids = new Set(active.map((d) => d.id))
+    if (to === undefined || to === null || to === '') {
+      if (active.length <= 1) return undefined
+      to = defaultSendTo()
+    } else if (typeof to === 'string') {
+      if (to !== 'all' && !ids.has(to)) return null
+      if (to !== cfg.lastSendTo) {
+        cfg.lastSendTo = to
+        try {
+          saveConfig(home, cfg)
+        } catch {
+          // non critique : le choix reste en mémoire pour ce lancement
+        }
+      }
+    }
+    if (to === 'all') return active.length <= 1 ? undefined : [...ids]
+    if (typeof to === 'string') return active.length <= 1 ? undefined : [to]
+    if (!Array.isArray(to) || to.length === 0 || !to.every((x) => typeof x === 'string' && ids.has(x))) return null
+    return active.length <= 1 ? undefined : [...new Set(to as string[])]
+  }
+  // Envoi automatique du presse-papiers : seulement aux téléphones qui le
+  // voient. `null` : aucun téléphone autorisé, rien ne part.
+  const clipTargets = (): string[] | undefined | null => {
+    const active = activePhones()
+    if (active.length === 0) return undefined
+    const allowed = active.filter((d) => d.clipShare).map((d) => d.id)
+    if (allowed.length === 0) return null
+    return active.length === 1 ? undefined : allowed
+  }
+  const concealed = (): boolean => {
+    try {
+      return opts.clipboardConcealed?.() === true
+    } catch {
+      return false
+    }
+  }
+
   const clip = createClipboardText(opts.clipboardText)
   clip.read().then((t) => (lastClip = t)).catch(() => {})
   // une lecture à la fois : un PowerShell lent (antivirus, disque) ne doit pas
@@ -254,8 +365,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (cfg.clipHistoryEnabled && clipHistory.add(text, 'pc', cfg)) {
       hub.broadcast('cliphistory-changed', {})
     }
-    if (cfg.clipboardAutoPush) {
-      outbox.addText(text, 'clipboard')
+    const to = cfg.clipboardAutoPush ? clipTargets() : null
+    if (to !== null) {
+      outbox.addText(text, 'clipboard', to)
       hub.broadcast('outbox-changed', {})
       hub.broadcast('clip-autopushed', { preview: text.slice(0, 120) })
     }
@@ -401,6 +513,45 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     next()
   })
 
+  // Page et manifeste du téléphone portent le nom du PC : « Flitdrop · TOUR ».
+  // Deux PC donnent deux icônes distinctes sur l'écran d'accueil (le nom est
+  // lu au moment où on ajoute l'icône). Fichiers lus une fois, nom inséré à
+  // chaque demande (il peut changer dans les réglages).
+  const phoneFiles = new Map<string, string>()
+  const phoneFile = (name: string): string | undefined => {
+    let v = phoneFiles.get(name)
+    if (v === undefined) {
+      try {
+        v = fs.readFileSync(path.join(PUBLIC_DIR, 'phone', name), 'utf8')
+      } catch {
+        return undefined
+      }
+      phoneFiles.set(name, v)
+    }
+    return v
+  }
+  app.get(['/s/', '/s/index.html'], (req, res, next) => {
+    // « /s » sans barre finale : laissé au serveur de fichiers, qui redirige
+    // vers « /s/ » (sinon les adresses relatives de la page seraient fausses)
+    if (!req.path.endsWith('/') && !req.path.endsWith('/index.html')) return next()
+    const html = phoneFile('index.html')
+    if (!html) return next()
+    res.setHeader('Cache-Control', 'no-store')
+    res.type('html').send(phonePageHtml(html, cfg.deviceName))
+  })
+  app.get('/s/manifest.webmanifest', (_req, res, next) => {
+    const raw = phoneFile('manifest.webmanifest')
+    if (!raw) return next()
+    let body: string
+    try {
+      body = phoneManifest(raw, cfg.deviceName)
+    } catch {
+      return next()
+    }
+    res.setHeader('Cache-Control', 'no-store')
+    res.type('application/manifest+json').send(body)
+  })
+
   app.use(
     '/s',
     express.static(path.join(PUBLIC_DIR, 'phone'), {
@@ -481,6 +632,12 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     // ne bloque jamais le téléphone, et une photo du QR cesse de valoir dès que le
     // vrai téléphone confirme (1re requête sous la nouvelle clé -> promotion).
     if (wasPending) devices.beginRotation(dev.id)
+    // un téléphone de plus : ce qui attendait « tous » reste aux téléphones
+    // déjà appairés, le nouveau ne voit pas ce qui a été envoyé avant lui
+    if (wasPending) {
+      const others = activePhones().filter((d) => d.id !== dev.id).map((d) => d.id)
+      if (others.length > 0) outbox.restrictUntargeted(others)
+    }
     const rotatedKey = devices.pendingKey(dev.id)
     const fresh = devices.get(dev.id)
     if (wasPending) hub.broadcast('device-paired', { id: dev.id, name: fresh?.name, platform: fresh?.platform })
@@ -685,28 +842,30 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     // un texte de la file est « reçu » dès que ce téléphone l'a en main (il
     // s'affiche tel quel) : compté une fois par texte et par téléphone.
     for (const item of outbox.listRaw()) {
-      if (item.kind !== 'text' || textDelivered.has(`${item.id}|${dev.id}`)) continue
+      if (item.kind !== 'text' || !outbox.visibleTo(item, dev.id) || textDelivered.has(`${item.id}|${dev.id}`)) continue
       if (textDelivered.size > 2000) textDelivered.clear()
       textDelivered.add(`${item.id}|${dev.id}`)
       telemetry.transferOk('pc_to_phone', item.origin === 'clipboard' ? 'clipboard' : 'text')
     }
     const v = outboxTag()
-    const body = payload.since === v ? { unchanged: true, v } : { desktopName: cfg.deviceName, items: outbox.listForPhone(), v }
+    const body = payload.since === v ? { unchanged: true, v } : { desktopName: cfg.deviceName, items: outbox.listForPhone(dev.id), v }
     res.json({ p: sealJSON(key, body, aad(dev.id, 'outbox:res')) })
   })
 
   // Historique du presse-papiers du PC, servi (chiffré) au téléphone appairé :
   // c'est ce qui fait la vraie synchro. La liaison instanceId garantit que seuls
-  // TES appareils voient TON presse-papiers. Les miniatures suffisent à l'aperçu ;
-  // le chemin disque n'est jamais exposé (clipHistory.list le retire déjà).
+  // TES appareils voient TON presse-papiers, et seulement ceux pour lesquels
+  // le partage est activé sur le PC (`shared`). Les miniatures suffisent à
+  // l'aperçu ; le chemin disque n'est jamais exposé (clipHistory.list le retire).
   app.post('/api/phone/cliphistory', jsonSmall, phoneAuth('cliphistory'), (req, res) => {
     const { dev, key, payload } = wd(req)
     devices.touch(dev.id)
     const v = clipTag()
-    const body =
-      payload.since === v
-        ? { unchanged: true, v }
-        : { enabled: cfg.clipHistoryEnabled, items: cfg.clipHistoryEnabled ? clipHistory.list(200) : [], v }
+    const shared = devices.clipShared(dev.id)
+    const on = cfg.clipHistoryEnabled && shared
+    // `enabled` faux pour un téléphone sans partage : une page plus ancienne
+    // affiche alors une liste vide, jamais l'historique
+    const body = payload.since === v ? { unchanged: true, v } : { enabled: on, shared, items: on ? clipHistory.list(200) : [], v }
     res.json({ p: sealJSON(key, body, aad(dev.id, 'cliphistory:res')) })
   })
 
@@ -714,6 +873,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // téléphone côté client ; image -> file d'attente pour la récupérer en fichier).
   app.post('/api/phone/cliphistory/:id/tophone', jsonSmall, phoneAuth('clip-tophone'), (req, res) => {
     const { dev, key, payload } = wd(req)
+    if (!devices.clipShared(dev.id) || !cfg.clipHistoryEnabled) return res.status(403).json({ code: 'clipNotShared' })
     const entry = clipHistory.get(String(req.params.id))
     if (!entry || payload.entryId !== entry.id) return res.status(404).json({ code: 'entryNotFound' })
     if (entry.kind === 'image' && entry.image) {
@@ -725,7 +885,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         return res.status(410).json({ code: 'imageGone' })
       }
       const st = fs.statSync(reserved.path)
-      outbox.addFile(path.basename(reserved.path), reserved.path, st.size, 'image/png')
+      // demandée par CE téléphone : lui seul la voit
+      outbox.addFile(path.basename(reserved.path), reserved.path, st.size, 'image/png', [dev.id])
       hub.broadcast('outbox-changed', {})
     } else {
       // le texte part dans la réponse et le téléphone le copie aussitôt
@@ -750,7 +911,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       telemetry.transferFail('pc_to_phone', kindOf(item?.mime), status, code)
       return res.status(status).json({ code })
     }
-    if (!item || payload.itemId !== item.id) return dlFail(404, 'itemNotFound')
+    // un élément destiné à un autre téléphone répond comme un élément absent
+    if (!item || payload.itemId !== item.id || !outbox.visibleTo(item, dev.id)) return dlFail(404, 'itemNotFound')
     if (item.kind !== 'file' || !item.filePath) return dlFail(400, 'notAFile')
     // createReadStream ne lève rien pour un fichier absent (l'erreur arrive
     // pendant la lecture) : on vérifie avant d'envoyer le moindre octet
@@ -949,6 +1111,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   app.get('/api/shortcut/clipboard', rlShortcut, async (req, res) => {
     const dev = shortcutDevice(req)
     if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
+    // même règle que l'historique : seulement un téléphone qui voit le
+    // presse-papiers du PC
+    if (!devices.clipShared(dev.id)) return res.status(403).type('text/plain; charset=utf-8').send(st(req, 'srv.scClipOff', { pc: cfg.deviceName }))
+    // mot de passe marqué par un gestionnaire : rien ne part, rien n'est noté
+    if (concealed()) return res.type('text/plain; charset=utf-8').send('')
     const text = await clip.read().catch(() => '')
     history.add({ dir: 'out', kind: 'clip', preview: text.slice(0, 160), deviceId: dev.id, deviceName: dev.name, status: 'ok' })
     devices.touch(dev.id)
@@ -965,7 +1132,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     next()
   })
 
-  let actualPort = cfg.port
+  let actualPort = wantedPort
   const bestIp = () => localIPv4s()[0]
   // la clé et l'instanceId voyagent dans le FRAGMENT (#), jamais envoyé au réseau
   const pairUrl = (d: Device) => `http://${bestIp() ?? '127.0.0.1'}:${actualPort}/s/#${d.id}.${d.keyB64}.${cfg.instanceId}`
@@ -1031,6 +1198,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         basicNoticeShown: cfg.basicNoticeShown,
         port: actualPort,
       },
+      // destinataire proposé par défaut quand plusieurs téléphones sont appairés
+      sendTo: defaultSendTo(),
       hostname: os.hostname(),
       host,
       ips: localIPv4s(),
@@ -1068,9 +1237,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     res.json({ ok: true })
   })
 
-  admin.post('/cliphistory/:id/tophone', (req, res) => {
+  admin.post('/cliphistory/:id/tophone', jsonSmall, (req, res) => {
     const entry = clipHistory.get(String(req.params.id))
     if (!entry) return res.status(404).json({ code: 'entryNotFound' })
+    const to = sendTargets((req.body as { to?: unknown } | undefined)?.to)
+    if (to === null) return res.status(400).json({ code: 'deviceNotFound' })
     if (entry.kind === 'image' && entry.image) {
       const reserved = reserveUniquePath(outbox.dir, `image-${entry.id}.png`)
       fs.closeSync(reserved.fd)
@@ -1080,9 +1251,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         return res.status(410).json({ code: 'imageGone' })
       }
       const st = fs.statSync(reserved.path)
-      outbox.addFile(path.basename(reserved.path), reserved.path, st.size, 'image/png')
+      outbox.addFile(path.basename(reserved.path), reserved.path, st.size, 'image/png', to)
     } else {
-      outbox.addText(entry.text, 'clipboard')
+      outbox.addText(entry.text, 'clipboard', to)
     }
     hub.broadcast('outbox-changed', {})
     res.json({ ok: true })
@@ -1145,6 +1316,18 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     res.json({ ok: true })
   })
 
+  // Partage du presse-papiers du PC avec UN téléphone (historique, envoi
+  // automatique, Raccourci). Appliqué par le serveur à chaque requête.
+  admin.post('/device/:id/clipshare', jsonSmall, (req, res) => {
+    const on = (req.body as { enabled?: unknown } | undefined)?.enabled
+    if (typeof on !== 'boolean') return res.status(400).json({ code: 'internal' })
+    if (!devices.setClipShare(String(req.params.id), on)) return res.status(404).json({ code: 'deviceNotFound' })
+    // la liste du presse-papiers de ce téléphone est à relire
+    settingsGen++
+    hub.broadcast('settings-changed', {})
+    res.json({ ok: true })
+  })
+
   admin.post('/device/:id/revoke', (req, res) => {
     if (!devices.revoke(String(req.params.id))) return res.status(404).json({ code: 'deviceNotFound' })
     hub.broadcast('device-revoked', { id: String(req.params.id) })
@@ -1154,15 +1337,20 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   admin.post('/outbox/text', jsonText, (req, res) => {
     const text = typeof (req.body as { text?: unknown })?.text === 'string' ? (req.body as { text: string }).text : ''
     if (!text || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) return res.status(400).json({ code: 'textEmpty' })
-    const item = outbox.addText(text)
+    const to = sendTargets((req.body as { to?: unknown }).to)
+    if (to === null) return res.status(400).json({ code: 'deviceNotFound' })
+    const item = outbox.addText(text, 'text', to)
     hub.broadcast('outbox-changed', {})
     res.json({ ok: true, id: item.id })
   })
 
   admin.post('/outbox/file', async (req, res) => {
+    // destinataire dans l'adresse (?to=) : le corps est le fichier lui-même
+    const to = sendTargets(typeof req.query.to === 'string' ? req.query.to : undefined)
+    if (to === null) return res.status(400).json({ code: 'deviceNotFound' })
     try {
       const saved = await saveMultipartFiles(req, outbox.dir, cfg.maxFileMB * 1024 * 1024)
-      const items = saved.map((f) => outbox.addFile(f.name, f.path, f.size, f.mime))
+      const items = saved.map((f) => outbox.addFile(f.name, f.path, f.size, f.mime, to))
       hub.broadcast('outbox-changed', {})
       res.json({ ok: true, ids: items.map((i) => i.id) })
     } catch (e) {
@@ -1177,10 +1365,15 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     res.json({ ok: true })
   })
 
-  admin.post('/clipboard/push', async (_req, res) => {
+  admin.post('/clipboard/push', jsonSmall, async (req, res) => {
+    const to = sendTargets((req.body as { to?: unknown } | undefined)?.to)
+    if (to === null) return res.status(400).json({ code: 'deviceNotFound' })
+    // un mot de passe marqué par un gestionnaire ne part jamais d'office : on
+    // peut toujours le coller dans « Envoyer un texte » si on le veut vraiment
+    if (concealed()) return res.status(400).json({ code: 'clipboardConcealed' })
     const text = await clip.read().catch(() => '')
     if (!text) return res.status(400).json({ code: 'clipboardEmpty' })
-    const item = outbox.addText(text.slice(0, MAX_TEXT_BYTES), 'clipboard')
+    const item = outbox.addText(text.slice(0, MAX_TEXT_BYTES), 'clipboard', to)
     hub.broadcast('outbox-changed', {})
     res.json({ ok: true, id: item.id, preview: text.slice(0, 120) })
   })
@@ -1366,8 +1559,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   })
 
   // Écoute sur le port voulu, mais si un autre logiciel l'occupe déjà, on bascule
-  // sur un port libre choisi par le système plutôt que de planter. L'app de
-  // bureau et le CLI lisent le port réel, donc c'est transparent.
+  // sur un autre port plutôt que de planter : d'abord quelques ports fixes
+  // voisins de 47777, puis un port libre choisi par le système. Le port
+  // obtenu est mémorisé (config.json) et repris aux lancements suivants :
+  // l'icône posée sur l'écran d'accueil du téléphone garde la bonne adresse.
   const listenOn = (port: number): Promise<void> =>
     new Promise((resolve, reject) => {
       const onError = (err: NodeJS.ErrnoException) => {
@@ -1383,23 +1578,37 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       server.listen(port, '0.0.0.0')
     })
 
-  try {
-    await listenOn(cfg.port)
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === 'EADDRINUSE') {
-      if (!opts.quiet) console.warn(`Port ${cfg.port} occupé, bascule sur un port libre.`)
-      await listenOn(0)
-    } else {
-      throw e
+  const candidates = portCandidates(wantedPort)
+  for (let i = 0; ; i++) {
+    const port = candidates[i] ?? 0
+    try {
+      await listenOn(port)
+      break
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code
+      if (port === 0 || (code !== 'EADDRINUSE' && code !== 'EACCES')) throw e
+      if (i === 0 && !opts.quiet) console.warn(`Port ${port} occupé, bascule sur un autre port.`)
     }
   }
   actualPort = (server.address() as AddressInfo).port
+  // port imposé (tests, ligne de commande) : rien n'est mémorisé
+  if (opts.port === undefined && actualPort !== cfg.port) {
+    cfg.port = actualPort
+    try {
+      saveConfig(home, cfg)
+    } catch {
+      // non critique : on retentera au prochain lancement
+    }
+  }
 
   const adminUrl = `http://127.0.0.1:${actualPort}/app/?k=${encodeURIComponent(cfg.adminToken)}`
   // premier lancement / mise à jour / actif du jour (no-op hors app de bureau)
   telemetry.start()
 
   const addLocalFiles = async (paths: string[]): Promise<number> => {
+    // clic droit « Envoyer vers », glisser sur l'icône : pas de choix à
+    // l'écran, le téléphone choisi la dernière fois (ou tous s'il n'y en a qu'un)
+    const to = sendTargets(undefined) ?? undefined
     let added = 0
     for (const p of paths) {
       try {
@@ -1410,7 +1619,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         const reserved = reserveUniquePath(outbox.dir, safe)
         fs.closeSync(reserved.fd)
         await fs.promises.copyFile(p, reserved.path)
-        outbox.addFile(path.basename(reserved.path), reserved.path, st.size)
+        outbox.addFile(path.basename(reserved.path), reserved.path, st.size, undefined, to)
         added++
       } catch {
         // fichier illisible : on passe au suivant

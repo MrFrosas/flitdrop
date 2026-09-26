@@ -25,6 +25,8 @@ Autrement dit : le PC est le côté facile. Le téléphone est le côté bridé,
 
 - **PC → téléphone, automatique.** Un réglage « Synchroniser mon presse-papiers » : dès que vous copiez du texte sur le PC, il devient disponible sur le téléphone (onglet « Recevoir »), sans aucune action. Testé de bout en bout, avec anti-doublon et anti-écho (le texte reçu du téléphone n'est pas renvoyé en boucle).
 - **Téléphone → PC, en un tap.** L'onglet « Texte » de la page envoie le presse-papiers au PC en un tap ; le Raccourci Apple « Coller sur le PC » fait pareil depuis le Bouton Action de l'iPhone.
+- **Téléphone par téléphone.** Avec plusieurs téléphones sur un PC, le presse-papiers du PC (historique et envoi automatique) se partage téléphone par téléphone : le premier téléphone appairé l'a, chaque téléphone ajouté part sans jusqu'à ce qu'on l'active dans sa fenêtre Appareil. Le serveur l'applique à chaque requête. Ce que le PC envoie va au téléphone choisi (ou « Tous »).
+- **Les mots de passe restent dehors.** Ce qu'un gestionnaire de mots de passe marque comme secret (macOS `org.nspasteboard.ConcealedType`, `TransientType`, 1Password ; Windows `ExcludeClipboardContentFromMonitorProcessing`, `CanIncludeInClipboardHistory` ou `CanUploadToCloudClipboard` à 0 ; KDE `x-kde-passwordManagerHint`) n'est jamais noté dans l'historique ni envoyé à un téléphone.
 
 ## Ce qu'une app native ajouterait (et ce qu'elle n'ajouterait jamais)
 

@@ -14,6 +14,8 @@ interface DevicePub {
   createdAt: string
   lastSeenAt?: string
   shortcutToken: string
+  /** ce téléphone voit le presse-papiers du PC (absent d'un coeur plus ancien) */
+  clipShare?: boolean
 }
 interface HistEntry {
   id: string
@@ -36,6 +38,8 @@ interface OutboxEntry {
   preview?: string
   createdAt: string
   downloads: Record<string, string>
+  /** téléphones destinataires ; absent : tous */
+  to?: string[]
 }
 interface ClipEntry {
   id: string
@@ -68,6 +72,8 @@ interface State {
     basicNoticeShown: boolean
     port: number
   }
+  /** destinataire proposé quand plusieurs téléphones sont appairés ('all' ou un identifiant) */
+  sendTo?: string
   hostname: string
   /** signalé par l'app de bureau (absent d'un coeur plus ancien) */
   host?: { macUpdate: { version: string; reveal?: number } | null; loginItemNeedsApproval: boolean }
@@ -84,6 +90,9 @@ let state: State | null = null
 let currentPairingId: string | null = null
 let currentPairUrl = ''
 let currentDeviceId: string | null = null
+// destinataire choisi dans « Envoyer » (plusieurs téléphones) : 'all' ou un
+// identifiant. null : celui que propose le PC (le dernier utilisé).
+let sendChoice: string | null = null
 const progressCards = new Map<string, { li: HTMLLIElement; bar: HTMLSpanElement; sub: HTMLElement }>()
 
 // ---------- utilitaires ----------
@@ -241,6 +250,65 @@ function renderHistory() {
   }
 }
 
+const activePhones = (): DevicePub[] => (state ? state.devices.filter((d) => d.status === 'active') : [])
+
+/** Destinataire des envois du PC : seulement avec plusieurs téléphones. Un
+ *  seul téléphone (ou aucun) : rien à choisir, le PC décide comme avant. */
+function sendTarget(): string | undefined {
+  const active = activePhones()
+  if (active.length < 2) return undefined
+  if (sendChoice === 'all' || active.some((d) => d.id === sendChoice)) return sendChoice as string
+  const proposed = state?.sendTo
+  if (proposed === 'all' || active.some((d) => d.id === proposed)) return proposed
+  return active[0]?.id
+}
+
+/** Nom du destinataire, pour les messages (« pour iPhone de Léa »). */
+function sendTargetLabel(): string | undefined {
+  const to = sendTarget()
+  if (!to) return undefined
+  if (to === 'all') return t('outbox.forAll')
+  const d = activePhones().find((x) => x.id === to)
+  return d ? t('outbox.for', { name: d.name }) : undefined
+}
+
+/** Choix du téléphone dans « Envoyer » : un bouton par téléphone et « Tous ».
+ *  Caché avec un seul téléphone. */
+function renderSendTo() {
+  const box = $('sendTo')
+  const active = activePhones()
+  box.classList.toggle('hidden', active.length < 2)
+  if (active.length < 2) return
+  const current = sendTarget()
+  const chips = $('sendToChips')
+  chips.innerHTML = ''
+  const add = (value: string, label: string) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'chip' + (current === value ? ' on' : '')
+    b.setAttribute('role', 'radio')
+    b.setAttribute('aria-checked', current === value ? 'true' : 'false')
+    b.textContent = label
+    b.onclick = () => {
+      sendChoice = value
+      renderSendTo()
+    }
+    chips.appendChild(b)
+  }
+  for (const d of active) add(d.id, d.name)
+  add('all', t('send.toAll'))
+}
+
+/** « pour … » sous un élément en attente, quand plusieurs téléphones existent. */
+function outboxTargetLabel(item: OutboxEntry): string | undefined {
+  if (!state) return undefined
+  const active = activePhones()
+  if (!item.to) return active.length >= 2 ? t('outbox.forAll') : undefined
+  if (active.length >= 2 && active.every((d) => item.to!.includes(d.id))) return t('outbox.forAll')
+  const names = item.to.map((id) => state!.devices.find((d) => d.id === id)?.name).filter((n): n is string => !!n)
+  return names.length ? t('outbox.for', { name: names.join(', ') }) : t('outbox.forRemoved')
+}
+
 function renderOutbox() {
   if (!state) return
   const list = $('outboxList')
@@ -259,7 +327,10 @@ function renderOutbox() {
     const sub = document.createElement('div')
     sub.className = 'hsub'
     const picked = Object.keys(item.downloads).length > 0
-    sub.textContent = [item.kind === 'file' ? fmtSize(item.size ?? 0) : t('hist.text'), picked ? t('outbox.downloaded') : t('outbox.waiting'), rel(item.createdAt)].join(' · ')
+    const target = outboxTargetLabel(item)
+    sub.textContent = [item.kind === 'file' ? fmtSize(item.size ?? 0) : t('hist.text'), target, picked ? t('outbox.downloaded') : t('outbox.waiting'), rel(item.createdAt)]
+      .filter(Boolean)
+      .join(' · ')
     main.append(name, sub)
     const del = document.createElement('button')
     del.className = 'hbtn x'
@@ -397,7 +468,10 @@ function renderClipHistory() {
     btnPhone.className = 'hbtn'
     btnPhone.textContent = t('clip.phone')
     btnPhone.title = t('clip.phoneTitle')
-    btnPhone.onclick = () => void postJSON(`/cliphistory/${e.id}/tophone`, {}).then(() => toast(t('clip.readyPhone'), t('clip.recvTab'))).catch(() => {})
+    btnPhone.onclick = () =>
+      void postJSON(`/cliphistory/${e.id}/tophone`, { to: sendTarget() })
+        .then(() => toast(t('clip.readyPhone'), [sendTargetLabel(), t('clip.recvTab')].filter(Boolean).join(' · ')))
+        .catch(() => {})
     const del = document.createElement('button')
     del.className = 'hbtn x'
     del.textContent = '✕'
@@ -476,6 +550,7 @@ function renderAll() {
   $('versionTag').textContent = 'v' + state.version
   renderRadar()
   renderHistory()
+  renderSendTo()
   renderOutbox()
   renderClipHistory()
   renderSettings()
@@ -771,6 +846,7 @@ function openDeviceModal(id: string) {
   $('devTitle').textContent = dev.name
   $('devSeen').textContent = t('device.pairedSeen', { paired: rel(dev.createdAt), seen: rel(dev.lastSeenAt) })
   ;($('devRenameInput') as unknown as HTMLInputElement).value = dev.name
+  ;($('devClipShare') as unknown as HTMLInputElement).checked = dev.clipShare === true
   $('devModal').classList.remove('hidden')
 }
 
@@ -835,6 +911,19 @@ function initUI() {
     $('devModal').classList.add('hidden')
     void refresh()
   }
+  // partage du presse-papiers du PC avec CE téléphone, appliqué aussitôt
+  ;($('devClipShare') as unknown as HTMLInputElement).onchange = async () => {
+    const box = $('devClipShare') as unknown as HTMLInputElement
+    if (!currentDeviceId) return
+    try {
+      await postJSON(`/device/${currentDeviceId}/clipshare`, { enabled: box.checked })
+      toast(t('set.saved'))
+    } catch (e) {
+      box.checked = !box.checked
+      toast((e as Error).message)
+    }
+    void refresh()
+  }
   $('btnDevShortcut').onclick = () => {
     $('devModal').classList.add('hidden')
     switchView('settings')
@@ -884,18 +973,19 @@ function initUI() {
     const ta = $('outText') as unknown as HTMLTextAreaElement
     const text = ta.value.trim()
     if (!text) return
-    await postJSON('/outbox/text', { text })
+    await postJSON('/outbox/text', { text, to: sendTarget() })
     ta.value = ''
-    toast(t('toast.textQueued'), t('up.readyHint'))
+    toast(t('toast.textQueued'), sendTargetLabel() ?? t('up.readyHint'))
     void refresh()
   }
   $('btnPushClip').onclick = async () => {
     try {
-      const r = (await postJSON('/clipboard/push', {})) as { preview?: string }
-      toast(t('toast.clipPushed'), r.preview)
+      const r = (await postJSON('/clipboard/push', { to: sendTarget() })) as { preview?: string }
+      toast(t('toast.clipPushed'), [sendTargetLabel(), r.preview].filter(Boolean).join(' · '))
       void refresh()
     } catch (e) {
-      toast(t('clipboard.empty'), (e as Error).message)
+      const msg = (e as Error).message
+      toast(msg === t('err.clipboardConcealed') ? t('send.concealedTitle') : t('clipboard.empty'), msg)
     }
   }
 
@@ -1034,7 +1124,8 @@ async function uploadOutbox(files: FileList) {
   for (const f of files) fd.append('file', f, f.name)
   await new Promise<void>((resolve) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', '/api/admin/outbox/file')
+    const to = sendTarget()
+    xhr.open('POST', '/api/admin/outbox/file' + (to ? `?to=${encodeURIComponent(to)}` : ''))
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) fill.style.width = Math.round((e.loaded / e.total) * 100) + '%'
     }
@@ -1042,7 +1133,7 @@ async function uploadOutbox(files: FileList) {
       bar.classList.add('hidden')
       fill.style.width = '0%'
       if (xhr.status === 200) {
-        toast(tp(lang, 'up.filesReady', files.length), t('up.readyHint'))
+        toast(tp(lang, 'up.filesReady', files.length), sendTargetLabel() ?? t('up.readyHint'))
       } else {
         toast(t('up.failed'), `code ${xhr.status}`)
       }

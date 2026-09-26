@@ -713,7 +713,9 @@ interface ClipEntry {
 }
 
 let clipTimer: number | null = null
-const clipList = new VersionedList<{ items: ClipEntry[]; enabled: boolean }>()
+// `shared` faux : le PC ne partage pas son presse-papiers avec CE téléphone
+// (plusieurs téléphones sur un PC). Absent d'un PC plus ancien : partagé.
+const clipList = new VersionedList<{ items: ClipEntry[]; enabled: boolean; shared: boolean }>()
 const clipNodes = new KeyedNodes<HTMLLIElement>()
 
 const clipLabel = (e: ClipEntry) =>
@@ -721,8 +723,9 @@ const clipLabel = (e: ClipEntry) =>
     ? `${e.text} · ${rtf(lang, e.ts)}`
     : `${e.source === 'pc' ? t('ph.clip.copiedPc') : t('ph.clip.receivedFrom', { name: e.source })} · ${rtf(lang, e.ts)}`
 
-function renderClipHistory(items: ClipEntry[], enabled: boolean) {
-  $('clipDisabled').classList.toggle('hidden', enabled)
+function renderClipHistory(items: ClipEntry[], enabled: boolean, shared = true) {
+  $('clipNotShared').classList.toggle('hidden', shared)
+  $('clipDisabled').classList.toggle('hidden', enabled || !shared)
   $('clipEmpty').classList.toggle('hidden', !enabled || items.length > 0)
   const shown = enabled ? items : []
   const nodes = clipNodes.sync(shown, lang, clipLine)
@@ -777,13 +780,13 @@ function clipLine(e: ClipEntry): HTMLLIElement {
 async function pollClipHistory() {
   if (!hello || document.hidden) return
   try {
-    const res = await post<{ items?: ClipEntry[]; enabled?: boolean; unchanged?: boolean; v?: string }>(
+    const res = await post<{ items?: ClipEntry[]; enabled?: boolean; shared?: boolean; unchanged?: boolean; v?: string }>(
       '/api/phone/cliphistory',
       'cliphistory',
       clipList.request()
     )
-    const got = clipList.accept(res, () => ({ items: res.items ?? [], enabled: res.enabled !== false }))
-    if (got) renderClipHistory(got.items, got.enabled)
+    const got = clipList.accept(res, () => ({ items: res.items ?? [], enabled: res.enabled !== false, shared: res.shared !== false }))
+    if (got) renderClipHistory(got.items, got.enabled, got.shared)
   } catch {
     // silencieux : l'onglet « Recevoir » signale déjà l'état de connexion
   }
@@ -910,7 +913,7 @@ function initUI() {
     if (hello) $('menuInfo').textContent = t('ph.menuInfo', { name: hello.desktopName })
     // les lignes déjà affichées sont redessinées dans la nouvelle langue
     if (outboxList.data) renderRecv(outboxList.data)
-    if (clipList.data) renderClipHistory(clipList.data.items, clipList.data.enabled)
+    if (clipList.data) renderClipHistory(clipList.data.items, clipList.data.enabled, clipList.data.shared)
   }
 
   // collage manuel d'un lien d'appairage : secours si on est bloqué dans la PWA

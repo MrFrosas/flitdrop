@@ -362,6 +362,9 @@ if (!gotLock) {
         : { read: () => clipboard.readText(), write: (text) => clipboard.writeText(text) },
       // la surveillance unique ci-dessous appelle core.pollClipboard()
       manualClipboardPoll: true,
+      // mot de passe copié depuis un gestionnaire (marque du système) : jamais
+      // envoyé à un téléphone, même par « Envoyer mon presse-papiers »
+      clipboardConcealed: () => !!bundle.isConcealedClipboard && bundle.isConcealedClipboard(clipboard, process.platform),
       // une fonction presse-papiers rallumée : vérification tout de suite
       onSettingsChanged: () => clipWatcher && clipWatcher.poke(),
       // boutons de la page : .dmg d'une nouvelle version, réglages de macOS

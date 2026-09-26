@@ -35,6 +35,7 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     firstTransferDone: false,
     lastDailyActiveDay: '',
     firstPhonePageDone: false,
+    lastSendTo: '',
   }
 }
 

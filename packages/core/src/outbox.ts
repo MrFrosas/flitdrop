@@ -16,6 +16,11 @@ export interface OutboxItem {
   filePath?: string
   createdAt: string
   downloads: Record<string, string>
+  // téléphones qui voient cet élément. Absent : tous (un seul téléphone ou
+  // aucun appairé au moment de l'envoi). Dès qu'un deuxième téléphone est
+  // appairé, les éléments sans destinataire sont réservés aux téléphones
+  // déjà là (restrictUntargeted) : le nouveau venu ne voit pas le passé.
+  to?: string[]
 }
 
 /** File d'attente PC -> téléphone. Les fichiers sont copiés dans un dossier
@@ -39,7 +44,7 @@ export class Outbox {
     }
   }
 
-  addText(text: string, origin: 'text' | 'clipboard' = 'text'): OutboxItem {
+  addText(text: string, origin: 'text' | 'clipboard' = 'text', to?: string[]): OutboxItem {
     const item: OutboxItem = {
       id: randomToken(8),
       kind: 'text',
@@ -49,6 +54,7 @@ export class Outbox {
       createdAt: new Date().toISOString(),
       downloads: {},
     }
+    if (to) item.to = [...to]
     this.items.unshift(item)
     this.prune()
     this.version++
@@ -59,7 +65,7 @@ export class Outbox {
     return path.join(this.dir, `${id}_${safeName}`)
   }
 
-  addFile(safeName: string, filePath: string, size: number, mime?: string): OutboxItem {
+  addFile(safeName: string, filePath: string, size: number, mime?: string, to?: string[]): OutboxItem {
     const item: OutboxItem = {
       id: randomToken(8),
       kind: 'file',
@@ -70,10 +76,28 @@ export class Outbox {
       createdAt: new Date().toISOString(),
       downloads: {},
     }
+    if (to) item.to = [...to]
     this.items.unshift(item)
     this.prune()
     this.version++
     return item
+  }
+
+  /** Cet élément est-il destiné à ce téléphone ? */
+  visibleTo(item: OutboxItem, deviceId: string): boolean {
+    return !item.to || item.to.includes(deviceId)
+  }
+
+  /** Un deuxième téléphone vient d'être appairé : ce qui était en attente
+   *  pour « tous » reste réservé aux téléphones déjà appairés. */
+  restrictUntargeted(deviceIds: string[]): void {
+    let changed = false
+    for (const item of this.items) {
+      if (item.to) continue
+      item.to = [...deviceIds]
+      changed = true
+    }
+    if (changed) this.version++
   }
 
   get(id: string): OutboxItem | undefined {
@@ -108,8 +132,9 @@ export class Outbox {
     return this.items
   }
 
-  listForPhone() {
-    return this.items.map((i) => ({
+  /** Liste vue par UN téléphone : seulement ce qui lui est destiné. */
+  listForPhone(deviceId: string) {
+    return this.items.filter((i) => this.visibleTo(i, deviceId)).map((i) => ({
       id: i.id,
       kind: i.kind,
       name: i.name,
@@ -130,6 +155,7 @@ export class Outbox {
       preview: i.kind === 'text' ? (i.text ?? '').slice(0, 120) : undefined,
       createdAt: i.createdAt,
       downloads: i.downloads,
+      to: i.to,
     }))
   }
 

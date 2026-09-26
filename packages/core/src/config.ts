@@ -70,6 +70,10 @@ export interface Config {
   firstPhonePageDone: boolean
   // dernier jour local (AAAA-MM-JJ) où app_daily_active a été envoyé.
   lastDailyActiveDay: string
+  // destinataire du dernier envoi fait depuis le PC quand plusieurs téléphones
+  // sont appairés : 'all' ou l'identifiant d'un téléphone ('' = pas encore
+  // choisi). Proposé par défaut au prochain envoi.
+  lastSendTo: string
 }
 
 export function flitdropHome(override?: string): string {
@@ -100,7 +104,7 @@ export function loadConfig(home: string): Config {
   const legacyHistory = legacy ? legacyUsage(home) : { paired: false, transferred: false }
   const cfg: Config = {
     deviceName: stored.deviceName || defaultDeviceName(),
-    port: stored.port ?? DEFAULT_PORT,
+    port: validPort(stored.port) ?? DEFAULT_PORT,
     downloadDir:
       stored.downloadDir || process.env.FLITDROP_DOWNLOADS || path.join(os.homedir(), 'Downloads', 'Flitdrop'),
     maxFileMB: clampInt(stored.maxFileMB, 1, 128 * 1024, DEFAULT_MAX_FILE_MB),
@@ -129,6 +133,7 @@ export function loadConfig(home: string): Config {
     firstTransferDone: stored.firstTransferDone === true || legacyHistory.transferred,
     lastDailyActiveDay: typeof stored.lastDailyActiveDay === 'string' ? stored.lastDailyActiveDay.slice(0, 10) : '',
     firstPhonePageDone: false,
+    lastSendTo: typeof stored.lastSendTo === 'string' && /^(all|[A-Za-z0-9_-]{1,40})$/.test(stored.lastSendTo) ? stored.lastSendTo : '',
   }
   // migration : absent d'un config.json plus ancien. Une installation qui a
   // déjà appairé un téléphone ou transféré quelque chose a forcément vu la page
@@ -187,6 +192,10 @@ function legacyUsage(home: string): { paired: boolean; transferred: boolean } {
   const devices = read('devices.json') as { status?: string }[]
   const transferred = history.some((e) => e && e.status === 'ok')
   return { paired: transferred || devices.some((d) => d && d.status === 'active'), transferred }
+}
+
+function validPort(v: unknown): number | undefined {
+  return typeof v === 'number' && Number.isInteger(v) && v > 0 && v < 65536 ? v : undefined
 }
 
 export function clampInt(v: unknown, min: number, max: number, fallback: number): number {

@@ -58,6 +58,17 @@ async function pairPhone(): Promise<Phone> {
   return decoded.newKey ? phoneFrom(phone.id, b64u.dec(decoded.newKey)) : phone
 }
 
+// Plusieurs téléphones sur ce PC de test : seul le premier voit d'office le
+// presse-papiers du PC. On l'active ici comme le ferait la fenêtre Appareil.
+async function shareClip(phone: Phone): Promise<void> {
+  const r = await admin(`/device/${phone.id}/clipshare`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ enabled: true }),
+  })
+  expect(r.status).toBe(200)
+}
+
 beforeAll(async () => {
   home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-home-'))
   dl = path.join(home, 'dl')
@@ -509,6 +520,7 @@ describe('listes du téléphone versionnées (rien de neuf = quelques octets)', 
 
   it('historique du presse-papiers : « rien de neuf », puis nouvelle copie et réglages', async () => {
     const phone = await pairPhone()
+    await shareClip(phone)
     await phone.post('/api/phone/text', 'text', { text: 'version 1', mode: 'clip' })
     const full = await read<ClipRes>(phone, '/api/phone/cliphistory', 'cliphistory', {})
     expect(full.body.items?.[0]?.text).toBe('version 1')
@@ -534,6 +546,7 @@ describe('listes du téléphone versionnées (rien de neuf = quelques octets)', 
 describe('confidentialité : liaison au PC + historique téléphone', () => {
   it('le téléphone voit l’historique du presse-papiers du PC', async () => {
     const phone = await pairPhone()
+    await shareClip(phone)
     await phone.post('/api/phone/text', 'text', { text: 'note synchro test', mode: 'clip' })
     const r = await phone.post('/api/phone/cliphistory', 'cliphistory', {})
     expect(r.status).toBe(200)

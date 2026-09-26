@@ -25,6 +25,65 @@ export interface WatchedClipboard {
   availableFormats(): string[]
   readBuffer(format: string): Buffer
   readImage(): WatchedImage
+  /** Le presse-papiers contient-il ce format (nom propre au système) ?
+   *  Electron : clipboard.has. Sans lui, on regarde si readBuffer rend des octets. */
+  has?(format: string): boolean
+}
+
+// Marques posées par les gestionnaires de mots de passe sur ce qu'ils copient
+// (1Password, Bitwarden, KeePassXC, Trousseau…). Le contenu reste collable,
+// mais Flitdrop ne l'enregistre jamais et ne l'envoie à aucun téléphone.
+// macOS : types de nspasteboard.org, présents même vides.
+export const MAC_CONCEALED_TYPES = ['org.nspasteboard.ConcealedType', 'org.nspasteboard.TransientType', 'com.agilebits.onepassword']
+// Windows : présence du format = ne pas surveiller.
+export const WIN_EXCLUDE_FORMAT = 'ExcludeClipboardContentFromMonitorProcessing'
+// Windows : valeur 0 (DWORD) = ni historique de Windows, ni nuage.
+export const WIN_ZERO_FORMATS = ['CanIncludeInClipboardHistory', 'CanUploadToCloudClipboard']
+// Linux (KDE et KeePassXC) : « secret ».
+export const LINUX_SECRET_FORMAT = 'x-kde-passwordManagerHint'
+
+/**
+ * Vrai si le presse-papiers porte une marque de secret. Quelques questions au
+ * presse-papiers sur de tout petits formats, jamais le contenu lui-même : assez
+ * bon marché pour chaque vérification. Au moindre doute de lecture, faux (on
+ * ne bloque pas une copie ordinaire pour une erreur du système).
+ */
+export function isConcealedClipboard(cb: WatchedClipboard, platform: NodeJS.Platform = process.platform): boolean {
+  const present = (format: string): boolean => {
+    try {
+      if (typeof cb.has === 'function') return cb.has(format) === true
+      const b = cb.readBuffer(format)
+      return !!b && b.length > 0
+    } catch {
+      return false
+    }
+  }
+  const read = (format: string): Buffer | null => {
+    try {
+      const b = cb.readBuffer(format)
+      return b && b.length > 0 ? b : null
+    } catch {
+      return null
+    }
+  }
+  // certains systèmes annoncent ces noms dans la liste des formats
+  try {
+    const f = cb.availableFormats()
+    if (Array.isArray(f) && f.some((x) => MAC_CONCEALED_TYPES.includes(x) || x === WIN_EXCLUDE_FORMAT)) return true
+  } catch {
+    // liste illisible : on interroge format par format
+  }
+  if (platform === 'darwin') return MAC_CONCEALED_TYPES.some(present)
+  if (platform === 'win32') {
+    if (present(WIN_EXCLUDE_FORMAT)) return true
+    return WIN_ZERO_FORMATS.some((name) => {
+      if (typeof cb.has === 'function' && !present(name)) return false
+      const b = read(name)
+      return !!b && b.every((x) => x === 0)
+    })
+  }
+  const hint = read(LINUX_SECRET_FORMAT)
+  return !!hint && hint.toString('utf8').replace(/\0/g, '').trim().toLowerCase() === 'secret'
 }
 
 export interface ClipboardWatcherOptions {
@@ -235,6 +294,8 @@ export class ClipboardWatcher {
   /** Une vérification complète (texte puis image). Exposé pour les tests. */
   async tick(): Promise<void> {
     if (!this.o.anyEnabled()) return
+    // mot de passe copié depuis un gestionnaire : ni lu, ni noté, ni envoyé
+    if (isConcealedClipboard(this.o.clipboard, this.o.platform)) return
     let textChanged = false
     try {
       if (this.shouldReadText()) textChanged = (await this.withTimeout(this.o.checkText())) === true

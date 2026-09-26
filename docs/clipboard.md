@@ -24,6 +24,8 @@ Apple's Universal Clipboard works automatically because it is a **system service
 - **Computer → phone, automatic.** A "sync my clipboard" setting: whatever you copy on the computer becomes available on the phone with no action. Tested end to end, with de-duplication and an anti-loop guard.
 - **Phone → computer, one tap.** The "Text" tab sends the clipboard in one tap; the Apple Shortcut does the same from the iPhone Action Button.
 - **Clipboard history**, like the Paste app, on the computer: everything copied is kept locally (never sent to any server), searchable, one click to copy again or push to the phone. Retention is configurable by count and by age.
+- **Per phone.** With several phones on one computer, the computer's clipboard (history and automatic sending) is shared phone by phone: the first paired phone has it, each added phone starts without it until you turn it on in its device panel. The server enforces it on every request. What the computer sends goes to the phone you pick (or "All").
+- **Passwords stay out.** Anything a password manager marks as secret (macOS `org.nspasteboard.ConcealedType`, `TransientType`, 1Password; Windows `ExcludeClipboardContentFromMonitorProcessing`, `CanIncludeInClipboardHistory` or `CanUploadToCloudClipboard` set to 0; KDE `x-kde-passwordManagerHint`) is never recorded in the history nor sent to a phone.
 
 ## What a native app would add (and never add)
 

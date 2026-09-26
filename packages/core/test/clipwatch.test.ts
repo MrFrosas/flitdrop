@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ClipboardWatcher,
+  isConcealedClipboard,
   flattenOnWhite,
   rawImageFormats,
   thumbDataURL,
@@ -37,6 +38,8 @@ function fakeClipboard(opts: { raw?: Record<string, Buffer>; pixels?: Buffer; fo
       count.readImage++
       return makeImage()
     },
+    // comme clipboard.has d'Electron : question sur un format, sans lire son contenu
+    has: (f) => f in state.raw || state.formats.includes(f),
   }
   return { clipboard, count, state }
 }
@@ -541,5 +544,96 @@ describe('ClipboardWatcher : empreinte et miniature', () => {
     const { w, images } = watcher(clipboard)
     await w.tick()
     expect(images[0]?.thumb.startsWith('data:image/jpeg;base64,')).toBe(true)
+  })
+})
+
+describe('mots de passe des gestionnaires : ni lus, ni notés, ni envoyés', () => {
+  const dword = (n: number) => {
+    const b = Buffer.alloc(4)
+    b.writeUInt32LE(n, 0)
+    return b
+  }
+
+  it('macOS : type « Concealed » présent (même vide), rien n’est lu', async () => {
+    const f = fakeClipboard({ formats: ['text/plain'], raw: { 'public.png': Buffer.from('c') }, pixels: Buffer.from('p') })
+    f.clipboard.has = (name) => name === 'org.nspasteboard.ConcealedType' || name === 'text/plain'
+    const { w, images, checkText } = watcher(f.clipboard)
+    await w.tick()
+    expect(checkText).not.toHaveBeenCalled()
+    expect(images).toHaveLength(0)
+    expect(f.count.readImage + f.count.toPNG).toBe(0)
+  })
+
+  it('macOS : types « Transient » et 1Password aussi', () => {
+    for (const marker of ['org.nspasteboard.TransientType', 'com.agilebits.onepassword']) {
+      const f = fakeClipboard({ formats: ['text/plain'] })
+      f.clipboard.has = (name) => name === marker
+      expect(isConcealedClipboard(f.clipboard, 'darwin')).toBe(true)
+    }
+  })
+
+  it('macOS : copie ordinaire, le texte est vérifié comme avant', async () => {
+    const f = fakeClipboard({ formats: ['text/plain'] })
+    const { w, checkText } = watcher(f.clipboard)
+    await w.tick()
+    expect(checkText).toHaveBeenCalledTimes(1)
+  })
+
+  it('Windows : format d’exclusion présent', async () => {
+    const f = fakeClipboard({ formats: ['text/plain'], raw: { ExcludeClipboardContentFromMonitorProcessing: Buffer.alloc(0) } })
+    f.clipboard.has = (name) => name === 'ExcludeClipboardContentFromMonitorProcessing'
+    const { w, checkText } = watcher(f.clipboard, { platform: 'win32' })
+    await w.tick()
+    expect(checkText).not.toHaveBeenCalled()
+  })
+
+  it('Windows : historique ou nuage refusés (valeur 0), mais pas la valeur 1', async () => {
+    for (const name of ['CanIncludeInClipboardHistory', 'CanUploadToCloudClipboard']) {
+      const hidden = fakeClipboard({ formats: ['text/plain'], raw: { [name]: dword(0) } })
+      expect(isConcealedClipboard(hidden.clipboard, 'win32')).toBe(true)
+      const allowed = fakeClipboard({ formats: ['text/plain'], raw: { [name]: dword(1) } })
+      expect(isConcealedClipboard(allowed.clipboard, 'win32')).toBe(false)
+    }
+    const f = fakeClipboard({ formats: ['text/plain'], raw: { CanIncludeInClipboardHistory: dword(0) } })
+    const { w, checkText } = watcher(f.clipboard, { platform: 'win32' })
+    await w.tick()
+    expect(checkText).not.toHaveBeenCalled()
+  })
+
+  it('Linux : indice « secret » de KDE et KeePassXC', () => {
+    const f = fakeClipboard({ formats: ['text/plain'], raw: { 'x-kde-passwordManagerHint': Buffer.from('secret') } })
+    expect(isConcealedClipboard(f.clipboard, 'linux')).toBe(true)
+    const g = fakeClipboard({ formats: ['text/plain'] })
+    expect(isConcealedClipboard(g.clipboard, 'linux')).toBe(false)
+  })
+
+  it('sans clipboard.has : repli sur la lecture du petit format', () => {
+    const f = fakeClipboard({ formats: ['text/plain'], raw: { 'org.nspasteboard.ConcealedType': Buffer.from('x') } })
+    delete f.clipboard.has
+    expect(isConcealedClipboard(f.clipboard, 'darwin')).toBe(true)
+  })
+
+  it('un presse-papiers qui lève une erreur ne bloque pas les copies ordinaires', () => {
+    const f = fakeClipboard({ formats: ['text/plain'] })
+    f.clipboard.has = () => {
+      throw new Error('occupé')
+    }
+    f.clipboard.availableFormats = () => {
+      throw new Error('occupé')
+    }
+    expect(isConcealedClipboard(f.clipboard, 'darwin')).toBe(false)
+    expect(isConcealedClipboard(f.clipboard, 'win32')).toBe(false)
+  })
+
+  it('le mot de passe effacé par le gestionnaire, la copie suivante repart normalement', async () => {
+    const f = fakeClipboard({ formats: ['text/plain'] })
+    let hidden = true
+    f.clipboard.has = (name) => hidden && name === 'org.nspasteboard.ConcealedType'
+    const { w, checkText } = watcher(f.clipboard)
+    await w.tick()
+    expect(checkText).not.toHaveBeenCalled()
+    hidden = false
+    await w.tick()
+    expect(checkText).toHaveBeenCalledTimes(1)
   })
 })

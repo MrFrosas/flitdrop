@@ -21,6 +21,11 @@ export interface Device {
   // que le téléphone l'a bien reçue). Évite tout blocage si la réponse hello
   // se perd sur un wifi capricieux.
   pendingKeyB64?: string
+  // ce téléphone voit le presse-papiers du PC (historique et envoi
+  // automatique). Le premier téléphone appairé l'a d'office ; un téléphone
+  // ajouté ensuite part sans, jusqu'à ce qu'on l'active sur le PC. Absent :
+  // appairage d'avant ce réglage (complété au chargement) ou pas encore actif.
+  clipShare?: boolean
 }
 
 export class DeviceStore {
@@ -34,6 +39,22 @@ export class DeviceStore {
       for (const d of list) if (d && d.id && d.keyB64) this.devices.set(d.id, d)
     } catch {
       // pas encore d'appareils
+    }
+    this.migrateClipShare()
+  }
+
+  /** Appairages d'avant le partage par téléphone : le premier téléphone
+   *  appairé garde ce qu'il voyait (le presse-papiers du PC), les suivants ne
+   *  le voient plus tant qu'on ne l'active pas pour eux. */
+  private migrateClipShare(): void {
+    const active = [...this.devices.values()].filter((d) => d.status === 'active')
+    if (!active.some((d) => typeof d.clipShare !== 'boolean')) return
+    const first = [...active].sort((a, b) => (Date.parse(a.createdAt) || 0) - (Date.parse(b.createdAt) || 0))[0]
+    for (const d of active) if (typeof d.clipShare !== 'boolean') d.clipShare = d.id === first?.id
+    try {
+      this.save()
+    } catch {
+      // dossier en lecture seule : la règle est réappliquée au prochain lancement
     }
   }
 
@@ -116,6 +137,10 @@ export class DeviceStore {
     if (!d) return false
     const wasPending = d.status === 'pending'
     if (wasPending && info.name) d.name = info.name.slice(0, 40)
+    // premier téléphone de ce PC : il voit le presse-papiers du PC, comme
+    // avant. Un téléphone de plus (celui d'un proche, par exemple) part sans.
+    if (wasPending || typeof d.clipShare !== 'boolean')
+      d.clipShare = ![...this.devices.values()].some((o) => o.id !== id && o.status === 'active')
     if (info.platform) d.platform = info.platform.slice(0, 24)
     d.status = 'active'
     d.lastSeenAt = new Date().toISOString()
@@ -136,6 +161,22 @@ export class DeviceStore {
     if (!d) return false
     d.name = name.slice(0, 40) || d.name
     this.save()
+    return true
+  }
+
+  /** Le presse-papiers du PC est-il partagé avec ce téléphone ? */
+  clipShared(id: string): boolean {
+    const d = this.devices.get(id)
+    return !!d && d.status === 'active' && d.clipShare === true
+  }
+
+  setClipShare(id: string, on: boolean): boolean {
+    const d = this.devices.get(id)
+    if (!d || d.status !== 'active') return false
+    if (d.clipShare !== on) {
+      d.clipShare = on
+      this.save()
+    }
     return true
   }
 
@@ -190,6 +231,7 @@ export class DeviceStore {
       createdAt: d.createdAt,
       lastSeenAt: d.lastSeenAt,
       shortcutToken: d.shortcutToken,
+      clipShare: d.clipShare === true,
     }))
   }
 }

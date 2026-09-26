@@ -442,3 +442,21 @@ html.paused .rpulse, html.paused .wring, html.paused .spin { animation-play-stat
   .feed { display: none; }
   .send-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- envoi : choix du téléphone (plusieurs téléphones appairés) ---------- */
+.send-to { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 14px; }
+.send-to-label { font-weight: 600; font-size: 13px; color: var(--text); }
+.send-to-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.send-to .cardhint { flex-basis: 100%; }
+.chip {
+  border: 1px solid var(--stroke-2); background: var(--control); color: var(--text);
+  border-radius: 999px; padding: 5px 12px; font: 600 12.5px var(--font-text); cursor: pointer;
+  max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.chip:hover { background: var(--control-hover); }
+.chip.on { background: var(--accent); border-color: var(--accent); color: light-dark(#fff, #003a63); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* fenêtre Appareil : interrupteur du presse-papiers et son explication */
+label.check.dev-share { padding-top: 6px; align-items: flex-start; }
+label.check.dev-share input { margin-top: 3px; }
+html[data-platform='mac'] .chip.on { color: #fff; }

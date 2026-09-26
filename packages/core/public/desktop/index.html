@@ -105,6 +105,12 @@
 
     <!-- ENVOYER -->
     <section class="view hidden" id="view-send">
+      <!-- plusieurs téléphones : on choisit qui reçoit (caché avec un seul) -->
+      <div class="send-to hidden" id="sendTo">
+        <span class="send-to-label" data-i18n="send.to">Envoyer à</span>
+        <div class="send-to-chips" id="sendToChips" role="radiogroup"></div>
+        <small class="cardhint" data-i18n="send.toHint">Seul le téléphone choisi voit ce que tu envoies depuis ce PC.</small>
+      </div>
       <div class="send-grid">
         <div class="card dropzone" id="dropzone">
           <svg viewBox="0 0 24 24" width="30" height="30"><path d="M12 16V5m-5 4 5-5 5 5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -349,6 +355,11 @@
         <input id="devRenameInput" maxlength="40">
         <button class="btn primary" id="btnDevRename" data-i18n="device.rename">Renommer</button>
       </div>
+      <label class="check dev-share">
+        <input type="checkbox" id="devClipShare">
+        <span data-i18n="device.clipShare">Partager le presse-papiers du PC avec ce téléphone</span>
+      </label>
+      <small class="cardhint" data-i18n="device.clipShareHint">Ce téléphone voit alors ce que tu copies sur le PC : l’historique du presse-papiers et, s’il est activé, l’envoi automatique. Laisse-le coupé pour un téléphone qui n’est pas le tien.</small>
       <button class="btn" id="btnDevShortcut" data-i18n="device.shortcut">Configurer le raccourci iPhone</button>
       <button class="btn danger" id="btnDevRevoke" data-i18n="device.revoke">Retirer cet appareil</button>
       <button class="btn ghost" id="btnDevClose" data-i18n="common.close">Fermer</button>
