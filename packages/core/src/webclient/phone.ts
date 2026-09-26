@@ -410,6 +410,9 @@ async function connect() {
   } catch (e) {
     const err = e as ApiFail
     const kind = connectError({ status: err.status, code: err.code, fresh: freshPairing, standalone: isStandalone() })
+    // PC injoignable : peut-être aucun wifi en commun ; le partage de connexion
+    // du téléphone en tient lieu (fichiers directs, jamais par Internet)
+    $('errNoWifi').classList.toggle('hidden', kind !== 'notFound')
     // « Oublier ce PC » n'a pas de sens sur un code expiré : il effacerait
     // l'appairage d'avant, tout juste remis
     $('btnForget').classList.toggle('hidden', kind === 'expired')
