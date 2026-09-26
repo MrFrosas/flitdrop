@@ -1,6 +1,7 @@
 import express from 'express'
 import type { Request, Response, NextFunction } from 'express'
 import { spawn } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import http from 'node:http'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -34,6 +35,7 @@ import { TransferActivity } from './activity.js'
 import { HOST_ACTIONS, type HostAction, type HostPatch, type HostState } from './host.js'
 import { repairProfiles, type FirewallStatus, type RepairResult } from './firewall.js'
 import { saveMultipartFiles } from './uploads.js'
+import { pcLink, type PcLink } from './wifi.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
 import { answerRating, countTransfer, ratingDue } from './rating.js'
 import { t as tr, resolveLang, langFrom, acceptLang } from './i18n.js'
@@ -158,6 +160,20 @@ const CSP = [
 // des aperçus de liens dans l'historique du presse-papiers.
 const CSP_ADMIN = CSP.replace("img-src 'self' data: blob:", "img-src 'self' data: blob: https:")
 
+// Le Worker de chiffrement du téléphone (cw.js) compile son module
+// WebAssembly : lui seul reçoit 'wasm-unsafe-eval' (compiler du WebAssembly,
+// jamais évaluer du JavaScript). La page elle-même garde la règle stricte.
+export const PHONE_CRYPTO_WORKER = '/s/cw.js'
+const CSP_WORKER = CSP.replace("script-src 'self'", "script-src 'self' 'wasm-unsafe-eval'")
+
+// Fonctions de cette version que la page du téléphone peut utiliser (annoncées
+// au hello) : une page plus ancienne les ignore, une page plus récente ne les
+// propose pas à un PC qui ne les annonce pas.
+const PHONE_FEATURES = ['speedtest']
+// test de vitesse : octets aléatoires, bornés
+const SPEEDTEST_DOWN_MAX = 64 * 1024 * 1024
+const SPEEDTEST_UP_MAX = 8 * 1024 * 1024
+
 export interface StartOptions {
   port?: number
   home?: string
@@ -176,6 +192,9 @@ export interface StartOptions {
   // l'app de bureau fait tourner UNE seule surveillance (texte et images) et
   // appelle pollClipboard() elle-même : le coeur ne lance pas sa minuterie.
   manualClipboardPoll?: boolean
+  // lecture du lien réseau du PC pour le test de vitesse (tests : sans lancer
+  // system_profiler ni netsh)
+  pcLink?: (localAddress: string | undefined) => Promise<PcLink>
   // prévenu après chaque enregistrement des réglages (l'app de bureau réveille
   // sa surveillance du presse-papiers quand une fonction est rallumée)
   onSettingsChanged?: () => void
@@ -575,7 +594,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     // La page du PC (loopback + jeton) affiche des miniatures d'aperçu de liens
     // (YouTube, images) dans l'historique du presse-papiers : on autorise donc
     // les images https, mais seulement là. La page téléphone reste stricte.
-    res.setHeader('Content-Security-Policy', req.path.startsWith('/app') ? CSP_ADMIN : CSP)
+    res.setHeader(
+      'Content-Security-Policy',
+      req.path.startsWith('/app') ? CSP_ADMIN : req.path === PHONE_CRYPTO_WORKER ? CSP_WORKER : CSP
+    )
     next()
   })
 
@@ -853,6 +875,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
             ...localIPv4s().map((ip) => `${ip}:${actualPort}`),
             `${os.hostname().split('.')[0]}.local:${actualPort}`,
           ],
+          features: PHONE_FEATURES,
         },
         aad(dev.id, 'hello:res')
       ),
@@ -888,7 +911,24 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       // paquet reçu prolonge l'activité, pas seulement le morceau complet.
       // Seulement une fois un premier morceau accepté (déchiffré) : un corps
       // forgé avec l'identifiant vu passer en clair ne réveille pas le PC.
-      watchBody(req, () => activity.keep(`up:${t.id}`))
+      // Les octets en route font aussi avancer la barre et la vitesse du PC
+      // (sinon elles ne bougeaient qu'à chaque morceau de 8 Mo complet), avec
+      // la même règle : seulement depuis une adresse dont un morceau de ce
+      // transfert a déjà été déchiffré, et jamais pour un morceau déjà reçu.
+      // Un corps forgé par un autre appareil du wifi ne fait rien bouger.
+      const from = req.socket.remoteAddress ?? ''
+      const counts = !t.have.has(n) && !!t.trustedFrom?.has(from)
+      let inflight = 0
+      watchBody(req, (bytes) => {
+        activity.keep(`up:${t.id}`)
+        if (counts) inflight += transfers.noteInflight(t, bytes)
+      })
+      const release = () => {
+        if (inflight > 0) transfers.noteInflight(t, -inflight)
+        inflight = 0
+      }
+      ;(req as Request & { wdRelease?: () => void }).wdRelease = release
+      res.once('close', release)
       next()
     },
     express.raw({ type: () => true, limit: MAX_CHUNK_BODY }),
@@ -915,16 +955,25 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
           // clé suivante
         }
       }
+      const release = (req as Request & { wdRelease?: () => void }).wdRelease ?? (() => {})
       if (!plain) {
+        release()
         // le téléphone abandonnera : si le transfert expire ensuite, c'est la raison
         t.lastErrorKey = 'badChunk'
         t.lastErrorStatus = 403
         return res.status(403).json({ code: 'badChunk' })
       }
+      // morceau authentique : les octets en route depuis cette adresse
+      // comptent désormais dans la progression du PC
+      ;(t.trustedFrom ??= new Set()).add(req.socket.remoteAddress ?? '')
       try {
-        await transfers.writeChunk(t, n, plain)
+        // octets en route retirés au moment même où le morceau compte dans
+        // t.bytes : la barre du PC ne recule pas entre les deux
+        await transfers.writeChunk(t, n, plain, release)
+        release()
         res.json({ received: t.received })
       } catch (e) {
+        release()
         const err = e as ApiError
         t.lastErrorKey = err.key ?? 'internal'
         t.lastErrorStatus = err.code ?? 400
@@ -1124,11 +1173,19 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     // fichier ont chacun leur progression
     const actKey = `dl:${randomToken(6)}`
     let sentBytes = 0
+    let lastPush = 0
+    let completed = false
     try {
       for await (const chunk of stream) {
         if (aborted || res.writableEnded) break
         sentBytes += (chunk as Buffer).length
         activity.update(actKey, sentBytes, item.size ?? 0)
+        // progression et vitesse sur la page du PC, 2 fois par seconde au plus
+        const now = Date.now()
+        if (now - lastPush > 500) {
+          lastPush = now
+          hub.broadcast('outbox-progress', { itemId: item.id, bytes: sentBytes, size: item.size ?? 0, deviceName: dev.name })
+        }
         const sealed = seal(key, chunk as Buffer, aad(dev.id, 'dl', `${item.id}|${index}`))
         const len = Buffer.alloc(4)
         len.writeUInt32BE(sealed.length, 0)
@@ -1165,6 +1222,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         deviceName: dev.name,
         status: 'ok',
       })
+      completed = true
       hub.broadcast('outbox-downloaded', { itemId: item.id, name: item.name, deviceName: dev.name })
     } catch {
       // lecture du disque impossible en cours de route : compté ici, et le
@@ -1178,7 +1236,73 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       res.off('close', onClose)
       stream.destroy()
       activity.end(actKey)
+      // téléchargement interrompu (téléphone parti, page fermée, morceau
+      // refusé) : la page du PC retire sa ligne « Vers iPhone : 42 % »
+      if (!completed && lastPush > 0) hub.broadcast('outbox-progress', { itemId: item.id, ended: true })
     }
+  })
+
+  // ---------- test de vitesse (« Tester la vitesse » sur le téléphone) ----------
+  // Le réseau seul, sans disque ni fichier : des octets aléatoires (rien à
+  // cacher, donc envoyés tels quels) vers et depuis un téléphone appairé, dont
+  // chaque requête porte une enveloppe authentifiée. Tailles bornées.
+  let noise: Buffer | null = null
+  app.post('/api/phone/speedtest/down', jsonSmall, phoneAuth('speedtest-down'), (req, res) => {
+    const want = Math.floor(Number(wd(req).payload.bytes))
+    const total = Number.isFinite(want) ? Math.min(SPEEDTEST_DOWN_MAX, Math.max(1024 * 1024, want)) : 16 * 1024 * 1024
+    noise ??= randomBytes(1024 * 1024)
+    const block = noise
+    res.setHeader('Content-Type', 'application/octet-stream')
+    res.setHeader('Cache-Control', 'no-store')
+    res.setHeader('Content-Length', String(total))
+    let sent = 0
+    let closed = false
+    res.once('close', () => (closed = true))
+    const pump = () => {
+      while (!closed && sent < total) {
+        const n = Math.min(block.length, total - sent)
+        sent += n
+        if (!res.write(n === block.length ? block : block.subarray(0, n))) return void res.once('drain', pump)
+      }
+      if (!closed) res.end()
+    }
+    pump()
+  })
+
+  // envoi : l'enveloppe voyage dans l'en-tête x-wd-auth, vérifiée AVANT de
+  // lire le corps ; le corps est compté puis jeté
+  app.post('/api/phone/speedtest/up', (req, res) => {
+    const dev = devices.get(String(req.headers['x-wd-device'] ?? ''))
+    const envelope = String(req.headers['x-wd-auth'] ?? '')
+    if (!dev || !envelope) return res.status(403).json({ code: 'authRefused' })
+    let payload: Record<string, unknown> | undefined
+    for (const cand of devices.candidateKeys(dev.id)) {
+      try {
+        payload = openFreshJSON<Record<string, unknown>>(cand.key, envelope, aad(dev.id, 'speedtest-up'), nonces)
+        break
+      } catch {
+        // clé suivante
+      }
+    }
+    if (!payload) return res.status(403).json({ code: 'authRefused' })
+    const len = Number(req.headers['content-length'])
+    if (!Number.isInteger(len) || len <= 0 || len > SPEEDTEST_UP_MAX || payload.bytes !== len)
+      return res.status(400).json({ code: 'badRequest' })
+    let got = 0
+    req.on('data', (c: Buffer) => {
+      got += c.length
+      if (got > len) req.destroy()
+    })
+    req.on('end', () => res.json({ received: got }))
+  })
+
+  // comment le PC est relié (wifi 2,4/5/6 GHz, débit, signal, ou câble) : lu
+  // une fois, à la demande, pour les conseils du test de vitesse
+  app.post('/api/phone/speedtest/pc', jsonSmall, phoneAuth('speedtest-pc'), async (req, res) => {
+    const { dev, key } = wd(req)
+    const read = opts.pcLink ?? pcLink
+    const link = await read(req.socket.localAddress).catch((): PcLink => ({ via: 'unknown' }))
+    res.json({ p: sealJSON(key, { link }, aad(dev.id, 'speedtest-pc:res')) })
   })
 
   // Échecs que seul le téléphone voit (fichier trop gros refusé avant envoi,
@@ -1189,7 +1313,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // raté). Authentifié comme le reste de l'API téléphone ; le téléphone ne
   // contacte jamais internet lui-même. Valeurs strictement bornées, aucun
   // texte libre.
-  const REPORT_REASONS = new Set(['tooBig', 'network', 'incomplete', 'decrypt', 'refused', 'busy'])
+  // 'crypto' : le chiffrement du téléphone lui-même a échoué (pas les données)
+  const REPORT_REASONS = new Set(['tooBig', 'network', 'incomplete', 'decrypt', 'crypto', 'refused', 'busy'])
   const reportBudget = new Map<string, number[]>()
   app.post('/api/phone/report', jsonSmall, phoneAuth('report'), (req, res) => {
     const { dev, key, payload } = wd(req)
@@ -1853,6 +1978,17 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   const server = http.createServer(app)
   server.maxRequestsPerSocket = 0
+  // Connexions gardées ouvertes plus longtemps que les relances du téléphone
+  // (toutes les 5 à 6 s) : Safari ne renvoie pas de lui-même un POST parti sur
+  // une connexion que le PC venait juste de fermer (morceau de 8 Mo perdu).
+  server.keepAliveTimeout = 65_000
+  server.headersTimeout = 66_000
+  // Un morceau de 8 Mo sur un wifi très lent dépassait les 5 min par défaut
+  // de Node : refusé puis renvoyé depuis le début, sans fin (4 morceaux à la
+  // fois sous 110 Ko/s). La page envoie maintenant moins de morceaux à la fois
+  // quand le lien lâche, et le corps a 10 min, pour les anciennes pages aussi
+  // (les en-têtes restent bornés à 66 s ci-dessus).
+  server.requestTimeout = 10 * 60_000
   const wss = new WebSocketServer({ noServer: true })
   server.on('upgrade', (req, socket, head) => {
     let ok = false
@@ -1981,7 +2117,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       clearInterval(pendingTimer)
       await transfers.closeAll()
       wss.close()
-      await new Promise<void>((resolve) => server.close(() => resolve()))
+      const closed = new Promise<void>((resolve) => server.close(() => resolve()))
+      // connexions gardées ouvertes (65 s) mais inactives : fermées tout de suite
+      server.closeIdleConnections?.()
+      await closed
     },
   }
 }

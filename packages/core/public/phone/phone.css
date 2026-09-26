@@ -315,3 +315,10 @@ html[data-os='android'] .install-banner { backdrop-filter: none; -webkit-backdro
   50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--blue) 38%, transparent); }
 }
 @media (prefers-reduced-motion: reduce) { .bigsend.hint { animation: none; outline: 3px solid var(--blue); outline-offset: 3px; } }
+
+/* test de vitesse et conseil « mode Isolement » */
+.slow-hint { margin: 10px 4px 0; }
+.speed-result { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; font-size: 15px; line-height: 1.4; text-align: left; }
+.speed-result:empty { display: none; }
+.speed-result p { margin: 0; }
+.speed-result p.verdict { font-weight: 600; }

@@ -2,6 +2,7 @@ import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '..
 import { applyI18n } from '../i18n-dom.js'
 import { pairCodeState, fmtCountdown, firewallCheckDue, addVisibleMs, firewallStepKeys } from './onboarding.js'
 import { FIREWALL_CHECK_AFTER_MS } from '../constants.js'
+import { SpeedMeter, progressText } from './speed.js'
 
 // langue courante : détectée d'abord, puis alignée sur le réglage serveur.
 let lang: Lang = langFrom(navigator.language)
@@ -135,7 +136,13 @@ let pairFwAsked = false
 // destinataire choisi dans « Envoyer » (plusieurs téléphones) : 'all' ou un
 // identifiant. null : celui que propose le PC (le dernier utilisé).
 let sendChoice: string | null = null
-const progressCards = new Map<string, { li: HTMLLIElement; bar: HTMLSpanElement; sub: HTMLElement }>()
+const progressCards = new Map<string, { li: HTMLLIElement; bar: HTMLSpanElement; sub: HTMLElement; meter: SpeedMeter }>()
+// fichiers du PC en train de partir vers un téléphone : vitesse et temps
+// restant sous leur ligne dans « Envoyer »
+const outboxProgress = new Map<string, { meter: SpeedMeter; bytes: number; size: number; deviceName: string; at: number }>()
+// fin de secours de chaque ligne de progression (voir 'outbox-progress')
+const outboxProgressEnd = new Map<string, ReturnType<typeof setTimeout>>()
+const outboxSubs = new Map<string, HTMLElement>()
 
 // ---------- utilitaires ----------
 
@@ -354,10 +361,21 @@ function outboxTargetLabel(item: OutboxEntry): string | undefined {
   return names.length ? t('outbox.for', { name: names.join(', ') }) : t('outbox.forRemoved')
 }
 
+/** « Vers iPhone : 42 % · 31 Mo/s · encore 12 s » sous un fichier qui part. */
+function showOutboxProgress(itemId: string) {
+  const p = outboxProgress.get(itemId)
+  const sub = outboxSubs.get(itemId)
+  if (!p || !sub) return
+  // téléchargement interrompu : la ligne redevient normale au prochain affichage
+  if (Date.now() - p.at > 15_000) return void outboxProgress.delete(itemId)
+  sub.textContent = t('outbox.sendingTo', { name: p.deviceName, progress: progressText(lang, p.bytes, p.size, p.meter.rate()) })
+}
+
 function renderOutbox() {
   if (!state) return
   const list = $('outboxList')
   list.innerHTML = ''
+  outboxSubs.clear()
   $('outboxEmpty').classList.toggle('hidden', state.outbox.length > 0)
   for (const item of state.outbox) {
     const li = document.createElement('li')
@@ -377,6 +395,8 @@ function renderOutbox() {
       .filter(Boolean)
       .join(' · ')
     main.append(name, sub)
+    outboxSubs.set(item.id, sub)
+    showOutboxProgress(item.id)
     const del = document.createElement('button')
     del.className = 'hbtn x'
     del.textContent = '✕'
@@ -886,7 +906,7 @@ function feedTransferStart(d: { id: string; name: string; size: number; deviceNa
   const fill = document.createElement('span')
   bar.appendChild(fill)
   li.append(head, sub, bar)
-  progressCards.set(d.id, { li, bar: fill, sub })
+  progressCards.set(d.id, { li, bar: fill, sub, meter: new SpeedMeter() })
 }
 
 function feedTransferDone(d: { id: string; name: string; size: number; deviceName: string }) {
@@ -983,7 +1003,9 @@ function connectWS() {
           const { bytes, size } = data as { bytes: number; size: number }
           const pct = Math.min(100, Math.round((bytes / size) * 100))
           card.bar.style.width = pct + '%'
-          card.sub.textContent = `${pct} % · ${fmtSize(bytes)} / ${fmtSize(size)}`
+          // vitesse réelle des dernières secondes et temps restant
+          card.meter.add(bytes)
+          card.sub.textContent = progressText(lang, bytes, size, card.meter.rate())
         }
         break
       }
@@ -1016,7 +1038,42 @@ function connectWS() {
       case 'approval-expired':
         if (currentApprovalId === (data as { id?: string }).id) $('apprModal').classList.add('hidden')
         break
+      case 'outbox-progress': {
+        const d = data as { itemId: string; bytes: number; size: number; deviceName?: string; ended?: boolean }
+        clearTimeout(outboxProgressEnd.get(d.itemId))
+        outboxProgressEnd.delete(d.itemId)
+        if (d.ended) {
+          // téléchargement interrompu : la ligne redevient normale tout de suite
+          if (outboxProgress.delete(d.itemId)) renderOutbox()
+          break
+        }
+        // plus aucune nouvelle pendant 15 s (PC d'une version sans le signal de
+        // fin, connexion perdue) : la ligne redevient normale d'elle-même, un
+        // seul minuteur par fichier, aucun sondage
+        outboxProgressEnd.set(
+          d.itemId,
+          setTimeout(() => {
+            outboxProgressEnd.delete(d.itemId)
+            if (outboxProgress.delete(d.itemId)) renderOutbox()
+          }, 15_000)
+        )
+        let p = outboxProgress.get(d.itemId)
+        if (!p) {
+          p = { meter: new SpeedMeter(), bytes: 0, size: d.size, deviceName: d.deviceName ?? '', at: 0 }
+          outboxProgress.set(d.itemId, p)
+        }
+        p.bytes = d.bytes
+        p.size = d.size
+        p.at = Date.now()
+        p.meter.add(d.bytes)
+        showOutboxProgress(d.itemId)
+        break
+      }
       case 'outbox-downloaded': {
+        const doneId = (data as { itemId?: string }).itemId ?? ''
+        outboxProgress.delete(doneId)
+        clearTimeout(outboxProgressEnd.get(doneId))
+        outboxProgressEnd.delete(doneId)
         const d = data as { name?: string; deviceName?: string }
         toast(t('toast.pickedUp'), d.name ? `${d.name} · ${d.deviceName}` : d.deviceName)
         void refresh()

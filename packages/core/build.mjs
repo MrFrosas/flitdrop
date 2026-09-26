@@ -10,6 +10,8 @@ const versionDefine = { __FLITDROP_VERSION__: JSON.stringify(pkg.version) }
 
 const webTargets = [
   { entry: 'src/webclient/phone.ts', out: 'public/phone/app.js' },
+  // Web Worker de chiffrement du téléphone (WebAssembly), servi en /s/cw.js
+  { entry: 'src/webclient/cryptoworker.ts', out: 'public/phone/cw.js' },
   { entry: 'src/webclient/desktop.ts', out: 'public/desktop/app.js' },
 ]
 

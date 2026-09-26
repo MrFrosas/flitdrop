@@ -476,6 +476,7 @@ html[data-platform='mac'] .chip.on { color: #fff; }
    tant que la fenêtre d'appairage est ouverte et visible */
 .pair-renew { min-height: 1.4em; text-align: center; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
 .pair-renew.fresh { color: var(--ok); font-weight: 600; }
+#pairNoWifi { text-align: center; font-size: 12.5px; }
 
 /* ---------- pare-feu de Windows : carte en aplats unis, jamais une fenêtre ---------- */
 .fw-card { border-color: color-mix(in srgb, var(--danger) 45%, var(--stroke)); }

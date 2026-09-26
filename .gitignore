@@ -6,6 +6,7 @@ release/
 
 # bundles web générés (esbuild)
 packages/core/public/phone/app.js
+packages/core/public/phone/cw.js
 packages/core/public/desktop/app.js
 
 # artefacts de packaging Electron générés (gen-icon.mjs / prepare.mjs)

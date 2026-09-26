@@ -41,6 +41,7 @@
     <p class="lead" id="errMsg" data-i18n="ph.err.notFoundMsg">Vérifie que Flitdrop est ouvert sur le PC et que ton téléphone est sur le même wifi.</p>
     <button class="btn primary" id="btnRetry" data-i18n="ph.err.retry">Réessayer</button>
     <div id="altHosts" class="alt-hosts hidden"></div>
+    <p class="hint hidden" id="errNoWifi" data-i18n="ph.err.noWifi">Pas de wifi en commun ? Active le partage de connexion de ce téléphone, connecte le PC dessus, puis rescanne le QR code du PC. Les fichiers vont directement du téléphone au PC, sans passer par Internet.</p>
     <button class="btn ghost" id="btnForget" data-i18n="ph.err.forget">Oublier ce PC</button>
   </main>
 
@@ -78,6 +79,7 @@
         <small data-i18n="ph.send.hint">Photos, vidéos, documents. Ils arrivent dans le dossier Flitdrop du PC.</small>
       </button>
       <div id="sendSummary" class="send-summary hidden"></div>
+      <p class="hint slow-hint hidden" id="slowHint"></p>
       <ul id="sendQueue" class="queue"></ul>
     </section>
 
@@ -153,9 +155,20 @@
           <option value="de" data-i18n="set.langDe">Deutsch</option>
         </select>
       </label>
+      <button class="btn wide hidden" id="btnSpeed" data-i18n="ph.menu.speed">Tester la vitesse</button>
       <button class="btn wide" id="btnInstall" data-i18n="ph.menu.install">Ajouter à l’écran d’accueil</button>
       <button class="btn danger wide" id="btnForget2" data-i18n="ph.menu.forget">Oublier ce PC</button>
       <button class="btn ghost wide" id="menuClose" data-i18n="ph.menu.close">Fermer</button>
+    </div>
+  </div>
+
+  <div id="speedSheet" class="modal hidden">
+    <div class="modal-card">
+      <h2 data-i18n="st.title">Test de vitesse</h2>
+      <p class="hint" id="speedIntro"></p>
+      <div id="speedResult" class="speed-result" aria-live="polite"></div>
+      <button class="btn primary wide" id="btnSpeedStart" data-i18n="st.start">Lancer le test</button>
+      <button class="btn ghost wide" id="speedClose" data-i18n="common.close">Fermer</button>
     </div>
   </div>
 
