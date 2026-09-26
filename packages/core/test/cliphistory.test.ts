@@ -149,7 +149,10 @@ describe('ClipHistory : images en double', () => {
     expect(h.size()).toBe(1)
     // l'empreinte ne sort jamais (ni vers la page, ni vers le téléphone)
     expect(JSON.stringify(h.list())).not.toContain('raw:a')
-    await pause(600)
+    // écriture différée (400 ms puis écriture asynchrone, plus lente sur Windows) :
+    // on attend que le fichier contienne l'empreinte plutôt qu'un délai fixe
+    const file = path.join(home, 'cliphistory.json')
+    for (let i = 0; i < 100 && !(fs.existsSync(file) && fs.readFileSync(file, 'utf8').includes('raw:a')); i++) await pause(100)
     // redémarrage : l'image encore copiée revient avec la même empreinte
     const h2 = new ClipHistory(home)
     const v = h2.version

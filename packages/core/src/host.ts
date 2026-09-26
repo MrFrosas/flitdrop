@@ -341,9 +341,10 @@ export class MacUpdateWatch {
 
 /** ~/.config/autostart/flitdrop.desktop (ou $XDG_CONFIG_HOME/autostart). */
 export function linuxAutostartFile(env: NodeJS.ProcessEnv, homeDir: string): string {
+  // chemins POSIX : ce fichier n'existe que sous Linux (et les tests tournent aussi sous Windows)
   const xdg = env.XDG_CONFIG_HOME
-  const base = xdg && path.isAbsolute(xdg) ? xdg : path.join(homeDir, '.config')
-  return path.join(base, 'autostart', 'flitdrop.desktop')
+  const base = xdg && path.posix.isAbsolute(xdg) ? xdg : path.posix.join(homeDir, '.config')
+  return path.posix.join(base, 'autostart', 'flitdrop.desktop')
 }
 
 /** Programme à lancer : l'AppImage quand l'app tourne depuis une AppImage
