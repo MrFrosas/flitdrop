@@ -415,7 +415,7 @@ html.anim .reveal.in { opacity: 1; transform: none; transition: opacity 0.7s var
 .dl-more a { color: var(--cyan); font-weight: 500; }
 .dl-more a:hover { text-decoration: underline; }
 .dl-more[hidden] { display: none; }
-.dl-cmd { font: 500 13px/1.4 ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink); background: var(--panel-2); border: 1px solid var(--stroke-2); border-radius: 8px; padding: 3px 9px; cursor: copy; user-select: all; -webkit-user-select: all; }
+.dl-cmd { font: 500 13px/1.4 ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace; color: var(--ink); background: var(--panel-2); border: 1px solid var(--stroke-2); border-radius: 8px; padding: 3px 9px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; cursor: copy; user-select: all; -webkit-user-select: all; }
 .dl-cmd:hover { border-color: var(--blue); }
 .dl-cmd:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .dl-cmd code { font: inherit; }
@@ -658,6 +658,7 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
   .hero-cta .btn { width: 100%; }
   .content-grid { grid-template-columns: 1fr; }
   .dl-card { flex-direction: column; align-items: flex-start; }
+  .dl-cmd { font-size: 12px; padding: 3px 8px; }
   .footer { grid-template-columns: 1fr; }
   .persona-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .persona { padding: 20px 16px; border-radius: 15px; }
