@@ -15,7 +15,7 @@ jobs:
   winget:
     runs-on: windows-2025
     env:
-      MANIFEST: packaging/winget/manifests/c/CCsGlobal/Flitdrop/0.6.3
+      MANIFEST: packaging/winget/manifests/c/CCsGlobal/Flitdrop/0.6.7
       GUID: 13d66c6d-ea8b-5233-a385-4233ab80b29d
       GH_TOKEN: ${{ github.token }}
     steps:
