@@ -47,7 +47,7 @@
 ## Download
 
 - All platforms: https://github.com/MrFrosas/flitdrop/releases/latest
-- Windows 10 and 11: run the signed .exe installer from the releases page, or install from the Microsoft Store: https://apps.microsoft.com/detail/XPDCK4DDN3LK69 (also with winget: winget install XPDCK4DDN3LK69 --source msstore). The app updates itself on Windows. SmartScreen may still show a notice for a new app: click More info, then Run anyway.
+- Windows 10 and 11: run the signed .exe installer from the releases page, or install from the Microsoft Store: https://apps.microsoft.com/detail/XPDCK4DDN3LK69 (or from the command line: winget install CCsGlobal.Flitdrop). The app updates itself on Windows. SmartScreen may still show a notice for a new app: click More info, then Run anyway.
 - macOS: download the .dmg for Apple Silicon (arm64) or Intel (x64) and drag Flitdrop to Applications. The app is not notarized by Apple yet, so the first time, open it once, then go to System Settings > Privacy & Security and click Open Anyway (on macOS 14 or older, right-click > Open also works). It does not update itself on Mac yet: get the new version from the site.
 - Linux x64: the .deb for Ubuntu, Debian and Mint (recommended there), or the AppImage for any distribution (the AppImage updates itself, and on Ubuntu 22.04 and later it may need the libfuse2 package, named libfuse2t64 on 24.04 and later; the .deb does not update itself). Clipboard sync needs wl-clipboard (Wayland) or xclip (X11); the .deb pulls them in automatically.
 

@@ -537,4 +537,26 @@
       phCapture('store_click', { placement: place, cid: CID[place] });
     }
   }, true);
+
+  // Commande winget copiée d'un clic ; si le presse-papiers refuse, elle est
+  // sélectionnée pour un Ctrl+C. Compte comme un téléchargement Windows.
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest && e.target.closest('[data-copy]');
+    if (!b) return;
+    function done() {
+      b.classList.add('copied');
+      clearTimeout(b._fdCopied);
+      b._fdCopied = setTimeout(function () { b.classList.remove('copied'); }, 2000);
+    }
+    function select() {
+      try { var r = document.createRange(); r.selectNodeContents(b); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch (_) {}
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(b.getAttribute('data-copy')).then(done, select);
+      else select();
+    } catch (_) { select(); }
+    var props = { os: 'windows', placement: placement(b), download_type: 'winget' };
+    phCapture('download_click', props);
+    try { if (gaLoaded && state === 'granted') window.gtag('event', 'download_click', props); } catch (_) {}
+  });
 })();
