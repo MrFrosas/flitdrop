@@ -1,5 +1,11 @@
 // Retouches après empaquetage, par plateforme.
 //
+// Toutes plateformes, en premier : fusibles d'Electron (voir build/fuses.cjs).
+// Ils modifient le binaire, donc ils passent AVANT la signature ad hoc de macOS
+// ci-dessous et avant la signature Windows (faite par electron-builder après
+// afterPack). L'empreinte de app.asar est déjà écrite à ce stade (Info.plist,
+// ressource de l'exe) et rien ici ne touche à app.asar.
+//
 // macOS : signature ad-hoc de l'app. Sans aucune signature, macOS sur Apple
 // Silicon refuse d'ouvrir l'app téléchargée avec « Flitdrop est endommagé et ne
 // peut pas être ouvert ». Une signature ad-hoc (codesign -s -) suffit à la rendre
@@ -21,6 +27,7 @@
 const { execFileSync } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
+const { flipAndVerifyFuses } = require('./fuses.cjs')
 
 function linuxLauncher(context) {
   const exe = context.packager.executableName
@@ -43,6 +50,8 @@ function linuxLauncher(context) {
 }
 
 exports.default = async function afterPack(context) {
+  // Linux : sur l'exécutable d'Electron, avant que le lanceur le renomme
+  await flipAndVerifyFuses(context)
   if (context.electronPlatformName === 'linux') {
     linuxLauncher(context)
     return
@@ -50,15 +59,19 @@ exports.default = async function afterPack(context) {
   if (context.electronPlatformName !== 'darwin') return
   const appName = context.packager.appInfo.productFilename
   const appPath = path.join(context.appOutDir, `${appName}.app`)
+  // Les fusibles ont changé « Electron Framework » : sans nouvelle signature,
+  // macOS refuse de lancer l'app sur Apple Silicon. Un échec arrête donc le
+  // build au lieu de produire une app morte.
   try {
     execFileSync('codesign', ['--force', '--deep', '--sign', '-', '--timestamp=none', appPath], {
       stdio: 'inherit',
     })
-    console.log(`  • signature ad-hoc appliquée à ${appName}.app`)
-    console.log(
-      '  • 1er lancement (app non notariée) : ouvrir l’app une fois, puis Réglages Système > Confidentialité et sécurité > Ouvrir quand même'
-    )
+    execFileSync('codesign', ['--verify', '--deep', '--strict', appPath], { stdio: 'inherit' })
   } catch (e) {
-    console.warn('  ⚠ signature ad-hoc échouée :', e.message)
+    throw new Error(`signature ad-hoc de ${appName}.app échouée : ${e.message}`)
   }
+  console.log(`  • signature ad-hoc appliquée à ${appName}.app et vérifiée`)
+  console.log(
+    '  • 1er lancement (app non notariée) : ouvrir l’app une fois, puis Réglages Système > Confidentialité et sécurité > Ouvrir quand même'
+  )
 }

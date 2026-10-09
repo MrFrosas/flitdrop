@@ -15,6 +15,7 @@
     "dist:mac": "npm --prefix ../../packages/core run build && npm run prepare:app && electron-builder --mac dir --arm64 --x64 --publish never && node make-dmg.mjs arm64 && node make-dmg.mjs x64"
   },
   "devDependencies": {
+    "@electron/fuses": "2.1.3",
     "electron": "33.2.1",
     "electron-builder": "25.1.8",
     "electron-updater": "^6.8.9"

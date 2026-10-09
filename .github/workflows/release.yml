@@ -72,6 +72,53 @@ jobs:
           Get-ItemProperty $arp | Select-Object DisplayName, DisplayVersion, Publisher | Format-List
           Get-Process Flitdrop -ErrorAction SilentlyContinue | Stop-Process -Force
 
+      # Fusibles d'Electron (voir apps/desktop/build/fuses.cjs) relus dans l'exe
+      # INSTALLE, puis lancement reel : l'app doit demarrer et son serveur local
+      # repondre (sans l'empreinte de app.asar dans l'exe, l'app s'arreterait
+      # net). Enfin une copie du dossier installe doit demarrer elle aussi, puis
+      # refuser de demarrer une fois app.asar change d'un octet (un commentaire
+      # de main.cjs, sans effet sur le code).
+      - name: Tester le lancement, les fusibles et l'integrite
+        shell: pwsh
+        run: |
+          $loc = (Get-ItemProperty 'HKCU:\Software\13d66c6d-ea8b-5233-a385-4233ab80b29d').InstallLocation
+          $app = Join-Path $loc 'Flitdrop.exe'
+          node apps/desktop/build/fuses.cjs verifier $app win32
+          if ($LASTEXITCODE -ne 0) { throw "fusibles inattendus dans l'exe installe" }
+          $env:FLITDROP_NO_TELEMETRY = '1'
+          $env:ELECTRON_ENABLE_LOGGING = '1'
+          function Test-Launch([string]$exe, [string]$dataDir) {
+            Get-Process Flitdrop -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep -Seconds 2
+            $env:FLITDROP_HOME = $dataDir
+            $log = "$dataDir.log"
+            $p = Start-Process -FilePath $exe -ArgumentList '--hidden' -PassThru -RedirectStandardOutput "$log.out" -RedirectStandardError $log
+            $ok = $false
+            for ($i = 1; $i -le 60; $i++) {
+              try {
+                Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 'http://127.0.0.1:47777/s/' | Out-Null
+                $ok = $true
+                Write-Host "serveur local pret en ${i}s"
+                break
+              } catch {}
+              if ($p.HasExited) { Write-Host "l'app s'est arretee (code $($p.ExitCode))"; break }
+              Start-Sleep -Seconds 1
+            }
+            Get-Process Flitdrop -ErrorAction SilentlyContinue | Stop-Process -Force
+            Start-Sleep -Seconds 2
+            if (Test-Path $log) { Get-Content $log -Tail 15 | ForEach-Object { Write-Host "  $_" } }
+            return $ok
+          }
+          if (-not (Test-Launch $app (Join-Path $env:RUNNER_TEMP 'fd-win'))) { throw "ECHEC : l'app installee ne demarre pas (serveur local muet)" }
+          $copy = Join-Path $env:RUNNER_TEMP 'fd-copie'
+          Copy-Item -Recurse $loc $copy
+          $copyExe = Join-Path $copy 'Flitdrop.exe'
+          if (-not (Test-Launch $copyExe (Join-Path $env:RUNNER_TEMP 'fd-copie-home'))) { throw "ECHEC : la copie intacte ne demarre pas (le test d'integrite ne prouverait rien)" }
+          node apps/desktop/build/fuses.cjs alterer-asar (Join-Path $copy 'resources\app.asar') main.cjs
+          if ($LASTEXITCODE -ne 0) { throw "modification de app.asar impossible" }
+          if (Test-Launch $copyExe (Join-Path $env:RUNNER_TEMP 'fd-altere-home')) { throw "ECHEC : une app.asar modifiee demarre quand meme (integrite inactive)" }
+          Write-Host "app.asar modifiee : l'app refuse de demarrer, comme prevu"
+
       - uses: actions/upload-artifact@v4
         with:
           name: flitdrop-windows
@@ -115,6 +162,11 @@ jobs:
       - name: Empaqueter AppImage + .deb
         run: npm run dist:linux:ci -w @flitdrop/desktop
 
+      # fusibles d'Electron relus dans le binaire reel (le lanceur le renomme
+      # flitdrop-bin, voir apps/desktop/build/afterPack.cjs)
+      - name: Verifier les fusibles
+        run: node apps/desktop/build/fuses.cjs verifier apps/desktop/release/linux-unpacked/flitdrop-bin linux
+
       # Lancement comme un utilisateur d'Ubuntu 24.04 de bureau : double-clic sur
       # l'AppImage, sans argument, avec la restriction des espaces de noms
       # utilisateur ACTIVE (reglage par defaut d'Ubuntu 24.04). L'app doit
@@ -149,6 +201,7 @@ jobs:
           DEB_FILE=$(ls Flitdrop-*.deb | head -1)
           sudo apt-get install -y -q "./$DEB_FILE"
           test -x /opt/Flitdrop/flitdrop-bin
+          node "$GITHUB_WORKSPACE/apps/desktop/build/fuses.cjs" verifier /opt/Flitdrop/flitdrop-bin linux
           stat -c '%A %U' /opt/Flitdrop/chrome-sandbox
           # doit etre setuid root (-rwsr-xr-x) : voir build/linux/after-install.tpl
           [ "$(stat -c '%a %U' /opt/Flitdrop/chrome-sandbox)" = "4755 root" ]
