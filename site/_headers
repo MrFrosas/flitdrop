@@ -21,11 +21,13 @@
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms https://*.clarity.ms https://static.cloudflareinsights.com; connect-src 'self' https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://www.clarity.ms https://*.clarity.ms https://c.bing.com https://cloudflareinsights.com https://api.github.com; img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://www.clarity.ms https://*.clarity.ms https://c.bing.com; worker-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; font-src 'self'; base-uri 'self'; frame-ancestors 'none'
 
-# Page Flitdrop Pro (/pro, /fr/pro, /de/pro) : Paddle.js v2. Hôtes relevés dans
-# paddle.js lui-même (Paddle ne publie pas de liste CSP) : script sur cdn.paddle.com,
-# feuilles de style et images sur cdn / sandbox-cdn, fenêtre de paiement (iframe) sur
-# buy / sandbox-buy, prix localisé via api / sandbox-api ; checkout-service et
-# sandbox-checkout-service sont appelés depuis l'iframe, *.paddle.com les couvre aussi.
+# Page Flitdrop Pro (/pro, /fr/pro, /de/pro) : Paddle.js v2, chargé seulement au clic
+# sur « Débloquer » (le prix affiché vient de /api/license/config, même domaine).
+# Hôtes relevés dans paddle.js lui-même (Paddle ne publie pas de liste CSP) : script
+# sur cdn.paddle.com, feuilles de style et images sur cdn / sandbox-cdn, fenêtre de
+# paiement (iframe) sur buy / sandbox-buy, appels api / sandbox-api ; checkout-service
+# et sandbox-checkout-service sont appelés depuis l'iframe, *.paddle.com les couvre.
+# La rétractation de /refund (POST /api/withdraw) est sur le même domaine : 'self'.
 # La politique générale est retirée (« ! ») puis remplacée : sinon les deux se
 # cumuleraient et la plus stricte signalerait Paddle. Ces blocs restent APRÈS /*.
 /pro

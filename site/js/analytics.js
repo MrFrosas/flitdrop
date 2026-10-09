@@ -23,7 +23,13 @@
      est permise (Consent Mode v2 : publicité toujours refusée).
    Historique : GA4 avait été retiré le 23/09/2026 (sans bannière, le Consent Mode
    « refusé par défaut » faisait exclure les visites des rapports) ; il revient
-   le même jour avec cette bannière. */
+   le même jour avec cette bannière.
+
+   Adresses envoyées : jamais de paramètre de requête, sauf les utm_* des
+   campagnes (cleanUrl). PostHog et GA4 reçoivent l'adresse nettoyée ; Clarity ne
+   permet pas de la remplacer : la page /pro retire ses paramètres de la barre
+   d'adresse avant le chargement de ce script (js/pro.js, chargé avant), et Clarity
+   ne démarre jamais tant qu'un ?claim= y figure encore. */
 (function () {
   'use strict';
 
@@ -44,6 +50,41 @@
   // Chargeur officiel PostHog (file d'attente) : window.posthog existe tout de
   // suite pour app.js ; la vraie bibliothèque arrive par /ph/static/array.js.
   !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister unregister_for_session getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty createPersonProfile opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing debug getPageViewId".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+
+  /* ---------- adresses envoyées ---------- */
+
+  // Sans paramètre de requête (le ?claim= de la page /pro, des identifiants de
+  // clic...), sauf les utm_* des campagnes. Le #fragment reste.
+  function cleanUrl(u) {
+    if (typeof u !== 'string' || u.indexOf('?') === -1) return u;
+    try {
+      var url = new URL(u);
+      var keep = [];
+      url.searchParams.forEach(function (v, k) { if (/^utm_[a-z_]{1,40}$/i.test(k)) keep.push([k, v]); });
+      url.search = '';
+      keep.forEach(function (kv) { url.searchParams.append(kv[0], kv[1]); });
+      return url.toString();
+    } catch (_) { return u.split('?')[0]; }
+  }
+  // Propriétés PostHog qui portent une adresse ($current_url, $referrer,
+  // $initial_current_url, $session_entry_url...), aussi dans $set et $set_once.
+  var URL_PROP = /(url|referrer|href)$/i;
+  function scrubProps(o) {
+    if (!o || typeof o !== 'object') return;
+    for (var k in o) {
+      if (!Object.prototype.hasOwnProperty.call(o, k)) continue;
+      if (typeof o[k] === 'string' && URL_PROP.test(k) && /^https?:\/\//i.test(o[k])) o[k] = cleanUrl(o[k]);
+    }
+  }
+  function phScrub(ev) {
+    var p = ev.properties;
+    scrubProps(p);
+    if (p) { scrubProps(p.$set); scrubProps(p.$set_once); }
+    scrubProps(ev.$set);
+    scrubProps(ev.$set_once);
+    return ev;
+  }
+  window.fdCleanUrl = cleanUrl;
 
   /* ---------- consentement ---------- */
 
@@ -184,7 +225,7 @@
       capture_pageleave: true,
       enable_heatmaps: true,
       session_recording: { maskAllInputs: true },
-      before_send: phFilter,
+      before_send: function (ev) { ev = phFilter(ev); return ev ? phScrub(ev) : ev; },
       // Aligne l'accord mémorisé par PostHog sur le nôtre (source de vérité) :
       // la page vue initiale part ensuite une seule fois, dans le bon mode.
       loaded: function (p) {
@@ -234,8 +275,14 @@
     var c = readChoice();
     if (accepted || (isFresh(c) && c.analytics)) gtag('consent', 'update', { analytics_storage: 'granted' });
     gtag('js', new Date());
+    // adresse et provenance sans paramètre de requête (voir cleanUrl), pour tous les événements
+    var page = { page_location: cleanUrl(location.href) };
+    if (document.referrer) page.page_referrer = cleanUrl(document.referrer);
+    gtag('set', page);
     // cookies _ga limités à 13 mois (395 jours), sans prolongation à chaque visite
-    gtag('config', GA_ID, { cookie_expires: 34128000, cookie_update: false });
+    var gaConfig = { cookie_expires: 34128000, cookie_update: false };
+    for (var key in page) gaConfig[key] = page[key];
+    gtag('config', GA_ID, gaConfig);
     addScript('https://www.googletagmanager.com/gtag/js?id=' + GA_ID);
   }
   function stopGA() {
@@ -248,6 +295,8 @@
 
   var clarityLoaded = false;
   function loadClarity() {
+    // filet : Clarity lit l'adresse lui-même ; jamais tant qu'un ?claim= y est encore
+    if (/[?&]claim=/i.test(location.search || '')) return;
     if (!clarityLoaded) {
       clarityLoaded = true;
       window.clarity = window.clarity || function () { (window.clarity.q = window.clarity.q || []).push(arguments); };

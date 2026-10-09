@@ -660,6 +660,16 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
 .doc a.btn-ghost { color: var(--ink); background: #fff; border-color: var(--stroke-2); }
 .doc .pro-actions { margin: 14px 0 12px; }
 .doc h3 { font-size: 17px; font-weight: 650; margin: 22px 0 8px; }
+/* rétractation (/refund#withdraw) : formulaire en place dans la carte, jamais de fenêtre */
+.withdraw-form { display: flex; flex-direction: column; gap: 14px; margin: 4px 0 16px; scroll-margin-top: 90px; }
+.withdraw-form[hidden], .withdraw-done[hidden], .doc .pro-actions [hidden] { display: none; }
+.withdraw-form .btn { align-self: flex-start; }
+.withdraw-form .btn[disabled] { opacity: 0.6; cursor: default; }
+.withdraw-done { margin: 4px 0 16px; }
+.doc .withdraw-done p { color: var(--ink); }
+.doc-alt { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 15px; }
+.doc-alt a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 2px; }
+@media (max-width: 760px) { .withdraw-form .cf-field input { font-size: 16px; } }
 @media (max-width: 760px) { .pro-plans { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .pro-top { padding-top: 104px; } .pro-plan { padding: 24px 20px 6px; } }
 

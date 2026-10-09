@@ -876,6 +876,7 @@ test('fichiers : aucun tiret long, et rien dans functions/_lib n’est routé pa
     join(ROOT, 'docs/licence-schema.sql'),
     join(ROOT, 'site/js/pro.js'),
     join(ROOT, 'site/js/analytics.js'),
+    join(ROOT, 'site/js/withdraw.js'),
     join(ROOT, 'site/refund.html'),
   ]
   for (const f of files) assert.ok(!/[\u2013\u2014]/.test(readFileSync(f, 'utf8')), f)
