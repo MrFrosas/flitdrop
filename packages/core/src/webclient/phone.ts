@@ -108,7 +108,9 @@ class ApiFail extends Error {
   constructor(
     msg: string,
     readonly status: number,
-    readonly code?: string
+    readonly code?: string,
+    // corps de la réponse d'erreur (limite du jour : limite, prix)
+    readonly body?: Record<string, unknown>
   ) {
     super(msg)
   }
@@ -133,7 +135,7 @@ async function post<T>(path: string, purpose: string, obj: Record<string, unknow
   })
   if (!r.ok) {
     const j = (await r.json().catch(() => ({}))) as { error?: string; code?: string }
-    throw new ApiFail(j.code ? t('err.' + j.code) : t('err.generic', { status: r.status }), r.status, j.code)
+    throw new ApiFail(j.code ? t('err.' + j.code) : t('err.generic', { status: r.status }), r.status, j.code, j as Record<string, unknown>)
   }
   const j = (await r.json()) as { p?: string }
   return (j.p ? openJSON(key!, j.p, aad(purpose + ':res')) : j) as T
@@ -519,20 +521,21 @@ async function transferStatus(tid: string): Promise<{ received: number; chunks: 
   return (await r.json()) as { received: number; chunks: number; have?: number[] }
 }
 
-async function sendFile(file: File): Promise<void> {
+/** Envoie un fichier dans sa ligne de la liste. 'limited' : le PC a refusé
+ *  au départ, limite du jour atteinte (rien n'est parti). */
+async function sendFile(file: File, ui: QueueUI): Promise<'done' | 'failed' | 'limited'> {
   const fallbackName = t('hist.file')
-  const ui = queueItem(file.name || fallbackName, file.size)
   if (file.size === 0) {
     ui.li.classList.add('err')
     ui.state.textContent = t('ph.send.empty')
-    return
+    return 'failed'
   }
   const maxBytes = (hello?.maxFileMB ?? 8192) * 1024 * 1024
   if (file.size > maxBytes) {
     ui.li.classList.add('err')
     ui.state.textContent = t('ph.send.tooBig', { size: fmtSize(maxBytes) })
     reportFail('phone_to_pc', file.type, 'tooBig')
-    return
+    return 'failed'
   }
   const chunkSize = SEND_CHUNK
   const chunks = Math.ceil(file.size / chunkSize)
@@ -540,8 +543,11 @@ async function sendFile(file: File): Promise<void> {
   // rafraîchit vitesse et temps restant même sans nouvel octet (lien bloqué)
   let ticker: number | undefined
   try {
+    // date du fichier : un PC avec Flitdrop Pro range photos et vidéos par
+    // mois ; un PC plus ancien ignore ce champ
+    const lastModified = Number.isFinite(file.lastModified) && file.lastModified > 0 ? file.lastModified : undefined
     const init = await post<{ transferId: string }>('/api/phone/transfer/init', 'init', {
-      meta: { name: file.name || fallbackName, size: file.size, mime: file.type || undefined, chunkSize, chunks },
+      meta: { name: file.name || fallbackName, size: file.size, mime: file.type || undefined, chunkSize, chunks, lastModified },
     })
     tid = init.transferId
     const acked = new Set<number>()
@@ -648,19 +654,78 @@ async function sendFile(file: File): Promise<void> {
     ui.li.classList.add('done')
     ui.state.textContent = t('ph.send.arrived', { name: hello?.desktopName ?? 'PC' })
     markTransferOk()
+    return 'done'
   } catch (e) {
+    const limit = tid ? null : limitOf(e)
+    if (limit) {
+      dailyLimit = limit
+      return 'limited'
+    }
     const err = e as ApiFail
     // le PC compte lui-même les échecs qu'il voit ; on ne signale que la coupure
     // avant le tout début du transfert, qu'il n'a jamais vue.
     if (!tid && !err.status) reportFail('phone_to_pc', file.type, 'network')
     ui.li.classList.add('err')
     ui.state.textContent = err.code === 'refused' ? t('ph.send.refused') : errText(err)
+    return 'failed'
   } finally {
     clearInterval(ticker)
   }
 }
 
-async function sendFiles(files: FileList | File[]) {
+// ---------- limite du jour (Flitdrop Pro, version gratuite du PC) ----------
+// Le PC refuse un fichier au-delà de sa limite du jour (402 « daily_limit »),
+// au départ, jamais en route. Ce fichier et les suivants restent listés
+// « En attente », un message calme dit pourquoi, et l'envoi reprend tout seul
+// dès que le PC le permet (Pro débloqué sur le PC, ou le lendemain : la liste
+// « Reçus », relue toutes les 6 s, le dit). Les fichiers attendent dans la
+// mémoire de la page : une page rechargée les oublie.
+interface DailyLimit {
+  limit: number
+  price?: string
+}
+const parked: { file: File; ui: QueueUI }[] = []
+let dailyLimit: DailyLimit | null = null
+
+function limitOf(e: unknown): DailyLimit | null {
+  if (!(e instanceof ApiFail) || e.status !== 402 || e.body?.error !== 'daily_limit') return null
+  const limit = Number(e.body.limit)
+  const price = typeof e.body.price === 'string' && e.body.price.length <= 24 ? e.body.price : undefined
+  return { limit: Number.isInteger(limit) && limit > 0 ? limit : 30, price }
+}
+
+function renderLimitNote() {
+  const box = $('limitNote')
+  const show = parked.length > 0 && !!dailyLimit
+  box.classList.toggle('hidden', !show)
+  if (!show || !dailyLimit) return
+  const n = dailyLimit.limit
+  ;(box.querySelector('.limit-msg') as HTMLElement).textContent = dailyLimit.price
+    ? t('ph.limit.msg', { n, price: dailyLimit.price })
+    : t('ph.limit.msgNoPrice', { n })
+  ;(box.querySelector('.limit-wait') as HTMLElement).textContent = tp(lang, 'ph.limit.waiting', parked.length)
+}
+
+function park(file: File, ui: QueueUI) {
+  ui.li.classList.remove('err', 'done')
+  ui.li.classList.add('wait')
+  ui.bar.style.width = '0%'
+  ui.state.textContent = t('ph.limit.row')
+  parked.push({ file, ui })
+}
+
+/** Le PC permet de nouveau d'envoyer : ce qui attendait repart, dans l'ordre. */
+function resumeParked() {
+  if (sending || parked.length === 0) return
+  const batch = parked.splice(0)
+  renderLimitNote()
+  void sendFiles(
+    batch.map((p) => p.file),
+    batch.map((p) => p.ui)
+  )
+}
+
+async function sendFiles(files: FileList | File[], rows?: QueueUI[]) {
   if (sending) return
   sending = true
   $('btnPick').setAttribute('disabled', '')
@@ -670,13 +735,31 @@ async function sendFiles(files: FileList | File[]) {
   // gros envoi : l'iPhone qui se verrouille met la page en pause
   const big = list.reduce((a, f) => a + f.size, 0) > 100 * 1024 * 1024
   let done = 0
-  for (const f of list) {
+  let limited = false
+  for (let i = 0; i < list.length; i++) {
+    const f = list[i]!
+    const kept = rows?.[i]
+    const ui = kept ?? queueItem(f.name || t('hist.file'), f.size)
+    if (kept) {
+      kept.li.classList.remove('wait')
+      kept.state.textContent = t('ph.send.queued')
+    }
+    // limite atteinte pendant ce lot : le reste attend, sans rien demander au PC
+    if (limited) {
+      park(f, ui)
+      continue
+    }
     summary.innerHTML = t('ph.send.sending', { a: done + 1, b: list.length }) + (big ? '<br>' + t('ph.send.keepOn') : '')
-    await sendFile(f)
+    if ((await sendFile(f, ui)) === 'limited') {
+      limited = true
+      park(f, ui)
+      continue
+    }
     done++
   }
-  summary.innerHTML = list.length > 1 ? t('ph.send.processed', { n: list.length }) : ''
-  if (list.length === 1) summary.classList.add('hidden')
+  renderLimitNote()
+  summary.innerHTML = done > 1 ? t('ph.send.processed', { n: done }) : ''
+  if (done <= 1) summary.classList.add('hidden')
   sending = false
   $('btnPick').removeAttribute('disabled')
 }
@@ -901,10 +984,20 @@ async function downloadInto(item: OutboxItem, li: HTMLLIElement) {
 async function pollOutbox() {
   if (!hello || document.hidden) return
   try {
-    const res = await post<{ items?: OutboxItem[]; unchanged?: boolean; v?: string }>('/api/phone/outbox', 'outbox', outboxList.request())
+    const res = await post<{ items?: OutboxItem[]; unchanged?: boolean; v?: string; quota?: { left?: unknown; limit?: unknown; price?: unknown } }>(
+      '/api/phone/outbox',
+      'outbox',
+      outboxList.request()
+    )
     const items = outboxList.accept(res, () => res.items ?? [])
     if (items) renderRecv(items)
     $('statusDot').classList.remove('off')
+    // fichiers en attente de la limite du jour : plus de limite (Pro débloqué
+    // sur le PC) ou des places à nouveau (lendemain) -> ils repartent
+    if (parked.length > 0 && !sending) {
+      const left = res.quota ? Number(res.quota.left) : Infinity
+      if (left > 0) resumeParked()
+    }
   } catch {
     $('statusDot').classList.add('off')
   }
@@ -1285,6 +1378,8 @@ function initUI() {
     // les lignes déjà affichées sont redessinées dans la nouvelle langue
     if (outboxList.data) renderRecv(outboxList.data)
     if (clipList.data) renderClipHistory(clipList.data.items, clipList.data.enabled, clipList.data.shared)
+    renderLimitNote()
+    for (const p of parked) p.ui.state.textContent = t('ph.limit.row')
   }
 
   // collage manuel d'un lien d'appairage : secours si on est bloqué dans la PWA

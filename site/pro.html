@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Flitdrop Pro: no daily limit, one payment for life</title>
+  <meta name="description" content="Flitdrop stays free with 30 files a day. Pro removes the limit, sorts your photos by month and syncs the clipboard by itself. One payment for life, no subscription.">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="author" content="Flitdrop">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+
+  <link rel="canonical" href="https://flitdrop.com/pro">
+  <link rel="alternate" hreflang="en" href="https://flitdrop.com/pro">
+  <link rel="alternate" hreflang="fr" href="https://flitdrop.com/fr/pro">
+  <link rel="alternate" hreflang="de" href="https://flitdrop.com/de/pro">
+  <link rel="alternate" hreflang="x-default" href="https://flitdrop.com/pro">
+
+  <link rel="icon" href="/assets/icon.svg">
+  <link rel="apple-touch-icon" href="/assets/icon-512.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Flitdrop">
+  <meta property="og:title" content="Flitdrop Pro: no daily limit, one payment for life">
+  <meta property="og:description" content="Flitdrop stays free with 30 files a day. Pro removes the limit, sorts your photos by month and syncs the clipboard by itself. One payment for life, no subscription.">
+  <meta property="og:url" content="https://flitdrop.com/pro">
+  <meta property="og:image" content="https://flitdrop.com/assets/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Flitdrop Pro, one payment for life">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="fr_FR">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Flitdrop Pro: no daily limit, one payment for life">
+  <meta name="twitter:description" content="Flitdrop stays free with 30 files a day. Pro removes the limit, sorts your photos by month and syncs the clipboard by itself. One payment for life, no subscription.">
+  <meta name="twitter:image" content="https://flitdrop.com/assets/og.jpg">
+
+  <link rel="stylesheet" href="/style.css">
+
+  <script>
+    // Page anglaise ouverte par un francophone ou un germanophone (lien de l'app
+    // avec ?lang=, langue choisie sur le site, langue du navigateur) : on part tout
+    // de suite sur la vraie page traduite, en gardant ?claim= et ?early=.
+    (function () {
+      var p = location.pathname || '/';
+      if (/^\/(fr|de)\//.test(p)) return;
+      var l = null, q = null;
+      try { q = new URLSearchParams(location.search); l = q.get('lang'); } catch (e) { return; }
+      if (!l) { try { l = localStorage.getItem('flitdrop_lang'); } catch (e) {} }
+      if (!l) l = (navigator.language || '').slice(0, 2).toLowerCase();
+      if (l !== 'fr' && l !== 'de') return;
+      q.delete('lang');
+      var s = q.toString();
+      location.replace('/' + l + p.replace(/\.html$/, '').replace(/\/+$/, '') + (s ? '?' + s : '') + location.hash);
+    })();
+  </script>
+  <script async src="/js/analytics.js"></script>
+  <script defer src="/js/i18n-data.js"></script>
+  <script defer src="/js/i18n.js"></script>
+  <script defer src="/js/pro.js"></script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "Is Flitdrop still free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Flitdrop stays free, with every update: 30 files a day, any size, at full speed, end to end encrypted, with several phones. Texts and the clipboard do not count toward the 30 files. Pro is for people who send more, or who want the extra comforts." } },
+          { "@type": "Question", "name": "What happens after 30 files in a day?", "acceptedAnswer": { "@type": "Answer", "text": "Files already on their way always finish. The next ones wait on the phone: they leave the next day, or right away if you unlock Pro. The count starts again at midnight, your computer's time." } },
+          { "@type": "Question", "name": "Is it a subscription?", "acceptedAnswer": { "@type": "Answer", "text": "No. You pay once and Pro stays unlocked for life, with every future update. Nothing renews and there is nothing to cancel." } },
+          { "@type": "Question", "name": "Can I try Pro before paying?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Every computer gets 14 days of Pro to try, free, with no card and nothing to cancel. At the end, Flitdrop simply goes back to the free version." } },
+          { "@type": "Question", "name": "How many computers can I use?", "acceptedAnswer": { "@type": "Answer", "text": "Up to 5 of your own computers with one purchase. On another computer, open Flitdrop, choose \"I already bought it\" and enter the e-mail you paid with." } },
+          { "@type": "Question", "name": "Can I get a refund?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Within 14 days of your purchase, you get your money back without giving a reason." } },
+          { "@type": "Question", "name": "Who handles the payment?", "acceptedAnswer": { "@type": "Answer", "text": "Paddle, our reseller and merchant of record: Paddle takes the payment, handles taxes and sends your receipt. We never see your card details." } },
+          { "@type": "Question", "name": "Does Pro need the internet?", "acceptedAnswer": { "@type": "Answer", "text": "Transfers never do. Pro needs the internet when you unlock it, then Flitdrop checks the licence by itself from time to time. Offline, Pro keeps working for at least two weeks; after that, Flitdrop goes back to the free limits until it is online again, and nothing is lost." } }
+        ]
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://flitdrop.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Flitdrop Pro", "item": "https://flitdrop.com/pro" }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div class="bg" aria-hidden="true">
+    <div class="bg-aurora"></div>
+    <div class="bg-grain"></div>
+  </div>
+
+  <header class="nav" id="nav">
+    <a class="brand" href="/" aria-label="Flitdrop">
+      <img src="/assets/icon.svg" alt="" width="30" height="30">
+      <span>Flitdrop</span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="/#steps" data-i18n="nav.how">How it works</a>
+      <a href="/#compare" data-i18n="nav.compare">Comparison</a>
+      <a href="/#security" data-i18n="nav.security">Security</a>
+    </nav>
+    <div class="nav-right">
+      <button class="lang-toggle" id="langToggle" type="button">FR</button>
+      <a class="btn btn-primary btn-sm" href="/#download" data-i18n="nav.download">Download</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- OFFRE ET ACHAT -->
+    <section class="section pro-top" id="top">
+      <div class="section-head">
+        <p class="eyebrow">Flitdrop Pro</p>
+        <h1 class="display">Send as much as you like, for life</h1>
+        <p class="section-sub">Flitdrop stays free, every day. Pro lifts the daily limit and adds a few comforts, for one single payment.</p>
+      </div>
+
+      <div class="pro-buy" id="buy">
+        <p class="pro-price"><span class="pro-price-amount" id="proPrice"><span data-i18n="pro.price">€5.99</span></span> <s class="pro-price-was" id="proPriceWas" hidden></s></p>
+        <p class="pro-price-note">One payment, for life. No subscription.</p>
+        <ul class="pro-checks">
+          <li>Every future update included</li>
+          <li>Up to 5 of your computers</li>
+          <li>Refund within 14 days, no questions asked</li>
+        </ul>
+
+        <div class="pro-state" aria-live="polite">
+          <p class="pro-msg" id="proFromWeb">The easiest way is to buy from the Flitdrop app on your computer: after payment, it unlocks by itself.</p>
+          <p class="pro-msg" id="proFromApp" hidden>After payment, go back to Flitdrop: it unlocks by itself.</p>
+          <p class="pro-msg pro-msg--soon" id="proSoon" hidden><strong>Coming soon.</strong> Flitdrop Pro is not on sale yet. Until then, everything in Flitdrop stays free.</p>
+          <div class="pro-ready" id="proReady" hidden>
+            <p class="pro-early" id="proEarly" hidden>Early user price, as a thank you for being here from the start.</p>
+            <button type="button" class="btn btn-primary btn-lg pro-cta" id="proBuy">Unlock for life</button>
+            <p class="pro-after" id="proAfterWeb">Buying here? Afterwards, in Flitdrop, choose "I already bought it" and enter the same e-mail.</p>
+          </div>
+          <div class="pro-msg pro-msg--ok" id="proDone" hidden tabindex="-1">
+            <p class="pro-done-title">Done!</p>
+            <p id="proDoneApp">Go back to Flitdrop, it unlocks by itself.</p>
+            <p id="proDoneWeb" hidden>In Flitdrop, choose "I already bought it" and enter the e-mail you paid with. Paddle has sent your receipt to that address.</p>
+          </div>
+          <p class="pro-msg pro-msg--err" id="proError" hidden>The payment window did not open. Check your connection and try again. If it still fails, write to <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>.</p>
+        </div>
+
+        <div class="pro-actions" id="proGet">
+          <a class="btn btn-ghost btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-dl="auto">Download Flitdrop</a>
+        </div>
+
+        <p class="pro-fine">Payment goes through Paddle, our reseller: Paddle sells you the licence, takes the payment and sends the receipt. The final price, taxes included, is shown before you pay. <a href="/terms">Terms of sale</a> · <a href="/refund">Refunds and withdrawal</a></p>
+      </div>
+    </section>
+
+    <!-- GRATUIT OU PRO -->
+    <section class="section ground" id="compare">
+      <div class="section-head">
+        <p class="eyebrow">Free or Pro</p>
+        <h2>What stays free, what Pro adds</h2>
+        <p class="section-sub">Nothing you use today goes away. The free version is not a trial: it stays free, with every update.</p>
+      </div>
+      <div class="pro-plans">
+        <article class="pro-plan">
+          <h3>Free, forever</h3>
+          <ul class="pro-checks">
+            <li>30 files a day, phone to computer and back combined</li>
+            <li>Any file size, at full speed</li>
+            <li>End to end encryption</li>
+            <li>Several phones on the same computer</li>
+            <li>Send the clipboard or a text yourself, both ways</li>
+            <li>The iPhone shortcut</li>
+            <li>The speed test and the Windows firewall repair</li>
+            <li>Every update</li>
+          </ul>
+        </article>
+        <article class="pro-plan pro-plan--pro">
+          <h3>Pro, for life <span class="pro-badge">Pro</span></h3>
+          <ul class="pro-checks">
+            <li>Unlimited files, every day</li>
+            <li>Photos and videos from the phone sorted into month folders by themselves, like 2026-10</li>
+            <li>Clipboard synced by itself between phone and computer</li>
+            <li>The full clipboard history, images included</li>
+            <li>The advanced features we add next</li>
+            <li>Up to 5 of your computers</li>
+          </ul>
+        </article>
+      </div>
+      <p class="cmp-note">Texts and the clipboard never count toward the 30 files, and the count starts again every day at midnight, your computer's time. Every computer gets 14 days of Pro to try first, free, with no card.</p>
+    </section>
+
+    <!-- QUESTIONS -->
+    <section class="section" id="faq">
+      <div class="section-head">
+        <h2>Questions</h2>
+      </div>
+      <div class="pro-faq">
+        <details>
+          <summary>Is Flitdrop still free?</summary>
+          <p>Yes. Flitdrop stays free, with every update: 30 files a day, any size, at full speed, end to end encrypted, with several phones. Texts and the clipboard do not count toward the 30 files. Pro is for people who send more, or who want the extra comforts.</p>
+        </details>
+        <details>
+          <summary>What happens after 30 files in a day?</summary>
+          <p>Files already on their way always finish. The next ones wait on the phone: they leave the next day, or right away if you unlock Pro. The count starts again at midnight, your computer's time.</p>
+        </details>
+        <details>
+          <summary>Is it a subscription?</summary>
+          <p>No. You pay once and Pro stays unlocked for life, with every future update. Nothing renews and there is nothing to cancel.</p>
+        </details>
+        <details>
+          <summary>Can I try Pro before paying?</summary>
+          <p>Yes. Every computer gets 14 days of Pro to try, free, with no card and nothing to cancel. At the end, Flitdrop simply goes back to the free version.</p>
+        </details>
+        <details>
+          <summary>How many computers can I use?</summary>
+          <p>Up to 5 of your own computers with one purchase. On another computer, open Flitdrop, choose "I already bought it" and enter the e-mail you paid with.</p>
+        </details>
+        <details>
+          <summary>Can I get a refund?</summary>
+          <p>Yes. Within 14 days of your purchase, you get your money back without giving a reason. Everything is explained on the <a href="/refund">refund page</a>.</p>
+        </details>
+        <details>
+          <summary>Who handles the payment?</summary>
+          <p>Paddle, our reseller and merchant of record: Paddle takes the payment, handles taxes and sends your receipt. We never see your card details.</p>
+        </details>
+        <details>
+          <summary>Does Pro need the internet?</summary>
+          <p>Transfers never do. Pro needs the internet when you unlock it, then Flitdrop checks the licence by itself from time to time. Offline, Pro keeps working for at least two weeks; after that, Flitdrop goes back to the free limits until it is online again, and nothing is lost.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="brand" href="/"><img src="/assets/icon.svg" alt="" width="26" height="26"><span>Flitdrop</span></a>
+        <p class="footer-tag" data-i18n="footer.tagline">Direct sharing between all your devices, on your Wi-Fi.</p>
+      </div>
+      <nav class="footer-cols" aria-label="Footer">
+        <div class="footer-col">
+          <h4 data-i18n="footer.product">Product</h4>
+          <a href="/#features" data-i18n="footer.features">Features</a>
+          <a href="/#compare" data-i18n="nav.compare">Comparison</a>
+          <a href="/#security" data-i18n="nav.security">Security</a>
+          <a href="/#download" data-i18n="nav.download">Download</a>
+          <a href="/pro" data-i18n="footer.pro">Flitdrop Pro</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="footer.resources">Resources</h4>
+          <a href="/#support" data-i18n="support.eyebrow">Support</a>
+          <a href="https://github.com/MrFrosas/flitdrop" target="_blank" rel="noopener">GitHub</a>
+          <a href="/brand" data-i18n="footer.brand">Brand</a>
+          <a href="/privacy" data-i18n="footer.privacy">Privacy</a>
+          <a href="/legal" data-i18n="footer.legal">Legal</a>
+          <a href="/terms" data-i18n="footer.terms">Terms of sale</a>
+          <a href="/refund" data-i18n="footer.refund">Refunds</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="guides.title">Guides</h4>
+          <a href="/airdrop-windows" data-i18n="guides.windows">AirDrop for Windows</a>
+          <a href="/airdrop-linux" data-i18n="guides.linux">AirDrop for Linux</a>
+          <a href="/airdrop-iphone-android" data-i18n="guides.android">iPhone to Android</a>
+          <a href="/send-files-iphone-to-pc" data-i18n="guides.iphonepc">iPhone to PC</a>
+          <a href="/send-files-android-to-mac" data-i18n="guides.androidmac">Android to Mac</a>
+          <a href="/transfer-photos-iphone-to-pc-without-losing-quality" data-i18n="guides.photos">iPhone photos to PC</a>
+          <a href="/copy-paste-phone-to-pc" data-i18n="guides.clipboard">Phone to PC clipboard</a>
+          <a href="/send-files-without-app" data-i18n="guides.noapp">Send without an app</a>
+          <a href="/quick-share-to-iphone-not-working" data-i18n="guides.quickshare">Quick Share to iPhone</a>
+          <a href="/send-files-linux-to-iphone" data-i18n="guides.linuxiphone">Linux to iPhone</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="footer.comparisons">Comparisons</h4>
+          <a href="/best-airdrop-alternatives" data-i18n="guides.best">Best AirDrop alternatives</a>
+          <a href="/alternative-airdrop" data-i18n="guides.alt">AirDrop alternative</a>
+          <a href="/snapdrop-alternative" data-i18n="guides.snapdrop">Snapdrop alternative</a>
+          <a href="/localsend-alternative" data-i18n="guides.localsend">LocalSend alternative</a>
+          <a href="/xender-alternative" data-i18n="guides.xender">Xender alternative</a>
+          <a href="/send-anywhere-alternative" data-i18n="guides.sendanywhere">Send Anywhere alternative</a>
+          <a href="/pairdrop-alternative" data-i18n="guides.pairdrop">PairDrop alternative</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="footer.versus">Flitdrop vs</h4>
+          <a href="/flitdrop-vs-airdrop" data-i18n="guides.vsairdrop">vs AirDrop</a>
+          <a href="/flitdrop-vs-localsend" data-i18n="guides.vslocalsend">vs LocalSend</a>
+          <a href="/flitdrop-vs-snapdrop" data-i18n="guides.vssnapdrop">vs Snapdrop</a>
+          <a href="/flitdrop-vs-nearby-share" data-i18n="guides.vsnearby">vs Quick Share</a>
+        </div>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-rights" data-i18n="footer.rights">© 2026 Flitdrop. All rights reserved.</p>
+      <button class="lang-toggle" data-lang-toggle type="button">FR</button>
+    </div>
+  </footer>
+</body>
+</html>

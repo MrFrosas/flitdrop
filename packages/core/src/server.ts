@@ -39,6 +39,8 @@ import { pcLink, type PcLink } from './wifi.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
 import { answerRating, countTransfer, ratingDue } from './rating.js'
 import { t as tr, resolveLang, langFrom, acceptLang } from './i18n.js'
+import { License, FREE_CLIP_TEXTS, FREE_DAILY_FILES, monthFolder, photoDate, isMedia, type CheckoutWhere } from './license.js'
+import { defaultMarkStore, fileMarkStore, type MarkStore } from './machineid.js'
 import {
   b64u,
   isLoopback,
@@ -71,6 +73,7 @@ export {
   type HostAction,
 } from './host.js'
 export { checkWindowsFirewall, repairWindowsFirewall, type FirewallStatus, type RepairResult } from './firewall.js'
+export { License, type Plan, type ProState } from './license.js'
 
 // réglages dont le NOM (jamais la valeur) peut remonter dans settings_changed
 const SETTINGS_KEYS = [
@@ -89,6 +92,7 @@ const SETTINGS_KEYS = [
   'autoUpdate',
   'basicStats',
   'telemetryConsent',
+  'sortPhotosByMonth',
 ] as const
 
 /** Ports essayés dans l'ordre : le port mémorisé, puis des ports fixes
@@ -217,6 +221,29 @@ export interface StartOptions {
     /** QR visible depuis au moins ce délai avant la vérification (45 s ; tests) */
     afterMs?: number
   }
+  // fourni par l'app de bureau : Flitdrop Pro (licence, essai, limite du
+  // jour, voir license.ts). Sans lui (ligne de commande, tests), le mode
+  // payant reste coupé et rien ne part sur le réseau, sauf adresse de
+  // configuration imposée (FLITDROP_LICENSE_CONFIG_URL, développement).
+  license?: {
+    /** dossier de données de l'app Electron (deuxième emplacement de l'essai) */
+    userDataDir?: string
+    /** langue du système (devise des prix affichés) */
+    systemLocale?: string
+    /** variables FLITDROP_LICENSE_* acceptées (app non empaquetée seulement) */
+    allowEnvOverride?: boolean
+    // injectables pour les tests
+    configUrl?: string
+    fetchImpl?: typeof fetch
+    now?: () => number
+    publicKey?: string
+    machineId?: () => Promise<string | null>
+    markStore?: MarkStore
+    buildDefault?: boolean
+  }
+  // fourni par l'app de bureau : ouvre une adresse dans le navigateur du
+  // système (shell.openExternal). Sans lui : open, explorer ou xdg-open.
+  openExternal?: (url: string) => void
 }
 
 export interface RunningServer {
@@ -252,6 +279,8 @@ export interface RunningServer {
    *  écran d'accueil, réglages) : la question est alors considérée comme
    *  répondue. false sans opts.autostart. */
   setAutostart: (on: boolean) => boolean
+  /** Flitdrop Pro : plan, limite du jour (plan « off » hors app de bureau). */
+  license: License
   close: () => Promise<void>
 }
 
@@ -323,9 +352,94 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const transfers = new TransferManager(() => cfg, history, hub, activity)
   const clipHistory = new ClipHistory(home)
   const telemetry = new Telemetry(
-    { home, cfg, pairedDevices: () => devices.listPublic().filter((d) => d.status === 'active').length, autostart: () => autostartOn },
+    {
+      home,
+      cfg,
+      pairedDevices: () => devices.listPublic().filter((d) => d.status === 'active').length,
+      autostart: () => autostartOn,
+      plan: () => license.plan(),
+    },
     opts.telemetry ?? { version: VERSION, channel: 'dev', disabled: true }
   )
+  // réglages et état qui changent le contenu des listes du téléphone (nom du
+  // PC, historique activé, plan Flitdrop Pro) : voir outboxTag et clipTag
+  let settingsGen = 0
+
+  // Adresse ouverte dans le navigateur du système (page d'achat de Flitdrop
+  // Pro) : seulement http(s), jamais interprétée par un shell.
+  const openExternal = (url: string): void => {
+    if (!/^https?:\/\/[^\s]+$/i.test(url) || url.length > 2048) return
+    if (opts.openExternal) {
+      opts.openExternal(url)
+      return
+    }
+    const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open'
+    const child = spawn(cmd, [url], { detached: true, stdio: 'ignore' })
+    child.on('error', () => {})
+    child.unref()
+  }
+
+  // ---------- Flitdrop Pro ----------
+  // Active dans l'app de bureau (opts.license). En développement, une adresse
+  // de configuration imposée l'active aussi (jamais dans l'app empaquetée).
+  const allowEnv = !opts.license || opts.license.allowEnvOverride === true
+  const envUrl = allowEnv ? (process.env.FLITDROP_LICENSE_CONFIG_URL ?? '') : ''
+  const licenseUrl = /^https?:\/\/[^\s]+$/i.test(envUrl) ? envUrl : opts.license?.configUrl
+  const envMark = allowEnv ? (process.env.FLITDROP_LICENSE_MARK_FILE ?? '') : ''
+  const systemLocale = opts.license?.systemLocale ?? opts.telemetry?.systemLocale
+  const license = new License(
+    {
+      home,
+      cfg,
+      track: (event, props) => void telemetry.track(event, props),
+      onChange: () => {
+        settingsGen++
+        hub.broadcast('pro-changed', {})
+      },
+      lang: () => resolveLang(cfg.lang, langFrom(systemLocale || Intl.DateTimeFormat().resolvedOptions().locale)),
+      openUrl: openExternal,
+    },
+    {
+      active: !!opts.license || !!licenseUrl,
+      configUrl: licenseUrl || undefined,
+      fetchImpl: opts.license?.fetchImpl,
+      now: opts.license?.now,
+      publicKey: opts.license?.publicKey,
+      systemLocale,
+      machineId: opts.license?.machineId,
+      // deuxième emplacement de l'essai : registre (Windows) ou dossier de
+      // l'app Electron ; en ligne de commande, un fichier à côté du dossier
+      markStore:
+        opts.license?.markStore ??
+        (envMark ? fileMarkStore(envMark) : opts.license ? defaultMarkStore({ userDataDir: opts.license.userDataDir }) : fileMarkStore(home.replace(/[\\/]+$/, '') + '.t')),
+      buildDefault: opts.license?.buildDefault,
+    }
+  )
+  // historique du presse-papiers vu (PC et téléphones) : en gratuit, les 20
+  // derniers textes ; rien n'est effacé pour autant
+  const clipView = () => (license.fullFeatures() ? clipHistory.list() : clipHistory.listTexts(FREE_CLIP_TEXTS))
+  const clipVisible = (id: string): boolean => license.fullFeatures() || clipHistory.listTexts(FREE_CLIP_TEXTS).some((e) => e.id === id)
+  // photos et vidéos rangées par mois (Pro) : date du fichier sur le
+  // téléphone, sinon date d'arrivée
+  transfers.folderFor = (t) =>
+    license.monthFolders() && isMedia(t.mime, t.name) ? path.join(cfg.downloadDir, monthFolder(photoDate(t.lastModified, Date.now()))) : cfg.downloadDir
+
+  // même règle pour un fichier reçu par le Raccourci iOS (pas de date du
+  // téléphone : celle d'arrivée)
+  const placeByMonth = <F extends { name: string; path: string; mime?: string }>(f: F): F => {
+    if (!license.monthFolders() || !isMedia(f.mime, f.name)) return f
+    try {
+      const dir = path.join(cfg.downloadDir, monthFolder(Date.now()))
+      fs.mkdirSync(dir, { recursive: true })
+      const reserved = reserveUniquePath(dir, f.name)
+      fs.closeSync(reserved.fd)
+      fs.renameSync(f.path, reserved.path)
+      return { ...f, path: reserved.path, name: path.basename(reserved.path) }
+    } catch {
+      return f
+    }
+  }
+
   // un transfert téléphone -> PC qui échoue (refus, disque, expiration…) est
   // compté une seule fois, avec son code d'erreur, jamais son nom de fichier.
   transfers.failureHook = (t, status, reason) => telemetry.transferFail('phone_to_pc', kindOf(t.mime), status, reason)
@@ -436,7 +550,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (cfg.clipHistoryEnabled && clipHistory.add(text, 'pc', cfg)) {
       hub.broadcast('cliphistory-changed', {})
     }
-    const to = cfg.clipboardAutoPush ? clipTargets() : null
+    // synchro automatique : réservée à Pro quand le mode payant est actif
+    const to = cfg.clipboardAutoPush && license.fullFeatures() ? clipTargets() : null
     if (to !== null) {
       outbox.addText(text, 'clipboard', to)
       hub.broadcast('outbox-changed', {})
@@ -446,9 +561,12 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   }
   const clipTimer = opts.manualClipboardPoll ? undefined : setInterval(() => void pollClipboard(), 1500)
   clipTimer?.unref?.()
-  // purge périodique de l'historique (rétention par âge)
+  // purge périodique de l'historique (rétention par âge). La même minuterie
+  // fait le point quotidien de Flitdrop Pro (configuration une fois par jour,
+  // renouvellement, minuit) : aucune minuterie de plus.
   const clipPurgeTimer = setInterval(() => {
     if (clipHistory.size() > 0) clipHistory.purge(cfg)
+    license.tick()
   }, 10 * 60 * 1000)
   clipPurgeTimer.unref?.()
   // expire les QR d'appairage non scannés (fenêtre d'exploitation d'une photo
@@ -884,6 +1002,14 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   app.post('/api/phone/transfer/init', jsonSmall, phoneAuth('init'), async (req, res) => {
     const { dev, key, payload } = wd(req)
+    // Flitdrop Pro, version gratuite : 30 fichiers par jour, refusés ici, au
+    // début du transfert (jamais en route : un transfert commencé finit). Le
+    // téléphone garde le reste en attente. Pas de `code` : une page plus
+    // ancienne montre « Erreur 402 » plutôt qu'un texte faux.
+    if (!license.canStartFile(transfers.activeCount())) {
+      license.noteRefused()
+      return res.status(402).json(license.limitBody())
+    }
     try {
       const t = await transfers.init(dev, payload.meta as never)
       res.json({ p: sealJSON(key, { transferId: t.id }, aad(dev.id, 'init:res')) })
@@ -1005,6 +1131,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       const finalPath = await transfers.finish(t)
       devices.touch(dev.id)
       transferOk('phone_to_pc', kindOf(t.mime), t.size)
+      license.countFiles(1)
       res.json({ p: sealJSON(key, { ok: true, name: path.basename(finalPath) }, aad(dev.id, 'finish:res')) })
     } catch (e) {
       const err = e as ApiError
@@ -1066,8 +1193,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // la liste complète.
   const bootTag = randomToken(4)
   // réglages qui changent le contenu de ces listes (nom du PC, historique
-  // activé ou non) : on ne suit pas le détail, tout enregistrement compte
-  let settingsGen = 0
+  // activé ou non, plan) : settingsGen, déclaré plus haut ; on ne suit pas
+  // le détail, tout enregistrement compte
   const outboxTag = () => `${bootTag}.${outbox.version}.${settingsGen}`
   const clipTag = () => `${bootTag}.${clipHistory.version}.${settingsGen}`
 
@@ -1083,7 +1210,12 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       transferOk('pc_to_phone', item.origin === 'clipboard' ? 'clipboard' : 'text')
     }
     const v = outboxTag()
-    const body = payload.since === v ? { unchanged: true, v } : { desktopName: cfg.deviceName, items: outbox.listForPhone(dev.id), v }
+    const body: Record<string, unknown> =
+      payload.since === v ? { unchanged: true, v } : { desktopName: cfg.deviceName, items: outbox.listForPhone(dev.id), v }
+    // limite du jour (gratuit seulement) : le téléphone reprend tout seul ce
+    // qui attend dès qu'elle se rouvre (Pro débloqué, lendemain)
+    const quota = license.quota()
+    if (quota) body.quota = quota
     res.json({ p: sealJSON(key, body, aad(dev.id, 'outbox:res')) })
   })
 
@@ -1100,7 +1232,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const on = cfg.clipHistoryEnabled && shared
     // `enabled` faux pour un téléphone sans partage : une page plus ancienne
     // affiche alors une liste vide, jamais l'historique
-    const body = payload.since === v ? { unchanged: true, v } : { enabled: on, shared, items: on ? clipHistory.list(200) : [], v }
+    const body = payload.since === v ? { unchanged: true, v } : { enabled: on, shared, items: on ? clipView().slice(0, 200) : [], v }
     res.json({ p: sealJSON(key, body, aad(dev.id, 'cliphistory:res')) })
   })
 
@@ -1110,7 +1242,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const { dev, key, payload } = wd(req)
     if (!devices.clipShared(dev.id) || !cfg.clipHistoryEnabled) return res.status(403).json({ code: 'clipNotShared' })
     const entry = clipHistory.get(String(req.params.id))
-    if (!entry || payload.entryId !== entry.id) return res.status(404).json({ code: 'entryNotFound' })
+    if (!entry || payload.entryId !== entry.id || !clipVisible(entry.id)) return res.status(404).json({ code: 'entryNotFound' })
     if (entry.kind === 'image' && entry.image) {
       const reserved = reserveUniquePath(outbox.dir, `image-${entry.id}.png`)
       fs.closeSync(reserved.fd)
@@ -1368,9 +1500,15 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   app.post('/api/shortcut/upload', rlShortcut, trackBody('sc', 0, (req) => !!shortcutDevice(req)), async (req, res) => {
     const dev = shortcutDevice(req)
     if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
+    // limite du jour (gratuit) : vérifiée au début ; un envoi accepté arrive
+    // en entier, tous ses fichiers comptés
+    if (!license.canStartFile(transfers.activeCount())) {
+      license.noteRefused()
+      return res.status(402).type('text/plain; charset=utf-8').send(st(req, 'srv.scDailyLimit', { n: FREE_DAILY_FILES, pc: cfg.deviceName }))
+    }
     fs.mkdirSync(cfg.downloadDir, { recursive: true })
     try {
-      const saved = await saveMultipartFiles(req, cfg.downloadDir, cfg.maxFileMB * 1024 * 1024)
+      const saved = (await saveMultipartFiles(req, cfg.downloadDir, cfg.maxFileMB * 1024 * 1024)).map(placeByMonth)
       if (saved.length === 0) {
         telemetry.transferFail('phone_to_pc', 'file', 400, 'noFile')
         return res.status(400).type('text/plain; charset=utf-8').send(st(req, 'srv.scNoFile'))
@@ -1390,6 +1528,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         hub.broadcast('transfer-done', { id: randomToken(6), name: f.name, size: f.size, path: f.path, deviceName: dev.name })
       }
       devices.touch(dev.id)
+      license.countFiles(saved.length)
       const total = saved.length
       res
         .type('text/plain; charset=utf-8')
@@ -1527,8 +1666,12 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         basicNoticeShown: cfg.basicNoticeShown,
         autostartAsked: cfg.autostartAsked,
         firstTransferDone: cfg.firstTransferDone,
+        sortPhotosByMonth: cfg.sortPhotosByMonth,
         port: actualPort,
       },
+      // Flitdrop Pro : plan, limite du jour, carte à montrer (plan « off » :
+      // rien d'autre, aucune interface Pro)
+      pro: license.state(),
       // destinataire proposé par défaut quand plusieurs téléphones sont appairés
       sendTo: defaultSendTo(),
       // lancement à l'ouverture de session : null hors app de bureau
@@ -1557,7 +1700,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       devices: devices.listPublic(),
       history: history.list(),
       outbox: outbox.listAdmin(),
-      clipHistory: clipHistory.list(),
+      clipHistory: clipView(),
+      // entrées gardées mais pas montrées (version gratuite)
+      clipHidden: license.fullFeatures() ? 0 : Math.max(0, clipHistory.size() - clipView().length),
     })
   })
 
@@ -1565,7 +1710,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   admin.post('/cliphistory/:id/copy', async (req, res) => {
     const entry = clipHistory.get(String(req.params.id))
-    if (!entry) return res.status(404).json({ code: 'entryNotFound' })
+    if (!entry || !clipVisible(entry.id)) return res.status(404).json({ code: 'entryNotFound' })
     if (entry.kind === 'image' && entry.image) {
       if (!opts.writeImageToClipboard) return res.status(400).json({ code: 'imgCopyUnavailable' })
       try {
@@ -1590,7 +1735,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   admin.post('/cliphistory/:id/tophone', jsonSmall, (req, res) => {
     const entry = clipHistory.get(String(req.params.id))
-    if (!entry) return res.status(404).json({ code: 'entryNotFound' })
+    if (!entry || !clipVisible(entry.id)) return res.status(404).json({ code: 'entryNotFound' })
     const to = sendTargets((req.body as { to?: unknown } | undefined)?.to)
     if (to === null) return res.status(400).json({ code: 'deviceNotFound' })
     if (entry.kind === 'image' && entry.image) {
@@ -1611,7 +1756,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   })
 
   admin.post('/cliphistory/:id/remove', (req, res) => {
-    if (!clipHistory.remove(String(req.params.id))) return res.status(404).json({ code: 'entryNotFound' })
+    if (!clipVisible(String(req.params.id)) || !clipHistory.remove(String(req.params.id))) return res.status(404).json({ code: 'entryNotFound' })
     hub.broadcast('cliphistory-changed', {})
     res.json({ ok: true })
   })
@@ -1790,11 +1935,25 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     // destinataire dans l'adresse (?to=) : le corps est le fichier lui-même
     const to = sendTargets(typeof req.query.to === 'string' ? req.query.to : undefined)
     if (to === null) return res.status(400).json({ code: 'deviceNotFound' })
+    // limite du jour (gratuit) : les fichiers du PC vers le téléphone
+    // comptent aussi. Rien de possible : refusé avant de lire le moindre octet.
+    if (license.dailyLeft() <= 0) {
+      license.noteRefused()
+      return res.status(402).json({ code: 'dailyLimit', ...license.limitBody() })
+    }
     try {
       const saved = await saveMultipartFiles(req, outbox.dir, cfg.maxFileMB * 1024 * 1024)
-      const items = saved.map((f) => outbox.addFile(f.name, f.path, f.size, f.mime, to))
-      hub.broadcast('outbox-changed', {})
-      res.json({ ok: true, ids: items.map((i) => i.id) })
+      // plus de fichiers que de places : les premiers passent, le reste est
+      // retiré (la personne le renverra demain ou après le déblocage)
+      const room = license.dailyLeft()
+      const kept = saved.slice(0, Math.min(saved.length, room))
+      for (const f of saved.slice(kept.length)) fs.unlink(f.path, () => {})
+      const items = kept.map((f) => outbox.addFile(f.name, f.path, f.size, f.mime, to))
+      license.countFiles(items.length)
+      const refused = saved.length - kept.length
+      if (refused > 0) license.noteRefused()
+      if (items.length > 0) hub.broadcast('outbox-changed', {})
+      res.json(refused > 0 ? { ok: true, ids: items.map((i) => i.id), refused, limit: FREE_DAILY_FILES } : { ok: true, ids: items.map((i) => i.id) })
     } catch (e) {
       const err = e as Error & { code?: number }
       res.status(err.code === 413 ? 413 : 400).json({ code: err.code === 413 ? 'tooBig' : 'internal' })
@@ -1888,6 +2047,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (body.skin === 'auto' || body.skin === 'apple' || body.skin === 'windows') cfg.skin = body.skin
     if (body.lang === 'auto' || body.lang === 'fr' || body.lang === 'en' || body.lang === 'de') cfg.lang = body.lang
     if (typeof body.shortcutsEnabled === 'boolean') cfg.shortcutsEnabled = body.shortcutsEnabled
+    if (typeof body.sortPhotosByMonth === 'boolean') cfg.sortPhotosByMonth = body.sortPhotosByMonth
     if (typeof body.autoUpdate === 'boolean') cfg.autoUpdate = body.autoUpdate
     if (typeof body.basicStats === 'boolean' || typeof body.telemetryConsent === 'boolean') {
       const basic = typeof body.basicStats === 'boolean' ? body.basicStats : cfg.basicStats
@@ -1958,6 +2118,61 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     } else if (typeof body.event === 'string' && UI_EVENTS.has(body.event)) {
       telemetry.track(body.event)
     }
+    res.json({ ok: true })
+  })
+
+  // ---------- Flitdrop Pro (fenêtre du PC) ----------
+  // Tout passe par le serveur local : la page ne joint jamais internet, et
+  // l'adresse d'achat est construite ici, jamais reçue de la page.
+
+  const CHECKOUT_WHERE = new Set<CheckoutWhere>(['limit', 'trial', 'settings'])
+  admin.post('/pro/checkout', jsonSmall, (req, res) => {
+    const body = req.body as { where?: unknown; reopen?: unknown } | undefined
+    const where = typeof body?.where === 'string' && CHECKOUT_WHERE.has(body.where as CheckoutWhere) ? (body.where as CheckoutWhere) : 'settings'
+    const r = license.checkout(where, body?.reopen === true)
+    if (!r.ok) return res.status(400).json({ code: 'internal' })
+    res.json({ ok: true })
+  })
+
+  // « En attente du paiement » visible : la page demande toutes les 5 s
+  // (30 minutes au plus) ; « J'ai payé » : manual. Le module espace lui-même
+  // les vraies requêtes vers flitdrop.com.
+  admin.post('/pro/claim', jsonSmall, async (req, res) => {
+    const manual = (req.body as { manual?: unknown } | undefined)?.manual === true
+    const status = await license.claim(manual).catch(() => 'offline' as const)
+    res.json({ ok: true, status })
+  })
+
+  admin.post('/pro/cancel', (_req, res) => {
+    license.cancelCheckout()
+    res.json({ ok: true })
+  })
+
+  // l'invitation (limite du jour, fin d'essai) a été vue, fenêtre visible
+  admin.post('/pro/seen', jsonSmall, (req, res) => {
+    const where = (req.body as { where?: unknown } | undefined)?.where
+    if (where === 'limit' || where === 'trial') license.promptSeen(where)
+    res.json({ ok: true })
+  })
+
+  admin.post('/pro/close', (_req, res) => {
+    license.closeCard()
+    hub.broadcast('pro-changed', {})
+    res.json({ ok: true })
+  })
+
+  admin.post('/pro/restore/start', jsonSmall, async (req, res) => {
+    const r = await license.restoreStart((req.body as { email?: unknown } | undefined)?.email).catch(() => ({ error: 'error' as const }))
+    res.json(r)
+  })
+
+  admin.post('/pro/restore/verify', jsonSmall, async (req, res) => {
+    const r = await license.restoreVerify((req.body as { code?: unknown } | undefined)?.code).catch(() => ({ error: 'error' as const }))
+    res.json(r)
+  })
+
+  admin.post('/pro/restore/reset', (_req, res) => {
+    license.restoreReset()
     res.json({ ok: true })
   })
 
@@ -2055,6 +2270,15 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   }
 
   const adminUrl = `http://127.0.0.1:${actualPort}/app/?k=${encodeURIComponent(cfg.adminToken)}`
+  // Flitdrop Pro : identité de la machine lue (une commande du système, d'ordinaire
+  // quelques dizaines de ms ; 3 s au plus, jamais d'erreur), puis
+  // configuration et achats en arrière-plan, sans rien attendre
+  if (license.active) {
+    let readyTimer: ReturnType<typeof setTimeout> | undefined
+    await Promise.race([license.ready, new Promise<void>((resolve) => (readyTimer = setTimeout(resolve, 3000)))])
+    clearTimeout(readyTimer)
+    license.start()
+  }
   // premier lancement / mise à jour / actif du jour (no-op hors app de bureau)
   telemetry.start()
 
@@ -2064,6 +2288,11 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     const to = sendTargets(undefined) ?? undefined
     let added = 0
     for (const p of paths) {
+      // limite du jour (gratuit) : le reste n'est pas ajouté, la fenêtre le dit
+      if (license.dailyLeft() <= 0) {
+        license.noteRefused()
+        break
+      }
       try {
         const st = await fs.promises.stat(p)
         if (!st.isFile()) continue
@@ -2073,6 +2302,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         fs.closeSync(reserved.fd)
         await fs.promises.copyFile(p, reserved.path)
         outbox.addFile(path.basename(reserved.path), reserved.path, st.size, undefined, to)
+        license.countFiles(1)
         added++
       } catch {
         // fichier illisible : on passe au suivant
@@ -2109,6 +2339,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     activity,
     setHost,
     setAutostart,
+    license,
     close: async () => {
       telemetry.stop()
       activity.close()

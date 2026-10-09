@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rückerstattung und Widerruf · Flitdrop</title>
+  <meta name="description" content="Du hast es dir bei Flitdrop Pro anders überlegt? Volle Rückerstattung innerhalb von 14 Tagen, ohne Fragen. Wie du sie anforderst, dein gesetzliches Widerrufsrecht und der Käufer-Support von Paddle.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://flitdrop.com/de/refund">
+  <link rel="alternate" hreflang="en" href="https://flitdrop.com/refund">
+  <link rel="alternate" hreflang="fr" href="https://flitdrop.com/fr/refund">
+  <link rel="alternate" hreflang="de" href="https://flitdrop.com/de/refund">
+  <link rel="alternate" hreflang="x-default" href="https://flitdrop.com/refund">
+
+  <link rel="icon" href="/assets/icon.svg">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Flitdrop">
+  <meta property="og:title" content="Rückerstattung und Widerruf · Flitdrop">
+  <meta property="og:description" content="Du hast es dir bei Flitdrop Pro anders überlegt? Volle Rückerstattung innerhalb von 14 Tagen, ohne Fragen. Wie du sie anforderst, dein gesetzliches Widerrufsrecht und der Käufer-Support von Paddle.">
+  <meta property="og:url" content="https://flitdrop.com/de/refund">
+  <meta property="og:image" content="https://flitdrop.com/assets/og.jpg">
+  <meta property="og:locale" content="de_DE">
+  <meta property="og:locale:alternate" content="en_US">
+  <link rel="stylesheet" href="/style.css">
+  <script>
+    // Page anglaise ouverte par un francophone ou un germanophone (?lang=, langue
+    // choisie sur le site, langue du navigateur) : direction la vraie page traduite.
+    (function () {
+      var p = location.pathname || '/';
+      if (/^\/(fr|de)\//.test(p)) return;
+      var l = null, q = null;
+      try { q = new URLSearchParams(location.search); l = q.get('lang'); } catch (e) { return; }
+      if (!l) { try { l = localStorage.getItem('flitdrop_lang'); } catch (e) {} }
+      if (!l) l = (navigator.language || '').slice(0, 2).toLowerCase();
+      if (l !== 'fr' && l !== 'de') return;
+      q.delete('lang');
+      var s = q.toString();
+      location.replace('/' + l + p.replace(/\.html$/, '').replace(/\/+$/, '') + (s ? '?' + s : '') + location.hash);
+    })();
+  </script>
+  <script async src="/js/analytics.js"></script>
+  <script defer src="/js/i18n-data.js"></script>
+  <script defer src="/js/i18n.js"></script>
+</head>
+<body>
+  <div class="bg" aria-hidden="true"><div class="bg-aurora"></div></div>
+  <header class="nav">
+    <a class="brand" href="/de/"><img src="/assets/icon.svg" alt="" width="30" height="30"><span>Flitdrop</span></a>
+    <div class="nav-right" style="margin-left:auto"><button class="lang-toggle" id="langToggle" type="button">EN</button></div>
+  </header>
+
+  <main class="doc">
+    <a class="back" href="/de/">← <span data-i18n="foot.home">Startseite</span></a>
+
+    <h1>Rückerstattung und Widerruf</h1>
+    <p class="updated">Zuletzt aktualisiert: 9. Oktober 2026</p>
+
+    <div class="doc-action">
+      <p><strong>Anders überlegt? Innerhalb von 14 Tagen nach dem Kauf bekommst du dein ganzes Geld zurück, ohne Begründung.</strong></p>
+      <div class="pro-actions">
+        <a class="btn btn-primary btn-lg" id="refundMail" href="mailto:contact@flitdrop.com?subject=Refund%20request%2C%20Flitdrop%20Pro">Rückerstattung anfordern / widerrufen</a>
+        <a class="btn btn-ghost btn-lg" href="https://paddle.net" target="_blank" rel="noopener">Vertrag hier widerrufen, bei Paddle</a>
+      </div>
+      <p>Die erste Schaltfläche öffnet eine E-Mail an <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>, fertig zum Senden: Füg nur die E-Mail-Adresse hinzu, mit der du gekauft hast. Die zweite führt zum Käufer-Support von Paddle, das dir die Lizenz verkauft hat: Such deinen Kauf heraus und wähle dann Widerruf oder Rückerstattung. Beide bleiben die ganzen 14 Tage verfügbar.</p>
+      <!-- texte de l'e-mail prérempli (traduit avec la page, assemblé par le script plus bas) -->
+      <span hidden data-mail="subject">Rückerstattung, Flitdrop Pro</span>
+      <span hidden data-mail="line">Hallo,</span>
+      <span hidden data-mail="line">ich widerrufe meinen Kauf von Flitdrop Pro und möchte mein Geld zurück.</span>
+      <span hidden data-mail="line">E-Mail-Adresse des Kaufs:</span>
+      <span hidden data-mail="line">Name:</span>
+      <span hidden data-mail="line">Bestellnummer (auf der Paddle-Quittung, falls vorhanden):</span>
+      <span hidden data-mail="line">Kaufdatum:</span>
+      <span hidden data-mail="line">Danke.</span>
+    </div>
+
+    <h2>So funktioniert es</h2>
+    <ul>
+      <li>Frag innerhalb von 14 Tagen nach dem Kauf: mit der Schaltfläche oben, per E-Mail an <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>, oder über Paddle, auf <a href="https://paddle.net" target="_blank" rel="noopener">paddle.net</a> oder über den Link zur Verwaltung deines Kaufs in der Quittungs-E-Mail von Paddle.</li>
+      <li>Gib die E-Mail-Adresse des Kaufs an und, falls vorhanden, die Bestellnummer auf deiner Quittung. Du musst keinen Grund nennen.</li>
+      <li>Wir bestätigen dir den Eingang deiner Anfrage unverzüglich per E-Mail, mit Datum und Uhrzeit. Dann erstatten wir dir den Betrag über Paddle, auf dem Zahlungsweg, den du genutzt hast, spätestens innerhalb von 14 Tagen und meist innerhalb weniger Tage. Es kostet dich nichts.</li>
+      <li>Danach wird Pro auf deinen Computern abgeschaltet. Flitdrop läuft mit allen kostenlosen Funktionen weiter, und auf deinem Computer wird nichts gelöscht.</li>
+    </ul>
+
+    <h2>Dein gesetzliches Widerrufsrecht</h2>
+    <p>Wenn du in der Europäischen Union lebst, gibt dir das Gesetz 14 Tage, um einen Online-Kauf ohne Begründung zu widerrufen. Bei digitalen Inhalten wie Flitdrop Pro endet dieses gesetzliche Recht, sobald Pro freigeschaltet ist, wenn du beim Bezahlen verlangt hast, dass es sofort verfügbar ist, und bestätigt hast, dass du dein Widerrufsrecht damit verlierst.</p>
+    <p>Unser Versprechen gilt trotzdem: Ob Pro freigeschaltet ist oder nicht, du bekommst dein Geld zurück, wenn du innerhalb von 14 Tagen nach dem Kauf fragst. Zum Widerrufen reichen die Schaltfläche oben, jede eindeutige Nachricht per E-Mail oder die Widerrufsmöglichkeit von Paddle. Ähnliche Regeln gibt es im Vereinigten Königreich und in anderen Ländern; wenn dir das Recht deines Landes mehr gibt, gilt es.</p>
+
+    <h2>Nach 14 Tagen</h2>
+    <p>Nach 14 Tagen ist ein Kauf endgültig, außer wenn das Gesetz etwas anderes sagt, zum Beispiel wenn Pro nicht wie beschrieben funktioniert. Dann schreib uns: Wir beheben es oder erstatten dir den Betrag, wenn wir es nicht schaffen.</p>
+
+    <h2>Wer dir das Geld zurückzahlt</h2>
+    <p>Paddle.com Market Limited, unser Wiederverkäufer, der in eigenem Namen verkauft (Merchant of Record), hat deine Zahlung kassiert, deshalb läuft die Rückerstattung über Paddle. Wenn deine Anfrage bei uns ankommt, lassen wir dir den Betrag von Paddle erstatten. Du kannst dich auch direkt an den Käufer-Support von Paddle auf <a href="https://paddle.net" target="_blank" rel="noopener">paddle.net</a> wenden, um deine Bestellung zu finden, deine Quittung zu bekommen oder eine Rückerstattung zu verlangen. Die vollständigen Bedingungen stehen in den <a href="/de/terms">Verkaufs- und Lizenzbedingungen</a>.</p>
+  </main>
+
+  <footer class="mini-foot">
+    <a href="/de/" data-i18n="foot.home">Startseite</a>
+    <a href="/de/pro" data-i18n="footer.pro">Flitdrop Pro</a>
+    <a href="/privacy" data-i18n="footer.privacy">Datenschutz</a>
+    <a href="/legal" data-i18n="footer.legal">Impressum</a>
+    <a href="/de/terms" data-i18n="footer.terms">Verkaufsbedingungen</a>
+    <a href="/de/refund" data-i18n="footer.refund">Rückerstattung</a>
+    <a href="#cookies" role="button" data-consent-open data-consent-link data-i18n="consent.link">Cookies</a>
+  </footer>
+
+  <script>
+    // Bouton de rétractation : l'e-mail prérempli est assemblé dans la langue de la
+    // page à partir des lignes cachées ci-dessus (sans JavaScript, le lien garde
+    // l'objet anglais et marche quand même).
+    (function () {
+      var a = document.getElementById('refundMail');
+      var subj = document.querySelector('[data-mail="subject"]');
+      if (!a || !subj) return;
+      var lines = [];
+      document.querySelectorAll('[data-mail="line"]').forEach(function (e) { lines.push(e.textContent.trim()); });
+      var body = lines[0] + '\r\n\r\n' + lines[1] + '\r\n\r\n' + lines.slice(2, -1).map(function (l) { return l + ' '; }).join('\r\n') + '\r\n\r\n' + lines[lines.length - 1];
+      a.setAttribute('href', 'mailto:contact@flitdrop.com?subject=' + encodeURIComponent(subj.textContent.trim()) + '&body=' + encodeURIComponent(body));
+    })();
+  </script>
+</body>
+</html>

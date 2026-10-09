@@ -200,6 +200,47 @@ test('app_daily_active : autostart booléen seulement', async () => {
   assert.equal(sent[1].body.properties.autostart, undefined)
 })
 
+test('app_daily_active : plan Flitdrop Pro, valeurs de la liste seulement', async () => {
+  await call(env('basic', 'app_daily_active', { ...COMMON, paired_devices: 1, plan: 'trial' }))
+  await call(env('basic', 'app_daily_active', { ...COMMON, paired_devices: 1, plan: 'gold' }))
+  assert.equal(sent[0].body.properties.plan, 'trial')
+  assert.equal(sent[1].body.properties.plan, undefined)
+})
+
+test('Flitdrop Pro : évènements du niveau de base, valeurs de la liste seulement, rien de personnel', async () => {
+  await call(env('basic', 'pro_prompt_shown', { ...COMMON, where: 'limit' }, { iid: 'should-be-ignored-123' }))
+  await call(env('basic', 'pro_checkout_opened', { ...COMMON, where: 'settings', early: true, claim: '0123456789abcdef0123456789abcdef' }))
+  await call(env('basic', 'pro_unlocked', { ...COMMON, how: 'restore', email: 'zoe@example.com', token: 'abc.def' }))
+  await call(env('basic', 'daily_limit_reached', { ...COMMON, count: 31 }))
+  await call(env('basic', 'pro_prompt_shown', { where: 'popup' }))
+  await call(env('basic', 'pro_checkout_opened', { where: 'limit', early: 'yes' }))
+  await call(env('basic', 'pro_unlocked', { how: 'gift' }))
+  assert.equal(sent.length, 7)
+  assert.deepEqual(sent.map((x) => x.body.event), [
+    'pro_prompt_shown',
+    'pro_checkout_opened',
+    'pro_unlocked',
+    'daily_limit_reached',
+    'pro_prompt_shown',
+    'pro_checkout_opened',
+    'pro_unlocked',
+  ])
+  for (const x of sent) {
+    assert.equal(x.body.properties.tier, 'basic')
+    assert.equal(x.body.properties.$process_person_profile, false)
+  }
+  assert.equal(sent[0].body.properties.where, 'limit')
+  assert.equal(sent[1].body.properties.where, 'settings')
+  assert.equal(sent[1].body.properties.early, true)
+  assert.equal(sent[2].body.properties.how, 'restore')
+  // valeurs hors liste ou du mauvais type : retirées
+  assert.equal(sent[4].body.properties.where, undefined)
+  assert.equal(sent[5].body.properties.early, undefined)
+  assert.equal(sent[6].body.properties.how, undefined)
+  const raw = JSON.stringify(sent.map((x) => x.body))
+  for (const leak of ['zoe@example.com', 'abc.def', '0123456789abcdef', 'should-be-ignored', '"count"']) assert.ok(!raw.includes(leak), leak)
+})
+
 test('transfer_fail : raison nettoyée, status numérique', async () => {
   await call(env('basic', 'transfer_fail', { direction: 'phone_to_pc', kind: 'file', status: 507, reason: 'ENOSPC' }))
   await call(env('basic', 'transfer_fail', { direction: 'phone_to_pc', kind: 'file', status: '500', reason: "open 'C:\\Users\\thomas\\x.pdf'" }))

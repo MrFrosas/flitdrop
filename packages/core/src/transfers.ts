@@ -23,6 +23,9 @@ export interface TransferMeta {
   mime?: string
   chunks: number
   chunkSize: number
+  /** date du fichier sur le téléphone (ms, File.lastModified), facultative :
+   *  sert à ranger photos et vidéos par mois (Flitdrop Pro) */
+  lastModified?: number
 }
 
 export interface Transfer {
@@ -32,6 +35,8 @@ export interface Transfer {
   name: string
   size: number
   mime?: string
+  /** date du fichier sur le téléphone (ms), si elle a été envoyée */
+  lastModified?: number
   chunks: number
   chunkSize: number
   received: number
@@ -78,6 +83,10 @@ export class TransferManager {
   approvalHook: ((info: { deviceName: string; name: string; size: number }) => Promise<boolean>) | null = null
   /** Posé par le serveur : un transfert a échoué (statistiques anonymes). */
   failureHook: ((t: Transfer, status: number, reason: string) => void) | null = null
+  /** Posé par le serveur : dossier où ranger ce fichier (Flitdrop Pro : un
+   *  dossier par mois pour les photos et vidéos). Absent : le dossier de
+   *  réception, comme avant. */
+  folderFor: ((t: Transfer) => string) | null = null
 
   constructor(
     private getCfg: () => Config,
@@ -134,6 +143,7 @@ export class TransferManager {
       name,
       size,
       mime: typeof meta?.mime === 'string' ? meta.mime.slice(0, 100) : undefined,
+      lastModified: typeof meta?.lastModified === 'number' && Number.isFinite(meta.lastModified) ? meta.lastModified : undefined,
       chunks,
       chunkSize,
       received: 0,
@@ -158,6 +168,13 @@ export class TransferManager {
 
   get(id: string): Transfer | undefined {
     return this.active.get(id)
+  }
+
+  /** Transferts commencés et pas encore terminés (tous téléphones). */
+  activeCount(): number {
+    let n = 0
+    for (const t of this.active.values()) if (t.status === 'active') n++
+    return n
   }
 
   /** Longueur EXACTE attendue pour un chunk donné (le dernier est plus court).
@@ -235,11 +252,19 @@ export class TransferManager {
       this.handles.delete(t.id)
     }
     const cfg = this.getCfg()
-    fs.mkdirSync(cfg.downloadDir, { recursive: true })
+    let dir = cfg.downloadDir
+    try {
+      dir = this.folderFor?.(t) || cfg.downloadDir
+      fs.mkdirSync(dir, { recursive: true })
+    } catch {
+      // dossier du mois impossible à créer : le dossier de réception
+      dir = cfg.downloadDir
+      fs.mkdirSync(dir, { recursive: true })
+    }
     // réservation atomique du nom final, puis on écrase le placeholder par le
     // fichier temp : deux transferts du même nom n'écrasent jamais le fichier
     // de l'autre (chacun obtient « nom », « nom (2) »…).
-    const reserved = reserveUniquePath(cfg.downloadDir, t.name)
+    const reserved = reserveUniquePath(dir, t.name)
     fs.closeSync(reserved.fd)
     const finalPath = reserved.path
     await fs.promises.rename(t.tmpPath, finalPath)

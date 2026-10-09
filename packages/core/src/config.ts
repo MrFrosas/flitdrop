@@ -86,6 +86,46 @@ export interface Config {
   rateState: '' | 'later' | 'done'
   // valeur de okTransfers au moment du premier « Plus tard »
   rateLaterAt: number
+  // ---------- Flitdrop Pro (license.ts) ----------
+  // identifiant d'appareil de la licence : empreinte de l'identifiant de la
+  // machine (jamais l'identifiant lui-même). Différent de celui calculé au
+  // lancement : config copiée d'un autre PC, son jeton est ignoré.
+  licenseDeviceId: string
+  // identifiant aléatoire de secours, seulement si celui de la machine est
+  // illisible ('' sinon)
+  licenseFallbackId: string
+  // état signé : essai, mode payant vu, compteur du jour, jeton (null : rien
+  // encore). Retouché à la main : limites fermées (voir license.ts).
+  licenseState: LicenseStateStored | null
+  // dernière configuration publique reçue de flitdrop.com (affichage : prix,
+  // offre de lancement), et sa date
+  licenseConfig: Record<string, unknown> | null
+  licenseConfigAt: string
+  // dernier jour local où le renouvellement du jeton a été tenté
+  licenseRenewDay: string
+  // achat commencé (page de paiement ouverte), vérifié une fois au lancement
+  // suivant pendant 48 h
+  licenseClaim: { claim: string; at: string } | null
+  // dernier jour local où « limite du jour atteinte » a été compté
+  dailyLimitReportedDay: string
+  // Pro : photos et vidéos reçues rangées dans un dossier par mois (AAAA-MM).
+  // Allumé par défaut ; sans effet en gratuit ou mode payant coupé.
+  sortPhotosByMonth: boolean
+  // invitations Pro dans la fenêtre : au plus une par jour (jour, carte,
+  // rangée par « Plus tard »), et combien de fois chacune a été montrée
+  proPromptsShown: { day: string; kind: '' | 'limit' | 'trial'; closed: boolean; limit: number; trial: number }
+}
+
+/** État de la licence tel qu'enregistré (voir LicenseState dans license.ts),
+ *  avec son empreinte HMAC. */
+export interface LicenseStateStored {
+  paidMode: boolean
+  paidModeSeenAt: string
+  trialStartAt: string
+  trialEndsAt: string
+  dailyFiles: { day: string; count: number }
+  token: string
+  mac: string
 }
 
 export function flitdropHome(override?: string): string {
@@ -152,6 +192,19 @@ export function loadConfig(home: string): Config {
     okTransfers: clampInt(stored.okTransfers, 0, 1_000_000, 0),
     rateState: stored.rateState === 'later' || stored.rateState === 'done' ? stored.rateState : '',
     rateLaterAt: clampInt(stored.rateLaterAt, 0, 1_000_000, 0),
+    licenseDeviceId: typeof stored.licenseDeviceId === 'string' && /^[0-9a-f]{32}$/.test(stored.licenseDeviceId) ? stored.licenseDeviceId : '',
+    licenseFallbackId: typeof stored.licenseFallbackId === 'string' && /^[0-9a-f]{32}$/.test(stored.licenseFallbackId) ? stored.licenseFallbackId : '',
+    licenseState: licenseStateFrom(stored.licenseState),
+    licenseConfig: stored.licenseConfig && typeof stored.licenseConfig === 'object' && !Array.isArray(stored.licenseConfig) ? stored.licenseConfig : null,
+    licenseConfigAt: anyIso(stored.licenseConfigAt) ?? '',
+    licenseRenewDay: typeof stored.licenseRenewDay === 'string' ? stored.licenseRenewDay.slice(0, 10) : '',
+    licenseClaim:
+      stored.licenseClaim && typeof stored.licenseClaim === 'object' && typeof stored.licenseClaim.claim === 'string' && /^[0-9a-f]{32}$/.test(stored.licenseClaim.claim) && anyIso(stored.licenseClaim.at)
+        ? { claim: stored.licenseClaim.claim, at: anyIso(stored.licenseClaim.at) as string }
+        : null,
+    dailyLimitReportedDay: typeof stored.dailyLimitReportedDay === 'string' ? stored.dailyLimitReportedDay.slice(0, 10) : '',
+    sortPhotosByMonth: stored.sortPhotosByMonth !== false,
+    proPromptsShown: promptsFrom(stored.proPromptsShown),
   }
   // migration : absent d'un config.json plus ancien. Une installation qui a
   // déjà appairé un téléphone ou transféré quelque chose a forcément vu la page
@@ -159,6 +212,36 @@ export function loadConfig(home: string): Config {
   cfg.firstPhonePageDone = stored.firstPhonePageDone === true || cfg.firstPairingDone || cfg.firstTransferDone
   saveConfig(home, cfg)
   return cfg
+}
+
+/** État de licence lu tel quel (types seulement) : la moindre valeur
+ *  changée casse son empreinte, vérifiée par license.ts. Jamais corrigé ici,
+ *  sinon un état légitime deviendrait faux. */
+function licenseStateFrom(v: unknown): LicenseStateStored | null {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const s = v as Record<string, unknown>
+  const d = (s.dailyFiles && typeof s.dailyFiles === 'object' ? s.dailyFiles : {}) as Record<string, unknown>
+  const str = (x: unknown, max: number) => (typeof x === 'string' ? x.slice(0, max) : '')
+  return {
+    paidMode: s.paidMode === true,
+    paidModeSeenAt: str(s.paidModeSeenAt, 40),
+    trialStartAt: str(s.trialStartAt, 40),
+    trialEndsAt: str(s.trialEndsAt, 40),
+    dailyFiles: { day: str(d.day, 10), count: typeof d.count === 'number' && Number.isFinite(d.count) ? d.count : 0 },
+    token: str(s.token, 4096),
+    mac: str(s.mac, 64),
+  }
+}
+
+function promptsFrom(v: unknown): Config['proPromptsShown'] {
+  const p = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+  return {
+    day: typeof p.day === 'string' ? p.day.slice(0, 10) : '',
+    kind: p.kind === 'limit' || p.kind === 'trial' ? p.kind : '',
+    closed: p.closed === true,
+    limit: clampInt(p.limit, 0, 1_000_000, 0),
+    trial: clampInt(p.trial, 0, 1_000_000, 0),
+  }
 }
 
 export function saveConfig(home: string, cfg: Config): void {
@@ -170,6 +253,14 @@ function validIso(v: unknown): string | undefined {
   if (typeof v !== 'string') return undefined
   const ms = Date.parse(v)
   return Number.isFinite(ms) && ms > MIN_PLAUSIBLE_MS && ms <= Date.now() + 86_400_000 ? new Date(ms).toISOString() : undefined
+}
+
+/** Date ISO lisible, sans borne (dates de la licence : l'horloge du PC peut
+ *  avoir changé entre deux lancements, license.ts juge lui-même). */
+function anyIso(v: unknown): string | undefined {
+  if (typeof v !== 'string' || v.length > 40) return undefined
+  const ms = Date.parse(v)
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : undefined
 }
 
 // avant 2024 : aucune installation de Flitdrop n'existait, une date plus

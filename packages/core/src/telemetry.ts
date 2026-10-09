@@ -42,7 +42,8 @@ export const COMMON_PROPS = ['os', 'arch', 'channel', 'locale', 'install_week', 
 export const EVENTS: Record<string, { tier: Tier; props: readonly string[] }> = {
   app_first_launch: { tier: 'basic', props: [] },
   app_updated: { tier: 'basic', props: ['from_version'] },
-  app_daily_active: { tier: 'basic', props: ['paired_devices', 'launches_today', 'autostart'] },
+  // plan : « off » (mode payant coupé), « trial », « free » ou « pro »
+  app_daily_active: { tier: 'basic', props: ['paired_devices', 'launches_today', 'autostart', 'plan'] },
   pairing_success: { tier: 'basic', props: ['platform', 'first'] },
   phone_page_opened: { tier: 'basic', props: ['first', 'platform'] },
   transfer_ok: { tier: 'basic', props: ['direction', 'kind', 'size', 'first'] },
@@ -58,6 +59,14 @@ export const EVENTS: Record<string, { tier: Tier; props: readonly string[] }> = 
   // oui/non seulement, jamais de nom de réseau, de règle ni de chemin.
   firewall_check: { tier: 'basic', props: ['network', 'blocked', 'allowed'] },
   firewall_repair: { tier: 'basic', props: ['result'] },
+  // Flitdrop Pro : invitation montrée (limite du jour, fin d'essai), page
+  // d'achat ouverte (avec ou sans l'offre de lancement), Pro débloqué (achat
+  // ou restauration), limite du jour atteinte (une fois par jour au plus).
+  // Jamais d'adresse e-mail, de jeton ni d'identifiant d'achat.
+  pro_prompt_shown: { tier: 'basic', props: ['where'] },
+  pro_checkout_opened: { tier: 'basic', props: ['where', 'early'] },
+  pro_unlocked: { tier: 'basic', props: ['how'] },
+  daily_limit_reached: { tier: 'basic', props: [] },
   welcome_shown: { tier: 'full', props: [] },
   welcome_pair_clicked: { tier: 'full', props: [] },
   welcome_skipped: { tier: 'full', props: [] },
@@ -278,6 +287,8 @@ export interface TelemetryDeps {
   /** Lancement à l'ouverture de session activé ? null : inconnu (ligne de
    *  commande, tests), la propriété n'est alors pas envoyée. */
   autostart?: () => boolean | null
+  /** Plan Flitdrop Pro (license.ts) : off, trial, free ou pro. */
+  plan?: () => string | null
 }
 
 const QUEUE_CAP = 50
@@ -519,6 +530,12 @@ export class Telemetry {
       autostart = null
     }
     if (typeof autostart === 'boolean') props.autostart = autostart
+    try {
+      const plan = this.deps.plan?.()
+      if (typeof plan === 'string' && plan) props.plan = plan
+    } catch {
+      // plan inconnu : propriété absente
+    }
     this.dailyInFlight = true
     const queued = this.track('app_daily_active', props, () => {
       this.cfg.lastDailyActiveDay = today

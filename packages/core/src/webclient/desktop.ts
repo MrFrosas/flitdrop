@@ -77,8 +77,14 @@ interface State {
     autostartAsked?: boolean
     /** un premier transfert a réussi (fin du premier envoi guidé) */
     firstTransferDone?: boolean
+    /** Flitdrop Pro : photos et vidéos rangées par mois (absent d'un coeur plus ancien) */
+    sortPhotosByMonth?: boolean
     port: number
   }
+  /** Flitdrop Pro (absent d'un coeur plus ancien : comme « off ») */
+  pro?: ProStateUI
+  /** entrées du presse-papiers gardées mais pas montrées (version gratuite) */
+  clipHidden?: number
   /** destinataire proposé quand plusieurs téléphones sont appairés ('all' ou un identifiant) */
   sendTo?: string
   /** lancement à l'ouverture de session ; null ou absent : hors app de bureau */
@@ -109,6 +115,23 @@ interface State {
   history: HistEntry[]
   outbox: OutboxEntry[]
   clipHistory: ClipEntry[]
+}
+
+/** État Flitdrop Pro envoyé par le PC (license.ts, ProState). */
+interface ProStateUI {
+  plan: 'off' | 'trial' | 'free' | 'pro'
+  trialDaysLeft?: number
+  trialEndsAt?: string
+  limit?: number
+  used?: number
+  left?: number
+  resetAt?: string
+  price?: string
+  earlyPrice?: string
+  earlyUntil?: string
+  card?: 'limit' | 'trial' | 'waiting' | 'success' | 'used' | null
+  waiting?: { since: string; polling: boolean } | null
+  restoreEmail?: string | null
 }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
@@ -421,7 +444,23 @@ function renderSettings() {
   ;($('setDir') as unknown as HTMLInputElement).value = state.config.downloadDir
   ;($('setMax') as unknown as HTMLSelectElement).value = String(state.config.maxFileMB)
   ;($('setApproval') as unknown as HTMLInputElement).checked = state.config.requireApproval
-  ;($('setClipboard') as unknown as HTMLInputElement).checked = state.config.clipboardAutoPush
+  // Flitdrop Pro : synchro automatique du presse-papiers réservée à Pro en
+  // gratuit (grisée), dossiers par mois cachés quand le mode payant est coupé
+  const plan = proPlan()
+  const locked = plan === 'free'
+  const clipBox = $('setClipboard') as unknown as HTMLInputElement
+  clipBox.checked = state.config.clipboardAutoPush && !locked
+  clipBox.disabled = locked
+  const monthBox = $('setMonthFolders') as unknown as HTMLInputElement
+  monthBox.checked = state.config.sortPhotosByMonth !== false && (plan === 'trial' || plan === 'pro')
+  monthBox.disabled = locked
+  $('setMonthRow').classList.toggle('hidden', plan === 'off' || state.config.sortPhotosByMonth === undefined)
+  for (const id of ['setClipboardRow', 'setMonthRow']) {
+    const row = $(id)
+    row.classList.toggle('locked', locked)
+    row.querySelector('[data-pro-badge]')?.classList.toggle('hidden', plan !== 'free' && plan !== 'trial')
+    row.title = locked ? t('pro.only') : ''
+  }
   ;($('setShortcuts') as unknown as HTMLInputElement).checked = state.config.shortcutsEnabled
   ;($('setAutoUpdate') as unknown as HTMLInputElement).checked = state.config.autoUpdate
   ;($('setClipHistory') as unknown as HTMLInputElement).checked = state.config.clipHistoryEnabled
@@ -475,6 +514,11 @@ function renderClipHistory() {
   const items = state.clipHistory.filter((e) => !q || e.text.toLowerCase().includes(q))
   $('clipDisabled').classList.toggle('hidden', enabled)
   $('clipEmpty').classList.toggle('hidden', !enabled || items.length > 0 || q.length > 0)
+  // version gratuite : les 20 derniers textes, le reste est gardé
+  const hint = $('clipFreeHint')
+  const limited = enabled && proPlan() === 'free' && (state.clipHidden ?? 0) > 0
+  hint.classList.toggle('hidden', !limited)
+  if (limited) hint.textContent = t('clip.freeLimit', { n: 20 })
   for (const e of items.slice(0, 200)) {
     const isImg = e.kind === 'image' && !!e.image
     const c = isImg ? { kind: 'image' as const, label: t('clip.kind.image'), icon: '▦', domain: undefined, thumb: e.image?.thumb } : classifyClip(e.text)
@@ -625,6 +669,8 @@ function renderAll() {
   renderSettings()
   renderHost()
   renderGuide()
+  renderProSection()
+  renderProCard()
 }
 
 // ---------- premier envoi guidé ----------
@@ -1086,6 +1132,8 @@ function connectWS() {
         toast(t('toast.clipSynced'), (data as { preview?: string }).preview)
         break
       case 'cliphistory-changed':
+      // Flitdrop Pro : plan, limite du jour, carte
+      case 'pro-changed':
         void refresh()
         break
     }
@@ -1368,7 +1416,13 @@ function initUI() {
         downloadDir: ($('setDir') as unknown as HTMLInputElement).value,
         maxFileMB: Number(($('setMax') as unknown as HTMLSelectElement).value),
         requireApproval: ($('setApproval') as unknown as HTMLInputElement).checked,
-        clipboardAutoPush: ($('setClipboard') as unknown as HTMLInputElement).checked,
+        // réglages Pro grisés : jamais renvoyés (le choix d'avant est gardé)
+        ...(($('setClipboard') as unknown as HTMLInputElement).disabled
+          ? {}
+          : { clipboardAutoPush: ($('setClipboard') as unknown as HTMLInputElement).checked }),
+        ...(($('setMonthFolders') as unknown as HTMLInputElement).disabled || $('setMonthRow').classList.contains('hidden')
+          ? {}
+          : { sortPhotosByMonth: ($('setMonthFolders') as unknown as HTMLInputElement).checked }),
         shortcutsEnabled: ($('setShortcuts') as unknown as HTMLInputElement).checked,
         autoUpdate: ($('setAutoUpdate') as unknown as HTMLInputElement).checked,
         clipHistoryEnabled: ($('setClipHistory') as unknown as HTMLInputElement).checked,
@@ -1479,6 +1533,8 @@ function initUI() {
     void refresh()
   }
 
+  initProUI()
+
   window.addEventListener('resize', renderRadar)
   setInterval(() => {
     if (!document.hidden) renderRadar()
@@ -1502,7 +1558,18 @@ async function uploadOutbox(files: FileList) {
       bar.classList.add('hidden')
       fill.style.width = '0%'
       if (xhr.status === 200) {
-        toast(tp(lang, 'up.filesReady', files.length), sendTargetLabel() ?? t('up.readyHint'))
+        // limite du jour (Flitdrop Pro, gratuit) : les premiers passent
+        let refused = 0
+        try {
+          refused = Math.max(0, Number((JSON.parse(xhr.responseText) as { refused?: unknown }).refused) || 0)
+        } catch {
+          refused = 0
+        }
+        const accepted = files.length - refused
+        if (accepted > 0) toast(tp(lang, 'up.filesReady', accepted), sendTargetLabel() ?? t('up.readyHint'))
+        if (refused > 0) toast(t('pro.limitToast'), tp(lang, 'pro.limitToastSub', refused))
+      } else if (xhr.status === 402) {
+        toast(t('pro.limitToast'), tp(lang, 'pro.limitToastSub', files.length))
       } else {
         toast(t('up.failed'), `code ${xhr.status}`)
       }
@@ -1518,6 +1585,266 @@ async function uploadOutbox(files: FileList) {
   })
 }
 
+// ---------- Flitdrop Pro ----------
+// Tout passe par le serveur local (/api/admin/pro/*) : la page ne joint
+// jamais internet et ne fabrique aucune adresse d'achat elle-même.
+
+const proPlan = (): ProStateUI['plan'] => state?.pro?.plan ?? 'off'
+/** prix affiché : celui de lancement quand il s'applique à cette installation */
+const proPrice = (): string => state?.pro?.earlyPrice ?? state?.pro?.price ?? ''
+
+const fmtDay = (iso?: string): string => {
+  const d = iso ? new Date(iso) : null
+  if (!d || Number.isNaN(d.getTime())) return ''
+  try {
+    return d.toLocaleDateString(lang, { day: 'numeric', month: 'long' })
+  } catch {
+    return d.toISOString().slice(0, 10)
+  }
+}
+
+// « J'ai déjà acheté » ouvert, et dernier message sous la restauration
+let restoreOpen = false
+let restoreMsg: { text: string; err: boolean } | null = null
+// message sous la carte d'attente du paiement
+let claimStatus = ''
+// vérification du paiement : une à la fois, toutes les 5 s, seulement carte
+// d'attente visible et fenêtre visible (30 minutes au plus, compté par le PC)
+let claimTimer: ReturnType<typeof setTimeout> | undefined
+// invitations déjà signalées vues pendant ce chargement de la page
+const proSeen = new Set<string>()
+
+function renderProSection() {
+  const pro = state?.pro
+  const plan = proPlan()
+  $('proSection').classList.toggle('hidden', plan === 'off')
+  if (!pro || plan === 'off') return
+  const status = $('proStatus')
+  status.classList.toggle('ok', plan === 'pro')
+  status.textContent =
+    plan === 'pro'
+      ? t('pro.status.pro')
+      : plan === 'trial'
+        ? tp(lang, 'pro.status.trial', pro.trialDaysLeft ?? 0)
+        : t('pro.status.free', { used: pro.used ?? 0, limit: pro.limit ?? 30 })
+  $('proOffer').classList.toggle('hidden', plan === 'pro')
+  $('proFree').textContent = t('pro.freeForever', { n: pro.limit ?? 30 })
+  const early = $('proEarly')
+  early.classList.toggle('hidden', !pro.earlyPrice || !pro.price)
+  if (pro.earlyPrice && pro.price) early.textContent = t('pro.early', { early: pro.earlyPrice, price: pro.price, date: fmtDay(pro.earlyUntil) })
+  const buy = $('btnProBuy') as unknown as HTMLButtonElement
+  buy.textContent = t('pro.buy', { price: proPrice() })
+  buy.disabled = !!pro.waiting
+  renderRestore()
+}
+
+const RESTORE_ERRORS = new Set(['code', 'expired', 'nopurchase', 'email', 'busy', 'nochallenge'])
+const restoreErrText = (e: unknown): string =>
+  e === 'offline' ? t('pro.err.offline') : t('pro.restore.err.' + (typeof e === 'string' && RESTORE_ERRORS.has(e) ? e : 'error'))
+
+function renderRestore() {
+  const email = state?.pro?.restoreEmail ?? null
+  $('proRestore').classList.toggle('hidden', !restoreOpen && !email)
+  $('proRestoreEmailRow').classList.toggle('hidden', !!email)
+  $('proRestoreCodeRow').classList.toggle('hidden', !email)
+  $('btnProRestoreBack').classList.toggle('hidden', !email)
+  $('proRestoreHint').textContent = email ? t('pro.restore.sent', { email }) : t('pro.restore.hint')
+  const msg = $('proRestoreMsg')
+  msg.classList.toggle('hidden', !restoreMsg)
+  msg.classList.toggle('err', !!restoreMsg?.err)
+  msg.textContent = restoreMsg?.text ?? ''
+}
+
+/** Carte en haut de la fenêtre : limite du jour, fin d'essai, attente du
+ *  paiement, merci. Jamais par-dessus l'écran d'accueil (sauf l'attente). */
+function renderProCard() {
+  const pro = state?.pro
+  const kind = proPlan() === 'off' ? null : (pro?.card ?? null)
+  const card = $('proCard')
+  const welcomeOpen = !$('welcomeModal').classList.contains('hidden')
+  const hidden = !kind || (welcomeOpen && kind !== 'waiting')
+  card.classList.toggle('hidden', hidden)
+  if (kind !== 'waiting') {
+    clearTimeout(claimTimer)
+    claimTimer = undefined
+    claimStatus = ''
+  }
+  if (!kind || !pro || hidden) return
+  card.classList.toggle('ok', kind === 'success')
+  const actions = $('proCardActions')
+  const links = $('proCardLinks')
+  actions.innerHTML = ''
+  links.innerHTML = ''
+  const button = (label: string, buy: boolean, onclick: () => void) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = buy ? 'btn pro-buy' : 'btn'
+    b.textContent = label
+    b.onclick = onclick
+    actions.appendChild(b)
+  }
+  const link = (label: string, onclick: () => void) => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'consent-more'
+    b.textContent = label
+    b.onclick = onclick
+    links.appendChild(b)
+  }
+  let title = ''
+  let body = ''
+  if (kind === 'limit' || kind === 'trial') {
+    title = kind === 'limit' ? t('pro.card.limit.title', { n: pro.limit ?? 30 }) : tp(lang, 'pro.card.trial.title', Math.max(1, pro.trialDaysLeft ?? 1))
+    body = kind === 'limit' ? t('pro.card.limit.body', { price: proPrice() }) : t('pro.card.trial.body', { limit: pro.limit ?? 30, price: proPrice() })
+    button(t('pro.buy', { price: proPrice() }), true, () => void proCheckout(kind))
+    button(t('pro.later'), false, () => void proClose())
+  } else if (kind === 'waiting') {
+    title = t('pro.card.wait.title')
+    body = t('pro.card.wait.body')
+    button(t('pro.card.wait.paid'), true, () => void proClaim(true))
+    button(t('pro.card.wait.cancel'), false, () => void proCancel())
+    link(t('pro.card.wait.reopen'), () => void postJSON('/pro/checkout', { reopen: true }).catch(() => {}))
+    if (!claimStatus && pro.waiting && !pro.waiting.polling) claimStatus = t('pro.card.wait.stopped')
+  } else if (kind === 'used') {
+    // l'achat sert déjà sur 5 ordinateurs : le chemin est « J'ai déjà acheté »
+    title = t('pro.card.used.title')
+    body = t('pro.card.used.body')
+    button(t('pro.restore'), true, () => {
+      restoreOpen = true
+      restoreMsg = null
+      void proClose().then(() => {
+        switchView('settings')
+        $('proSection').scrollIntoView({ block: 'start' })
+        ;($('proRestoreEmail') as unknown as HTMLInputElement).focus()
+      })
+    })
+    button(t('pro.card.used.ok'), false, () => void proClose())
+  } else {
+    title = t('pro.card.ok.title')
+    body = t('pro.card.ok.body')
+    button(t('pro.card.ok.btn'), true, () => void proClose())
+  }
+  $('proCardTitle').textContent = title
+  $('proCardBody').textContent = body
+  const st = $('proCardStatus')
+  st.textContent = kind === 'waiting' ? claimStatus : ''
+  st.classList.toggle('hidden', kind !== 'waiting' || !claimStatus)
+  noteProSeen()
+  if (kind === 'waiting') pollClaim()
+}
+
+/** Invitation réellement vue (fenêtre visible) : signalée une fois au PC,
+ *  qui la compte au plus une fois par jour. */
+function noteProSeen() {
+  const kind = state?.pro?.card
+  if ((kind !== 'limit' && kind !== 'trial') || document.visibilityState !== 'visible' || $('proCard').classList.contains('hidden')) return
+  if (proSeen.has(kind)) return
+  proSeen.add(kind)
+  void postJSON('/pro/seen', { where: kind }).catch(() => proSeen.delete(kind))
+}
+
+/** Pendant que la carte d'attente est visible : le PC vérifie le paiement
+ *  toutes les 5 s. Fenêtre cachée : rien ; reprise au retour. */
+function pollClaim() {
+  if (claimTimer !== undefined) return
+  claimTimer = setTimeout(async () => {
+    claimTimer = undefined
+    const w = state?.pro?.waiting
+    if (state?.pro?.card !== 'waiting' || !w?.polling) return
+    if (document.hidden || $('proCard').classList.contains('hidden')) return
+    const r = (await postJSON('/pro/claim', {}).catch(() => null)) as { status?: string } | null
+    if (r?.status === 'unlocked' || r?.status === 'used') return void refresh()
+    if (r?.status === 'stopped') {
+      claimStatus = t('pro.card.wait.stopped')
+      if (state?.pro?.waiting) state.pro.waiting.polling = false
+      return renderProCard()
+    }
+    if (state?.pro?.card === 'waiting') pollClaim()
+  }, 5000)
+}
+
+async function proCheckout(where: 'limit' | 'trial' | 'settings') {
+  claimStatus = ''
+  try {
+    await postJSON('/pro/checkout', { where })
+  } catch (e) {
+    toast((e as Error).message)
+  }
+  await refresh()
+  $('proCard').scrollIntoView({ block: 'nearest' })
+}
+
+async function proClaim(manual: boolean) {
+  const r = (await postJSON('/pro/claim', { manual }).catch(() => null)) as { status?: string } | null
+  if (r?.status === 'unlocked' || r?.status === 'used') return void refresh()
+  claimStatus = !r || r.status === 'offline' ? t('pro.err.offline') : t('pro.card.wait.notYet')
+  renderProCard()
+}
+
+async function proCancel() {
+  await postJSON('/pro/cancel', {}).catch(() => {})
+  void refresh()
+}
+
+async function proClose() {
+  $('proCard').classList.add('hidden')
+  await postJSON('/pro/close', {}).catch(() => {})
+  void refresh()
+}
+
+function initProUI() {
+  $('btnProBuy').onclick = () => void proCheckout('settings')
+  $('btnProRestore').onclick = () => {
+    restoreOpen = !restoreOpen
+    restoreMsg = null
+    renderRestore()
+    if (restoreOpen) ($('proRestoreEmail') as unknown as HTMLInputElement).focus()
+  }
+  const send = async () => {
+    const email = ($('proRestoreEmail') as unknown as HTMLInputElement).value.trim()
+    const btn = $('btnProRestoreSend') as unknown as HTMLButtonElement
+    btn.disabled = true
+    const r = (await postJSON('/pro/restore/start', { email }).catch(() => ({ error: 'offline' }))) as { ok?: boolean; error?: string }
+    btn.disabled = false
+    restoreMsg = r.ok ? null : { text: restoreErrText(r.error), err: true }
+    await refresh()
+    if (r.ok) ($('proRestoreCode') as unknown as HTMLInputElement).focus()
+  }
+  $('btnProRestoreSend').onclick = () => void send()
+  ;($('proRestoreEmail') as unknown as HTMLInputElement).onkeydown = (e) => {
+    if (e.key === 'Enter') void send()
+  }
+  const verify = async () => {
+    const code = ($('proRestoreCode') as unknown as HTMLInputElement).value
+    const btn = $('btnProRestoreVerify') as unknown as HTMLButtonElement
+    btn.disabled = true
+    const r = (await postJSON('/pro/restore/verify', { code }).catch(() => ({ error: 'offline' }))) as { ok?: boolean; error?: string }
+    btn.disabled = false
+    if (r.ok) {
+      restoreOpen = false
+      restoreMsg = null
+      ;($('proRestoreCode') as unknown as HTMLInputElement).value = ''
+    } else restoreMsg = { text: restoreErrText(r.error), err: true }
+    await refresh()
+  }
+  $('btnProRestoreVerify').onclick = () => void verify()
+  ;($('proRestoreCode') as unknown as HTMLInputElement).onkeydown = (e) => {
+    if (e.key === 'Enter') void verify()
+  }
+  $('btnProRestoreBack').onclick = async () => {
+    restoreMsg = null
+    await postJSON('/pro/restore/reset', {}).catch(() => {})
+    await refresh()
+    ;($('proRestoreEmail') as unknown as HTMLInputElement).focus()
+  }
+  // retour sur la fenêtre : invitation à compter, attente du paiement à reprendre
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden || !state) return
+    noteProSeen()
+    if (state.pro?.card === 'waiting') pollClaim()
+  })
+}
+
 // ---------- démarrage ----------
 
 function maybeWelcome() {
@@ -1530,6 +1857,8 @@ function maybeWelcome() {
   $('welcomeAutostart').classList.toggle('hidden', !autostartOffer)
   renderConsentCard()
   renderRate()
+  // invitation Pro : jamais par-dessus l'accueil (reprise à sa fermeture)
+  renderProCard()
   // la question n'est posée qu'une fois : déjà répondue, on ne la remontre pas
   const asked = state?.config.telemetryAsked === true
   $('welcomeConsent').classList.toggle('hidden', asked)
@@ -1564,6 +1893,7 @@ function maybeWelcome() {
     // pas de réponse dans l'accueil : la carte reprend la question, une fois
     renderConsentCard()
     renderRate()
+    renderProCard()
   }
   $('btnWelcome').onclick = () => {
     uiEvent('welcome_pair_clicked')

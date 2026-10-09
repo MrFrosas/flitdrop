@@ -50,6 +50,7 @@ const DIRECTION = oneOf('phone_to_pc', 'pc_to_phone')
 const KIND = oneOf('file', 'photo', 'text', 'clipboard')
 const SIZE = oneOf('<1MB', '1-10MB', '10-100MB', '100MB-1GB', '>1GB')
 const PLATFORM = oneOf('ios', 'android', 'other')
+const PLAN = oneOf('off', 'trial', 'free', 'pro')
 
 // Propriétés communes, acceptées sur tous les évènements des deux niveaux.
 const COMMON_PROPS = {
@@ -66,7 +67,8 @@ const BASIC_EVENTS = {
   app_first_launch: {},
   app_updated: { from_version: str(16) },
   // autostart : lancement à l'ouverture de session activé (app de bureau seulement)
-  app_daily_active: { paired_devices: PAIRED, launches_today: COUNT, autostart: BOOL },
+  // plan : Flitdrop Pro (off = mode payant coupé, trial, free, pro)
+  app_daily_active: { paired_devices: PAIRED, launches_today: COUNT, autostart: BOOL, plan: PLAN },
   pairing_success: { platform: PLATFORM, first: BOOL },
   // un téléphone a ouvert la page Flitdrop du PC (QR scanné), compté par le PC
   phone_page_opened: { first: BOOL, platform: PLATFORM },
@@ -83,6 +85,14 @@ const BASIC_EVENTS = {
   // résultat de la réparation demandée par la personne
   firewall_check: { network: oneOf('private', 'public', 'domain', 'unknown'), blocked: BOOL, allowed: BOOL },
   firewall_repair: { result: oneOf('ok', 'cancelled', 'failed') },
+  // Flitdrop Pro : invitation montrée dans la fenêtre du PC (limite du jour,
+  // fin d'essai), page d'achat ouverte (early : offre de lancement), Pro
+  // débloqué (achat ou restauration par e-mail), limite du jour atteinte (au
+  // plus une fois par jour). Jamais d'e-mail, de jeton ni d'identifiant d'achat.
+  pro_prompt_shown: { where: oneOf('limit', 'trial') },
+  pro_checkout_opened: { where: oneOf('limit', 'trial', 'settings'), early: BOOL },
+  pro_unlocked: { how: oneOf('purchase', 'restore') },
+  daily_limit_reached: {},
   // évènement de contrôle après un déploiement (voir docs/telemetry.md)
   worker_deploy_test: {},
 }

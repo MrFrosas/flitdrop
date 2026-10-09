@@ -496,3 +496,41 @@ html[data-platform='mac'] .chip.on { color: #fff; }
 
 /* lu par les lecteurs d'écran seulement (annonce du code renouvelé) */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* ---------- Flitdrop Pro ----------
+   Aplats unis, jamais de dégradé (y compris sur Mac, où .btn.primary en a
+   un : le bouton d'achat a sa propre classe). */
+.pro-head { display: flex; align-items: center; gap: 10px; }
+.pro-badge {
+  display: inline-flex; align-items: center; flex: none; padding: 1px 7px; border-radius: 999px;
+  font: 600 11px var(--font-text); white-space: nowrap;
+  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.pro-plan { font-weight: 600; font-size: 14px; }
+.pro-plan.ok { color: var(--ok); }
+.pro-adds { font-size: 13px; }
+.pro-feats { margin: 0 0 0 18px; display: flex; flex-direction: column; gap: 3px; font-size: 13.5px; }
+.pro-offer { display: flex; flex-direction: column; gap: 10px; }
+.pro-early {
+  font-size: 13px; padding: 8px 10px; border-radius: var(--r-ctl);
+  background: color-mix(in srgb, var(--ok) 12%, transparent); border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent);
+}
+.pro-buy-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.btn.pro-buy { background: var(--accent); border: 1px solid transparent; color: light-dark(#fff, #003a63); font-weight: 600; }
+.btn.pro-buy:hover { background: var(--accent-2); }
+html[data-platform='mac'] .btn.pro-buy { background: var(--accent); box-shadow: none; color: #fff; }
+html[data-platform='mac'] .btn.pro-buy:hover { background: var(--accent-2); }
+.pro-restore {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px 14px;
+  border: 1px solid var(--stroke); border-radius: var(--r-card); background: var(--control);
+}
+.pro-restore .row { align-items: center; }
+.pro-status { font-size: 12.5px; color: var(--muted); }
+.pro-status.err { color: var(--danger); }
+.pro-card.ok { border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.pro-card-links { display: flex; gap: 16px; }
+.pro-card-links:empty { display: none; }
+label.check.locked { opacity: 0.55; }
+label.check.locked input { pointer-events: none; }
+.clip-free { margin: 0 0 8px; }

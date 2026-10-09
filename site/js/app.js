@@ -227,6 +227,7 @@
   function setupFAQ() {
     document.querySelectorAll('.faq-list details').forEach(function (d) {
       d.setAttribute('open', ''); // keep content rendered; we animate open/close via a class
+      d.classList.add('js-faq'); // sans ce script (pages guides), le CSS suit l'état natif [open]
       var sum = d.querySelector('summary');
       if (!sum) return;
       sum.addEventListener('click', function (e) {

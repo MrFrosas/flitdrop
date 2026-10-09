@@ -434,6 +434,9 @@ html.anim .reveal.in { opacity: 1; transform: none; transition: opacity 0.7s var
 .faq-list p { color: var(--muted); font-size: 15.5px; max-width: 66ch; max-height: 0; opacity: 0; overflow: hidden; padding: 0;
   transition: max-height 0.34s var(--ease), opacity 0.28s ease, padding 0.34s var(--ease); }
 .faq-list details.expanded p { max-height: 340px; opacity: 1; padding: 0 0 20px; }
+/* pages sans app.js (guides) : l'ouverture native de <details> suffit */
+.faq-list details[open]:not(.js-faq) p { max-height: none; opacity: 1; padding: 0 0 20px; }
+.faq-list details[open]:not(.js-faq) summary::after { transform: rotate(45deg); }
 
 /* ---------- section micro-interactions (one-shot, gated behind html.anim) ---------- */
 /* comparison: the Flitdrop (green) column checks pop in, staggered down the column */
@@ -601,6 +604,64 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
 .mini-foot a { display: inline-flex; align-items: center; min-height: 40px; color: var(--muted); font-size: 14px; }
 .mini-foot a:hover { color: var(--ink); }
 .doc .consent-open { margin: 4px 0 12px; }
+
+/* ---------- Flitdrop Pro (/pro), conditions de vente (/terms), remboursement (/refund) ---------- */
+/* aplats seulement ; textes fins en --muted (contraste AA), jamais en --muted-2 */
+.pro-top { padding-top: 132px; }
+.pro-top .section-head { margin-bottom: 36px; }
+.pro-buy { max-width: 560px; margin: 0 auto; background: var(--panel); border: 1px solid var(--stroke-2); border-radius: 24px;
+  padding: clamp(24px, 4vw, 36px); box-shadow: 0 1px 2px rgba(12, 16, 26, 0.04), 0 16px 40px rgba(12, 16, 26, 0.07); }
+.pro-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 2px; }
+.pro-price-amount { font-size: clamp(40px, 7vw, 54px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; color: var(--ink); }
+.pro-price-was { color: var(--muted); font-size: 20px; }
+.pro-price-was[hidden] { display: none; }
+.pro-price-note { color: var(--muted); font-size: 16px; margin-bottom: 18px; }
+.pro-checks { list-style: none; display: flex; flex-direction: column; gap: 9px; margin: 0 0 22px; }
+.pro-checks li { position: relative; padding-left: 28px; color: var(--ink); font-size: 15.5px; line-height: 1.5; }
+.pro-checks li::before { content: "\2713"; position: absolute; left: 2px; top: 0; color: var(--signal); font-weight: 700; }
+.pro-state { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+.pro-msg { border-radius: 14px; padding: 13px 16px; background: var(--bg-2); color: var(--ink); font-size: 15.5px; line-height: 1.5; }
+.pro-msg[hidden], .pro-ready[hidden] { display: none; }
+.pro-msg p + p { margin-top: 4px; }
+.pro-msg strong, .pro-done-title { font-weight: 650; }
+.pro-msg a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 2px; }
+.pro-msg--soon { background: var(--blue-soft); }
+.pro-msg--ok { background: var(--signal-soft); }
+.pro-msg--ok:focus { outline: 2px solid var(--signal); outline-offset: 2px; }
+.pro-msg--err { background: #fdecec; color: #7a1a1a; }
+.pro-done-title { font-size: 19px; }
+.pro-ready { display: flex; flex-direction: column; gap: 10px; }
+.pro-cta { width: 100%; }
+.pro-cta[disabled] { opacity: 0.6; cursor: default; }
+.pro-early { color: #157a48; font-size: 14.5px; font-weight: 600; }
+.pro-after { color: var(--muted); font-size: 14.5px; line-height: 1.5; }
+.pro-actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 16px; }
+.pro-actions[hidden] { display: none; }
+.pro-actions .btn { flex: 1 1 auto; white-space: normal; text-align: center; }
+.pro-fine { color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+.pro-fine a, .pro-faq a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 2px; }
+.pro-plans { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 920px; margin: 0 auto; }
+.pro-plan { background: var(--panel); border: 1px solid var(--stroke); border-radius: var(--radius); padding: 30px 28px 10px; }
+.pro-plan--pro { border: 2px solid var(--blue); }
+.pro-plan h3 { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 650; margin-bottom: 18px; }
+.pro-badge { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #fff; background: var(--blue); border-radius: 999px; padding: 3px 10px; }
+.pro-faq { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.pro-faq details { background: var(--panel); border: 1px solid var(--stroke); border-radius: 14px; padding: 0 22px; }
+.pro-faq details[open] { border-color: var(--stroke-2); }
+.pro-faq summary { list-style: none; cursor: pointer; padding: 17px 0; font-weight: 600; font-size: 16.5px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.pro-faq summary::-webkit-details-marker { display: none; }
+.pro-faq summary::after { content: "+"; flex: none; color: var(--blue); font-size: 22px; font-weight: 400; line-height: 1; }
+.pro-faq details[open] summary::after { content: "\2212"; }
+.pro-faq p { color: var(--muted); font-size: 15.5px; max-width: 66ch; padding: 0 0 18px; }
+/* pages de conditions : carte d'action en tête, boutons dans le texte */
+.doc-action { border: 1px solid var(--stroke-2); border-radius: 18px; background: var(--bg-2); padding: 20px 22px 8px; margin: 0 0 30px; }
+.doc .doc-action p { color: var(--ink); }
+.doc a.btn-primary { color: #fff; }
+.doc a.btn-ghost { color: var(--ink); background: #fff; border-color: var(--stroke-2); }
+.doc .pro-actions { margin: 14px 0 12px; }
+.doc h3 { font-size: 17px; font-weight: 650; margin: 22px 0 8px; }
+@media (max-width: 760px) { .pro-plans { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .pro-top { padding-top: 104px; } .pro-plan { padding: 24px 20px 6px; } }
 
 /* ---------- support / contact ---------- */
 .support-grid { display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(32px, 6vw, 72px); align-items: start; max-width: 980px; margin: 0 auto; }

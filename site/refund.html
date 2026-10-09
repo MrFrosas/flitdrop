@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Refunds and withdrawal · Flitdrop</title>
+  <meta name="description" content="Changed your mind about Flitdrop Pro? Full refund within 14 days, no questions asked. How to ask, your legal right of withdrawal, and Paddle buyer support.">
+  <meta name="robots" content="index,follow">
+  <link rel="canonical" href="https://flitdrop.com/refund">
+  <link rel="alternate" hreflang="en" href="https://flitdrop.com/refund">
+  <link rel="alternate" hreflang="fr" href="https://flitdrop.com/fr/refund">
+  <link rel="alternate" hreflang="de" href="https://flitdrop.com/de/refund">
+  <link rel="alternate" hreflang="x-default" href="https://flitdrop.com/refund">
+
+  <link rel="icon" href="/assets/icon.svg">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Flitdrop">
+  <meta property="og:title" content="Refunds and withdrawal · Flitdrop">
+  <meta property="og:description" content="Changed your mind about Flitdrop Pro? Full refund within 14 days, no questions asked. How to ask, your legal right of withdrawal, and Paddle buyer support.">
+  <meta property="og:url" content="https://flitdrop.com/refund">
+  <meta property="og:image" content="https://flitdrop.com/assets/og.jpg">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:locale:alternate" content="fr_FR">
+  <link rel="stylesheet" href="/style.css">
+  <script>
+    // Page anglaise ouverte par un francophone ou un germanophone (?lang=, langue
+    // choisie sur le site, langue du navigateur) : direction la vraie page traduite.
+    (function () {
+      var p = location.pathname || '/';
+      if (/^\/(fr|de)\//.test(p)) return;
+      var l = null, q = null;
+      try { q = new URLSearchParams(location.search); l = q.get('lang'); } catch (e) { return; }
+      if (!l) { try { l = localStorage.getItem('flitdrop_lang'); } catch (e) {} }
+      if (!l) l = (navigator.language || '').slice(0, 2).toLowerCase();
+      if (l !== 'fr' && l !== 'de') return;
+      q.delete('lang');
+      var s = q.toString();
+      location.replace('/' + l + p.replace(/\.html$/, '').replace(/\/+$/, '') + (s ? '?' + s : '') + location.hash);
+    })();
+  </script>
+  <script async src="/js/analytics.js"></script>
+  <script defer src="/js/i18n-data.js"></script>
+  <script defer src="/js/i18n.js"></script>
+</head>
+<body>
+  <div class="bg" aria-hidden="true"><div class="bg-aurora"></div></div>
+  <header class="nav">
+    <a class="brand" href="/"><img src="/assets/icon.svg" alt="" width="30" height="30"><span>Flitdrop</span></a>
+    <div class="nav-right" style="margin-left:auto"><button class="lang-toggle" id="langToggle" type="button">FR</button></div>
+  </header>
+
+  <main class="doc">
+    <a class="back" href="/">← <span data-i18n="foot.home">Home</span></a>
+
+    <h1>Refunds and withdrawal</h1>
+    <p class="updated">Last updated: 9 October 2026</p>
+
+    <div class="doc-action">
+      <p><strong>Changed your mind? Within 14 days of your purchase, you get all your money back, without giving a reason.</strong></p>
+      <div class="pro-actions">
+        <a class="btn btn-primary btn-lg" id="refundMail" href="mailto:contact@flitdrop.com?subject=Refund%20request%2C%20Flitdrop%20Pro">Request a refund / withdraw</a>
+        <a class="btn btn-ghost btn-lg" href="https://paddle.net" target="_blank" rel="noopener">Withdraw from contract here, with Paddle</a>
+      </div>
+      <p>The first button opens an e-mail to <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>, ready to send: just add the e-mail address you used for the purchase. The second leads to the buyer support of Paddle, which sold you the licence: look up your purchase, then choose to withdraw or to get a refund. Both stay available for the whole 14 days.</p>
+      <!-- texte de l'e-mail prérempli (traduit avec la page, assemblé par le script plus bas) -->
+      <span hidden data-mail="subject">Refund request, Flitdrop Pro</span>
+      <span hidden data-mail="line">Hello,</span>
+      <span hidden data-mail="line">I am withdrawing from my purchase of Flitdrop Pro and would like a refund.</span>
+      <span hidden data-mail="line">E-mail address used for the purchase:</span>
+      <span hidden data-mail="line">Name:</span>
+      <span hidden data-mail="line">Order number (on the Paddle receipt, if you have it):</span>
+      <span hidden data-mail="line">Date of purchase:</span>
+      <span hidden data-mail="line">Thank you.</span>
+    </div>
+
+    <h2>How it works</h2>
+    <ul>
+      <li>Ask within 14 days of your purchase: with the button above, by writing to <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>, or through Paddle, at <a href="https://paddle.net" target="_blank" rel="noopener">paddle.net</a> or with the link to manage your purchase in the receipt e-mail from Paddle.</li>
+      <li>Give the e-mail address used for the purchase and, if you have it, the order number on your receipt. You do not have to give a reason.</li>
+      <li>We confirm by e-mail, without delay, that we received your request, with its date and time. We then refund you through Paddle, with the payment method you used, within 14 days at the latest and usually within a few days. It costs you nothing.</li>
+      <li>Pro then switches off on your computers. Flitdrop keeps working with all its free features, and nothing on your computer is deleted.</li>
+    </ul>
+
+    <h2>Your legal right of withdrawal</h2>
+    <p>If you live in the European Union, the law gives you 14 days to withdraw from a purchase made online, without giving a reason. For digital content like Flitdrop Pro, this legal right ends as soon as Pro is unlocked, if you asked at checkout for it to be available at once and acknowledged that you would then lose this right.</p>
+    <p>Our promise covers you anyway: whether Pro is unlocked or not, you get your money back if you ask within 14 days of your purchase. To withdraw, the button above, any clear message sent by e-mail or the withdrawal option offered by Paddle all work. Similar rules exist in the United Kingdom and in other countries; where the law of your country gives you more, it applies.</p>
+
+    <h2>After 14 days</h2>
+    <p>After 14 days, a purchase is final, except where the law says otherwise, for example if Pro does not work as described. In that case, write to us: we fix it, or refund you if we cannot.</p>
+
+    <h2>Who refunds you</h2>
+    <p>Paddle.com Market Limited, our reseller and merchant of record, took your payment, so the refund goes through Paddle. When your request reaches us, we have Paddle refund you. You can also contact Paddle's buyer support directly at <a href="https://paddle.net" target="_blank" rel="noopener">paddle.net</a> to find your order, get your receipt or ask for a refund. The full terms are in the <a href="/terms">terms of sale and licence</a>.</p>
+  </main>
+
+  <footer class="mini-foot">
+    <a href="/" data-i18n="foot.home">Home</a>
+    <a href="/pro" data-i18n="footer.pro">Flitdrop Pro</a>
+    <a href="/privacy" data-i18n="footer.privacy">Privacy</a>
+    <a href="/legal" data-i18n="footer.legal">Legal</a>
+    <a href="/terms" data-i18n="footer.terms">Terms of sale</a>
+    <a href="/refund" data-i18n="footer.refund">Refunds</a>
+    <a href="#cookies" role="button" data-consent-open data-consent-link data-i18n="consent.link">Cookies</a>
+  </footer>
+
+  <script>
+    // Bouton de rétractation : l'e-mail prérempli est assemblé dans la langue de la
+    // page à partir des lignes cachées ci-dessus (sans JavaScript, le lien garde
+    // l'objet anglais et marche quand même).
+    (function () {
+      var a = document.getElementById('refundMail');
+      var subj = document.querySelector('[data-mail="subject"]');
+      if (!a || !subj) return;
+      var lines = [];
+      document.querySelectorAll('[data-mail="line"]').forEach(function (e) { lines.push(e.textContent.trim()); });
+      var body = lines[0] + '\r\n\r\n' + lines[1] + '\r\n\r\n' + lines.slice(2, -1).map(function (l) { return l + ' '; }).join('\r\n') + '\r\n\r\n' + lines[lines.length - 1];
+      a.setAttribute('href', 'mailto:contact@flitdrop.com?subject=' + encodeURIComponent(subj.textContent.trim()) + '&body=' + encodeURIComponent(body));
+    })();
+  </script>
+</body>
+</html>

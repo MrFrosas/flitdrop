@@ -107,6 +107,23 @@ function watchClipboard(ClipboardWatcher) {
   powerMonitor.on('resume', () => clipWatcher && clipWatcher.wake())
 }
 
+// Langue et région du système (« fr-FR ») : la devise des prix de Flitdrop
+// Pro. app.getLocale() ne donne souvent que la langue (« fr »).
+function preferredLocale() {
+  try {
+    const list = typeof app.getPreferredSystemLanguages === 'function' ? app.getPreferredSystemLanguages() : []
+    if (Array.isArray(list) && typeof list[0] === 'string' && list[0]) return list[0]
+  } catch {
+    // repli ci-dessous
+  }
+  try {
+    if (typeof app.getSystemLocale === 'function') return app.getSystemLocale()
+  } catch {
+    // repli ci-dessous
+  }
+  return app.getLocale()
+}
+
 // Linux sous Wayland : on garde wl-paste tant que la lecture par Electron n'est
 // pas testée sur Ubuntu.
 function usesExternalTextRead() {
@@ -275,6 +292,15 @@ function extractFiles(argv) {
 async function shareFiles(paths) {
   if (!core || paths.length === 0) return
   const n = await core.addLocalFiles(paths)
+  // Flitdrop Pro, version gratuite : limite du jour atteinte, le reste n'a
+  // pas été ajouté. La fenêtre montre la carte ; une notification le dit.
+  if (n < paths.length && core.license && typeof core.license.dailyLeft === 'function' && core.license.dailyLeft() <= 0) {
+    try {
+      new Notification({ title: tr('pro.limitToast'), body: tr('pro.notif.body') }).show()
+    } catch {
+      // les notifications ne sont pas critiques
+    }
+  }
   if (n > 0) {
     try {
       new Notification({
@@ -382,6 +408,22 @@ if (!gotLock) {
       // lancement à l'ouverture de session : proposé coché sur l'écran
       // d'accueil d'une installation neuve, jamais changé sans réponse
       autostart: { get: () => isAutoStart(), set: (on) => setAutoStart(on) },
+      // Flitdrop Pro : licence, essai, limite du jour (voir core/license.ts).
+      // Dossier de données de l'app : deuxième emplacement du début de
+      // l'essai (macOS, Linux ; Windows : le registre de l'utilisateur).
+      // Variables FLITDROP_LICENSE_* de développement : jamais dans l'app
+      // empaquetée.
+      license: {
+        userDataDir: app.getPath('userData'),
+        systemLocale: preferredLocale(),
+        allowEnvOverride: !app.isPackaged,
+      },
+      // page d'achat de Flitdrop Pro : navigateur du système (adresse
+      // construite par le coeur, jamais venue de la page)
+      openExternal: (url) => {
+        if (typeof url === 'string' && /^https:\/\//i.test(url)) void shell.openExternal(url).catch(() => {})
+        else if (!app.isPackaged && typeof url === 'string' && /^http:\/\/(127\.0\.0\.1|localhost)[:/]/i.test(url)) void shell.openExternal(url).catch(() => {})
+      },
       // Windows : pare-feu vérifié une fois quand aucun téléphone n'arrive, et
       // réparé seulement sur « Réparer » (règles de cet exécutable, pour le
       // réseau de la dernière vérification)

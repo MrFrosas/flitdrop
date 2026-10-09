@@ -7,7 +7,7 @@
 - A desktop app for Windows, macOS and Linux. The phone needs nothing installed: you scan a QR code once from the phone's camera and it is paired through the browser. It stays paired and reconnects by itself.
 - Cross-platform on purpose. AirDrop stops at Apple, Quick Share stops at Android, LocalSend needs an app on every device. Flitdrop connects all of them.
 - Private by design. Every transfer is end to end encrypted (XChaCha20-Poly1305) and stays on your local network. The content touches no server, because there is no server in the middle.
-- Free. Because transfers are peer to peer on your own Wi-Fi, there is no server cost, so there is nothing to pay.
+- Free. Because transfers are peer to peer on your own Wi-Fi, there is no server cost, so everyday use is free. An optional one-time purchase, Flitdrop Pro, lifts the daily limit of the free version and adds a few comforts.
 
 ## Key facts
 
@@ -19,10 +19,11 @@
 - Pairing: scan a QR code once from the phone. There is no automatic discovery on the phone; after the first scan it stays paired and reconnects by itself.
 - Requirement: both devices on the same Wi-Fi / local network, or the phone on the computer's own hotspot. Works without internet. It does not send across the internet.
 - Encryption: end to end, XChaCha20-Poly1305.
-- Account: none. No sign in, no email.
-- Usage statistics: the app sends basic anonymous statistics, on by default (whether the app was used that day, pairings with the phone type, transfer success or failure with direction, type and a size range, app version, operating system) with no identifier and never any file content, file name or clipboard; they can be turned off in Settings. Detailed statistics and error reports are sent only if the user agrees. The website uses Cloudflare Web Analytics (no cookies) for everyone. In the EU, EEA, UK and Switzerland, Google Analytics, Microsoft Clarity and PostHog with cookies run only after consent; until the visitor chooses, PostHog only counts pages and download clicks without cookies, and after a refusal it stops. Elsewhere these tools run by default until the visitor refuses. Nothing is used for advertising or sold.
+- Account: none. No sign in. An email address is asked only if you buy Flitdrop Pro, to find the purchase again on another computer.
+- Usage statistics: the app sends basic anonymous statistics, on by default (whether the app was used that day, pairings with the phone type, transfer success or failure with direction, type and a size range, app version, operating system) with no identifier and never any file content, file name or clipboard; they can be turned off in Settings. Around Flitdrop Pro, the same anonymous statistics also count Pro offers shown, the payment page opened, Pro unlocked and the daily limit reached, and say which version runs (free, trial, Pro); never an email address or an amount. Detailed statistics and error reports are sent only if the user agrees. The website uses Cloudflare Web Analytics (no cookies) for everyone. In the EU, EEA, UK and Switzerland, Google Analytics, Microsoft Clarity and PostHog with cookies run only after consent; until the visitor chooses, PostHog only counts pages and download clicks without cookies, and after a refusal it stops. Elsewhere these tools run by default until the visitor refuses. Nothing is used for advertising or sold.
 - Photo quality: originals arrive uncompressed, at full resolution.
-- Price: free.
+- Price: free. Once Flitdrop Pro is available, the free version sends up to 30 files a day (phone to computer and back combined; texts and the clipboard do not count), of any size, at full speed, encrypted, with several phones and every update.
+- Flitdrop Pro (optional): one payment of €5.99 for life, no subscription, every update included, on up to 5 of your computers. It adds unlimited files per day, photos and videos sorted into month folders automatically, automatic clipboard sync and the full clipboard history. 14 days of Pro to try in the app, with no card. Refund within 14 days, no questions asked. Sold through Paddle (reseller and merchant of record). Details: https://flitdrop.com/pro
 - License: source-available (Functional Source License). It is not "open source" in the OSI sense.
 - Publisher: Flitdrop, by CC'S GLOBAL (Thomas Bidault), France.
 
@@ -42,6 +43,9 @@
 - [iPhone to Android](https://flitdrop.com/airdrop-iphone-android): moving files across the two phone ecosystems.
 - [Send files from iPhone to PC](https://flitdrop.com/send-files-iphone-to-pc): step by step iPhone to computer transfer.
 - [AirDrop alternative](https://flitdrop.com/alternative-airdrop): how Flitdrop compares to AirDrop, Quick Share, LocalSend and cloud tools.
+- [Flitdrop Pro](https://flitdrop.com/pro): what stays free, what Pro adds, price and how to unlock it.
+- [Terms of sale and licence](https://flitdrop.com/terms): the Pro licence, sold through Paddle.
+- [Refunds and withdrawal](https://flitdrop.com/refund): refund within 14 days and how to ask.
 - [Privacy](https://flitdrop.com/privacy): what is and is not collected, every tracker listed, and how to refuse.
 
 ## Download

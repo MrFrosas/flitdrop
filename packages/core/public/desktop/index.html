@@ -98,6 +98,17 @@
       </div>
     </div>
 
+    <!-- Flitdrop Pro : limite du jour atteinte, fin d'essai proche (au plus
+         une invitation par jour), attente du paiement, merci. Une carte,
+         jamais une fenêtre ; contenu et boutons posés par desktop.ts. -->
+    <div class="card consent-card pro-card hidden" id="proCard">
+      <b class="consent-title" id="proCardTitle"></b>
+      <p class="cardhint" id="proCardBody"></p>
+      <p class="pro-status hidden" id="proCardStatus" aria-live="polite"></p>
+      <div class="consent-actions" id="proCardActions"></div>
+      <div class="pro-card-links" id="proCardLinks"></div>
+    </div>
+
     <!-- RADAR -->
     <section class="view" id="view-radar">
       <!-- premier envoi guidé : un téléphone appairé, rien encore échangé -->
@@ -182,6 +193,8 @@
         <input id="clipSearch" type="search" data-i18n-ph="clip.search" placeholder="Rechercher dans l’historique…">
         <button class="btn" id="btnClipClear" data-i18n="clip.clear">Tout effacer</button>
       </div>
+      <!-- version gratuite (Flitdrop Pro) : les 20 derniers textes seulement -->
+      <p class="cardhint clip-free hidden" id="clipFreeHint"></p>
       <ul class="hist" id="clipList"></ul>
       <div class="empty hidden" id="clipEmpty">
         <p data-i18n="clip.empty">Historique vide</p>
@@ -195,6 +208,41 @@
 
     <!-- RÉGLAGES -->
     <section class="view hidden" id="view-settings">
+      <!-- Flitdrop Pro (caché quand le mode payant est coupé) -->
+      <div class="card settings-card pro-section hidden" id="proSection">
+        <div class="pro-head"><h3 data-i18n="pro.title">Flitdrop Pro</h3><span class="pro-badge" data-i18n="pro.badge">Pro</span></div>
+        <p class="pro-plan" id="proStatus"></p>
+        <b class="pro-adds" data-i18n="pro.adds">Ce que Pro ajoute</b>
+        <ul class="pro-feats">
+          <li data-i18n="pro.feat.unlimited">Autant de fichiers que tu veux, tous les jours</li>
+          <li data-i18n="pro.feat.months">Photos et vidéos rangées toutes seules par mois</li>
+          <li data-i18n="pro.feat.clip">Presse-papiers synchronisé tout seul, et tout son historique avec les images</li>
+          <li data-i18n="pro.feat.future">Les futures fonctions avancées, et toutes les mises à jour</li>
+        </ul>
+        <div class="pro-offer" id="proOffer">
+          <p class="cardhint" id="proFree"></p>
+          <p class="pro-early hidden" id="proEarly"></p>
+          <div class="pro-buy-row">
+            <button class="btn pro-buy" id="btnProBuy" type="button"></button>
+            <button class="consent-more" id="btnProRestore" type="button" data-i18n="pro.restore">J’ai déjà acheté</button>
+          </div>
+          <small class="consent-note" data-i18n="pro.once">Un seul paiement, pas d’abonnement.</small>
+          <div class="pro-restore hidden" id="proRestore">
+            <p class="cardhint" id="proRestoreHint" data-i18n="pro.restore.hint">Entre l’adresse e-mail de ton achat : tu reçois un code pour débloquer ce PC.</p>
+            <div class="row" id="proRestoreEmailRow">
+              <input class="grow" id="proRestoreEmail" type="email" autocomplete="email" maxlength="254" data-i18n-ph="pro.restore.email" placeholder="Adresse e-mail">
+              <button class="btn" id="btnProRestoreSend" type="button" data-i18n="pro.restore.send">Recevoir le code</button>
+            </div>
+            <div class="row hidden" id="proRestoreCodeRow">
+              <input class="grow" id="proRestoreCode" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" maxlength="20" data-i18n-ph="pro.restore.code" placeholder="Code reçu (XXXX-XXXX-XXXX)">
+              <button class="btn" id="btnProRestoreVerify" type="button" data-i18n="pro.restore.verify">Débloquer ce PC</button>
+            </div>
+            <p class="pro-status hidden" id="proRestoreMsg" aria-live="polite"></p>
+            <button class="consent-more hidden" id="btnProRestoreBack" type="button" data-i18n="pro.restore.back">Changer d’adresse</button>
+          </div>
+        </div>
+      </div>
+
       <div class="card settings-card">
         <h3 data-i18n="set.thisPc">Ce PC</h3>
         <div class="row">
@@ -242,9 +290,16 @@
             <span data-i18n="set.approval">Me demander avant chaque réception</span>
           </label>
         </div>
-        <label class="check">
+        <label class="check" id="setClipboardRow">
           <input type="checkbox" id="setClipboard">
           <span data-i18n="set.clipboard">Synchroniser mon presse-papiers vers les téléphones (quand je copie du texte sur le PC, il devient disponible sur le téléphone, onglet « Recevoir »)</span>
+          <span class="pro-badge hidden" data-pro-badge data-i18n="pro.badge">Pro</span>
+        </label>
+        <!-- Flitdrop Pro : caché quand le mode payant est coupé, grisé en gratuit -->
+        <label class="check hidden" id="setMonthRow">
+          <input type="checkbox" id="setMonthFolders">
+          <span data-i18n="set.monthFolders">Ranger les photos et vidéos du téléphone dans un dossier par mois (AAAA-MM)</span>
+          <span class="pro-badge hidden" data-pro-badge data-i18n="pro.badge">Pro</span>
         </label>
         <label class="check">
           <input type="checkbox" id="setClipHistory">

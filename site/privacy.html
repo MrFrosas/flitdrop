@@ -31,7 +31,7 @@
 
     <div class="lang-en">
       <h1>Privacy Policy</h1>
-      <p class="updated">Last updated: 26 September 2026</p>
+      <p class="updated">Last updated: 9 October 2026</p>
       <p>Flitdrop is built to need as little of your data as possible. Your transfers go directly between your devices on your own Wi-Fi: there is no cloud, no account, and no server ever receives your files, photos, texts or clipboard. To understand how the app and this website are used, and to fix what breaks, we do measure a few things. This page says exactly what, why, and how to say no.</p>
 
       <h2>In short</h2>
@@ -39,6 +39,7 @@
         <li>Your files, photos, messages and clipboard never reach us. Transfers are end to end encrypted and stay on your network.</li>
         <li>The app sends basic anonymous statistics (for example "the app was opened" or "a transfer worked"), with no identifier. You can turn them off in Settings.</li>
         <li>Detailed statistics and error reports are sent only if you say yes.</li>
+        <li>If you buy Flitdrop Pro, the payment goes through Paddle, our reseller. We then receive your e-mail address and the status of your purchase, never your card details.</li>
         <li>On this website, visitors in the EU, the EEA, the UK and Switzerland choose whether to accept cookies. Until they choose, only anonymous measurement without cookies runs, and refusing stops it too, apart from the basic visit count of our host, Cloudflare.</li>
         <li>Nothing is used for advertising and nothing is sold.</li>
       </ul>
@@ -49,7 +50,7 @@
         <li>What you copy to your clipboard.</li>
         <li>The names of your devices, your folders, or file paths that contain your user name.</li>
         <li>Your IP address: we never store it. Our providers use it briefly, as any website or server does, to deliver the service; PostHog also uses it, without storing it, to work out the daily visit code and the country described below.</li>
-        <li>An account, an email address or anything else that tells us who you are.</li>
+        <li>An account, an email address or anything else that tells us who you are, unless you buy Flitdrop Pro (see "If you buy Flitdrop Pro" below).</li>
       </ul>
 
       <h2>In the Flitdrop app</h2>
@@ -63,6 +64,7 @@
         <li>when a phone is paired successfully, with the phone type (iPhone, Android, other);</li>
         <li>when a transfer succeeds or fails, with its direction (phone to computer or computer to phone), its type (file, photo, text, clipboard) and an approximate size range, never the file itself, its name or where it is stored; when a transfer fails, a short error code;</li>
         <li>whether it is the first time a phone opens the page, the first pairing or the first transfer on this computer;</li>
+        <li>around Flitdrop Pro: when the app shows a Pro offer and where (for example the card shown when the daily limit is reached), when it opens the payment page and whether a launch price applies, when Pro is unlocked (by a purchase or by restoring an earlier one), and when the daily limit of free files is reached (at most once a day); the daily usage count also says which version is running (free, trial, Pro, or Pro not offered yet). Never your e-mail address, a purchase number or an amount;</li>
         <li>technical context: app version, operating system, processor type, how the app was installed (for example Microsoft Store or installer), interface language, the month of the first launch and a rough install age (same day, first week, first month, older).</li>
       </ul>
       <p>These events carry no identifier of any kind: they cannot be linked to each other or to a person. Our collector works out the country from the connection and keeps only the country; the IP address is never stored.</p>
@@ -83,12 +85,24 @@
       <h3>Where app data goes and how long it is kept</h3>
       <p>App statistics go to our collector hosted by Cloudflare (flitdrop.com/api/telemetry, and telemetry.flitdrop.com for versions before 0.6.4), which keeps only the country and passes the events on to PostHog, where they are stored in the European Union (Frankfurt). Individual events are kept there for 12 months at most; after that, only overall totals (for example the number of transfers per month) are kept.</p>
 
+      <h2>If you buy Flitdrop Pro</h2>
+      <p>Flitdrop Pro is sold by Paddle.com Market Limited, our reseller and merchant of record, based in the United Kingdom. Paddle runs the payment window, takes the payment, checks it against fraud, applies the tax of your country and sends you the receipt. For this, Paddle collects what it needs (your e-mail address, country, payment details and IP address) as an independent controller, under its own privacy notice (<a href="https://www.paddle.com/legal/privacy" target="_blank" rel="noopener">paddle.com/legal/privacy</a>).</p>
+      <ul>
+        <li><strong>What we receive from Paddle:</strong> your e-mail address, your country, the date and the status of your purchase (paid, refunded or disputed). Never your card or bank details.</li>
+        <li><strong>The link between the app and your purchase:</strong> when you buy from the app, it adds a random one-time code to the address of the payment page; Paddle keeps it with your purchase so that the app recognises the payment.</li>
+        <li><strong>Your computers:</strong> each computer where you unlock Pro sends an identifier computed on that computer from its system identifier by a one-way function: it cannot be turned back into the original and says nothing about you or your files. It is kept, hashed, with your purchase at Paddle, for 5 computers at most; when a sixth one is added, the oldest is removed.</li>
+        <li><strong>"I already bought it":</strong> if a purchase exists for the e-mail address you enter, we send a one-time code to it through our e-mail provider Resend. The code expires after 15 minutes and we do not store it.</li>
+        <li><strong>On your computer:</strong> the app keeps a signed licence (it says Pro, the computer identifier, an anonymous reference to your purchase and its validity dates) and renews it online by itself from time to time. It also keeps the trial dates and the number of files transferred today, protected against changes, and notes the start of the trial in a second place on the computer so that the trial is counted only once. We keep no copy of the licence.</li>
+        <li><strong>Checking the offer:</strong> when it starts and once a day, the app asks flitdrop.com whether Flitdrop Pro is offered and on which terms. This request carries no identifier.</li>
+      </ul>
+      <p>Our licence server (flitdrop.com/api/license, hosted by Cloudflare) keeps no database of buyers: purchase information stays at Paddle. Legal basis: the performance of the contract (delivering your licence and keeping it working), and, for what Paddle keeps, Paddle's own legal obligations (invoices, tax, fraud). Paddle keeps purchase records for as long as tax and accounting law requires; the computer identifiers stay with your purchase for as long as you use your licence, and you can ask us to remove them at any time.</p>
+
       <h2>On this website</h2>
       <h3>If you are in the EU, the EEA, the UK or Switzerland</h3>
       <p>You see a banner with two equal buttons, Accept and Refuse. Until you accept, or if you refuse, no cookie is set and neither Google Analytics nor Microsoft Clarity is loaded. While you have not chosen, only anonymous measurement without cookies runs:</p>
       <ul>
         <li><strong>Cloudflare Web Analytics</strong> counts visits, with no cookie and no personal data.</li>
-        <li><strong>PostHog without cookies</strong> counts pages viewed, clicks on the download buttons and the answer given to this banner. It does not record other clicks, heatmaps or sessions. To tell visits apart during a day, PostHog's servers compute a one way code from the connection, and this code is renewed every day. No cookie is set (after a refusal, PostHog only remembers that you refused) and the IP address is not kept.</li>
+        <li><strong>PostHog without cookies</strong> counts pages viewed, clicks on the download buttons, the steps of a purchase on the Flitdrop Pro page (page opened, payment window opened, purchase completed, with the price shown but nothing else about the payment) and the answer given to this banner. It does not record other clicks, heatmaps or sessions. To tell visits apart during a day, PostHog's servers compute a one way code from the connection, and this code is renewed every day. No cookie is set (after a refusal, PostHog only remembers that you refused) and the IP address is not kept.</li>
       </ul>
       <p>If you refuse, PostHog counts that refusal once, anonymously, then stops and counts nothing more. Only Cloudflare's visit count remains, because it is part of the hosting and has no cookie and no personal data.</p>
       <p>If you accept, the site also uses Google Analytics 4, Microsoft Clarity and PostHog with its cookie (details below), including recordings of how pages are used (clicks, scrolling, where the pointer goes), heatmaps, time spent on each page and errors on the site, with anything typed into fields hidden.</p>
@@ -100,6 +114,9 @@
 
       <h3>What these tools see</h3>
       <p>The pages you visit, the site you came from, your clicks and scrolling, the type of browser, system and screen, and your approximate country (worked out from the connection). Never your name or your email, and we do not try to find out who you are. Advertising signals are always refused and Google's advertising features are off: nothing is used for advertising or sold.</p>
+
+      <h3>On the Flitdrop Pro page</h3>
+      <p>When Flitdrop Pro is on sale, the Pro page loads Paddle's payment script from Paddle's servers, to show the price in your currency and open the payment window. Paddle then sees your IP address and your browser, as any server does, and the payment window is Paddle's own page, covered by Paddle's privacy notice. From our page, this script stores nothing on your device, and the Paddle tools we do not use (such as its subscription follow-up tool) are not loaded.</p>
 
       <h3>Microsoft Store links</h3>
       <p>Links to Flitdrop on the Microsoft Store carry a short campaign code (<code>cid</code>) so that the Store statistics can tell us how many installs came from this website. The code is the same for everyone and says nothing about you.</p>
@@ -121,7 +138,7 @@
         <h3>PostHog without cookies</h3>
         <ul>
           <li>Provider: PostHog Inc., data stored in the EU (Frankfurt).</li>
-          <li>Purpose: count pages viewed, download clicks and answers to the cookie banner.</li>
+          <li>Purpose: count pages viewed, download clicks, the steps of a purchase on the Pro page and answers to the cookie banner.</li>
           <li>On your device: no cookie, only the entry that remembers a refusal (see "Your settings on this site"). A code computed on PostHog's servers, renewed every day; the IP address is not stored.</li>
           <li>When it runs: in the EU, the EEA, the UK and Switzerland, until you make a choice. If you refuse, it counts that refusal once, then stops completely.</li>
         </ul>
@@ -154,6 +171,15 @@
         </ul>
       </div>
       <div class="trk">
+        <h3>Paddle (Flitdrop Pro page)</h3>
+        <ul>
+          <li>Provider: Paddle.com Market Limited, United Kingdom.</li>
+          <li>Purpose: show the price in your currency and take the payment for Flitdrop Pro.</li>
+          <li>On your device: nothing from our page; the payment window is Paddle's own page and follows Paddle's privacy notice.</li>
+          <li>When it runs: only on the Pro page, when Flitdrop Pro is on sale.</li>
+        </ul>
+      </div>
+      <div class="trk">
         <h3>Your settings on this site</h3>
         <ul>
           <li>Provider: none, they stay in your browser and are never sent to us.</li>
@@ -170,9 +196,18 @@
           <li>When it runs: basic statistics by default, until you turn them off in Settings; detailed statistics and error reports only if you say yes.</li>
         </ul>
       </div>
+      <div class="trk">
+        <h3>Flitdrop Pro in the app</h3>
+        <ul>
+          <li>Providers: Paddle (purchase), Cloudflare (licence server, keeps no database of buyers) and Resend (e-mails with a one-time code).</li>
+          <li>Purpose: unlock Pro and keep it working on your computers.</li>
+          <li>On your computer: the signed licence, the trial dates and the number of files transferred today, protected against changes, plus a second note of the trial start elsewhere on the computer, and how many times a Pro offer was shown (so that it does not come back too often; never sent).</li>
+          <li>When it runs: the trial dates and the daily count as soon as Flitdrop Pro is offered; the licence only if you buy Pro or restore a purchase.</li>
+        </ul>
+      </div>
 
       <h2>Who receives the data, and transfers outside the EU</h2>
-      <p>We never sell data and never share it for advertising. The only providers that process data for us are Cloudflare (hosting, measurement without cookies, app statistics collector and its copy of app statistics), PostHog (statistics, stored in the European Union, in Frankfurt), Google (Google Analytics), Microsoft (Clarity) and GitHub (the download buttons ask GitHub for the list of the latest files, and the files are downloaded from GitHub, which sees your IP address as any server does). Google, Microsoft, GitHub and Cloudflare may process data in the United States; they are certified under the EU-US Data Privacy Framework, which the European Commission recognises as offering an adequate level of protection. PostHog stores our data in the European Union.</p>
+      <p>We never sell data and never share it for advertising. The only providers that process data for us are Cloudflare (hosting, measurement without cookies, app statistics collector and its copy of app statistics), PostHog (statistics, stored in the European Union, in Frankfurt), Google (Google Analytics), Microsoft (Clarity), Resend (the e-mails we send: messages from the contact form and Flitdrop Pro one-time codes) and GitHub (the download buttons ask GitHub for the list of the latest files, and the files are downloaded from GitHub, which sees your IP address as any server does). If you buy Flitdrop Pro, Paddle receives your purchase details as our reseller and as an independent controller. Google, Microsoft, GitHub, Cloudflare and Resend may process data in the United States; they are certified under the EU-US Data Privacy Framework, which the European Commission recognises as offering an adequate level of protection. PostHog stores our data in the European Union. Paddle is based in the United Kingdom, which the European Commission also recognises as offering an adequate level of protection.</p>
 
       <h2>How long data is kept</h2>
       <ul>
@@ -181,6 +216,7 @@
         <li>Google Analytics: cookies up to 13 months; detailed data kept 14 months at most.</li>
         <li>Microsoft Clarity: cookies up to 1 year; Microsoft keeps recordings about 30 days and statistics up to 13 months.</li>
         <li>Your cookie choice: 6 months, then we ask again.</li>
+        <li>Flitdrop Pro: purchase records at Paddle for as long as tax and accounting law requires; computer identifiers with your purchase for as long as you use your licence; one-time codes expire after 15 minutes and are not stored.</li>
       </ul>
 
       <h2>Legal basis</h2>
@@ -189,10 +225,11 @@
         <li>Detailed app statistics and error reports, and, for visitors in the EU, the EEA, the UK and Switzerland, Google Analytics, Microsoft Clarity and PostHog with cookie: your consent, which you can withdraw at any time.</li>
         <li>The same site tools for visitors elsewhere: our legitimate interest in improving the site. You can object at any time with the "Cookies" link.</li>
         <li>Hosting and security logs: our legitimate interest in keeping the site available and safe.</li>
+        <li>Flitdrop Pro (purchase, licence, computer identifiers, one-time codes): the performance of the contract you enter into when you buy.</li>
       </ul>
 
       <h2>Your rights (GDPR)</h2>
-      <p>Under the GDPR you have the right of access, rectification, erasure, restriction, objection and portability over your personal data, and the right to withdraw your consent at any time. Because the statistics we collect do not identify you, we usually cannot tell which data are yours; the simplest way to stop any collection is the switch in the app Settings and the "Cookies" link on the site. For any question or request, contact us at <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a> and we will reply within one month. You also have the right to lodge a complaint with your data protection authority (in France, the CNIL, <a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+      <p>Under the GDPR you have the right of access, rectification, erasure, restriction, objection and portability over your personal data, and the right to withdraw your consent at any time. Because the statistics we collect do not identify you, we usually cannot tell which data are yours; the simplest way to stop any collection is the switch in the app Settings and the "Cookies" link on the site. If you bought Flitdrop Pro, we can find your purchase from your e-mail address: write to us from that address. For any question or request, contact us at <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a> and we will reply within one month. You also have the right to lodge a complaint with your data protection authority (in France, the CNIL, <a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
 
       <h2>Data controller</h2>
       <p>Flitdrop (Thomas Bidault), sole trader (entrepreneur individuel), France. Contact: <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>.</p>
@@ -200,7 +237,7 @@
 
     <div class="lang-fr" hidden>
       <h1>Politique de confidentialité</h1>
-      <p class="updated">Dernière mise à jour : 26 septembre 2026</p>
+      <p class="updated">Dernière mise à jour : 9 octobre 2026</p>
       <p>Flitdrop est conçu pour avoir besoin du moins de données possible. Vos transferts passent directement d'un appareil à l'autre, sur votre propre Wi-Fi : pas de cloud, pas de compte, et aucun serveur ne reçoit jamais vos fichiers, photos, textes ou presse-papiers. En revanche, pour comprendre comment l'application et ce site sont utilisés, et pour réparer ce qui ne marche pas, nous mesurons certaines choses. Cette page dit exactement quoi, pourquoi, et comment refuser.</p>
 
       <h2>En bref</h2>
@@ -208,6 +245,7 @@
         <li>Vos fichiers, photos, messages et presse-papiers ne nous parviennent jamais. Les transferts sont chiffrés de bout en bout et restent sur votre réseau.</li>
         <li>L'application envoie des statistiques de base anonymes (par exemple « l'app a été ouverte » ou « un transfert a réussi »), sans aucun identifiant. Vous pouvez les couper dans les Réglages.</li>
         <li>Les statistiques détaillées et les rapports d'erreur ne sont envoyés que si vous dites oui.</li>
+        <li>Si vous achetez Flitdrop Pro, le paiement passe par Paddle, notre revendeur. Nous recevons alors votre adresse e-mail et l'état de votre achat, jamais les données de votre carte.</li>
         <li>Sur ce site, les visiteurs de l'Union européenne, de l'EEE, du Royaume-Uni et de Suisse choisissent d'accepter ou non les cookies. Tant qu'ils n'ont pas choisi, seule une mesure d'audience anonyme, sans cookie, fonctionne, et un refus l'arrête aussi, hormis le simple comptage des visites de notre hébergeur, Cloudflare.</li>
         <li>Rien ne sert à la publicité et rien n'est vendu.</li>
       </ul>
@@ -218,7 +256,7 @@
         <li>Ce que vous copiez dans le presse-papiers.</li>
         <li>Le nom de vos appareils, de vos dossiers, ni les chemins de fichiers qui contiennent votre nom d'utilisateur.</li>
         <li>Votre adresse IP : nous ne la conservons jamais. Nos prestataires s'en servent un court instant, comme n'importe quel site ou serveur, pour fournir le service ; PostHog s'en sert aussi, sans la conserver, pour calculer le code de visite du jour et le pays décrits plus bas.</li>
-        <li>Un compte, une adresse e-mail, ou quoi que ce soit qui nous dise qui vous êtes.</li>
+        <li>Un compte, une adresse e-mail, ou quoi que ce soit qui nous dise qui vous êtes, sauf si vous achetez Flitdrop Pro (voir « Si vous achetez Flitdrop Pro » plus bas).</li>
       </ul>
 
       <h2>Dans l'application Flitdrop</h2>
@@ -232,6 +270,7 @@
         <li>l'association réussie d'un téléphone, avec son type (iPhone, Android, autre) ;</li>
         <li>la réussite ou l'échec d'un transfert, avec son sens (du téléphone vers l'ordinateur ou de l'ordinateur vers le téléphone), son type (fichier, photo, texte, presse-papiers) et une tranche de taille approximative, jamais le fichier lui-même, son nom ou son emplacement ; en cas d'échec, un court code d'erreur ;</li>
         <li>s'il s'agit de la première ouverture de la page par un téléphone, de la première association ou du premier transfert sur cet ordinateur ;</li>
+        <li>autour de Flitdrop Pro : l'affichage d'une offre Pro et son emplacement (par exemple la carte montrée quand la limite du jour est atteinte), l'ouverture de la page de paiement et si un prix de lancement s'applique, le déblocage de Pro (par un achat ou en retrouvant un achat précédent), et l'atteinte de la limite quotidienne de fichiers gratuits (au plus une fois par jour) ; le comptage quotidien d'usage indique aussi la version utilisée (gratuite, essai, Pro, ou Pro pas encore proposé). Jamais votre adresse e-mail, un numéro d'achat ni un montant ;</li>
         <li>le contexte technique : version de l'app, système d'exploitation, type de processeur, mode d'installation (par exemple Microsoft Store ou installeur), langue de l'interface, mois du premier lancement et ancienneté approximative de l'installation (le jour même, première semaine, premier mois, plus ancien).</li>
       </ul>
       <p>Ces événements ne portent aucun identifiant, quel qu'il soit : impossible de les relier entre eux ou à une personne. Notre collecteur déduit le pays à partir de la connexion et ne garde que le pays ; l'adresse IP n'est jamais enregistrée.</p>
@@ -252,12 +291,24 @@
       <h3>Où vont les données de l'app et combien de temps</h3>
       <p>Les statistiques de l'application partent vers notre collecteur hébergé chez Cloudflare (flitdrop.com/api/telemetry, et telemetry.flitdrop.com pour les versions antérieures à la 0.6.4), qui ne garde que le pays et transmet les événements à PostHog, où ils sont stockés dans l'Union européenne (Francfort). Les événements individuels y sont conservés 12 mois au maximum ; au-delà, seuls des totaux (par exemple le nombre de transferts par mois) sont gardés.</p>
 
+      <h2>Si vous achetez Flitdrop Pro</h2>
+      <p>Flitdrop Pro est vendu par Paddle.com Market Limited, notre revendeur, qui vend en son nom (merchant of record), établi au Royaume-Uni. Paddle affiche la fenêtre de paiement, encaisse le paiement, le contrôle contre la fraude, applique la taxe de votre pays et vous envoie le reçu. Pour cela, Paddle collecte ce dont il a besoin (votre adresse e-mail, votre pays, vos données de paiement et votre adresse IP) en tant que responsable de traitement indépendant, selon sa propre politique de confidentialité (<a href="https://www.paddle.com/legal/privacy" target="_blank" rel="noopener">paddle.com/legal/privacy</a>).</p>
+      <ul>
+        <li><strong>Ce que Paddle nous transmet :</strong> votre adresse e-mail, votre pays, la date et l'état de votre achat (payé, remboursé ou contesté). Jamais les données de votre carte ni de votre compte bancaire.</li>
+        <li><strong>Le lien entre l'app et votre achat :</strong> quand vous achetez depuis l'app, elle ajoute un code aléatoire à usage unique à l'adresse de la page de paiement ; Paddle le garde avec votre achat pour que l'app reconnaisse le paiement.</li>
+        <li><strong>Vos ordinateurs :</strong> chaque ordinateur où vous débloquez Pro envoie un identifiant calculé sur cet ordinateur à partir de son identifiant système, par une fonction à sens unique : impossible de retrouver l'original, et il ne dit rien de vous ni de vos fichiers. Il est conservé, haché, avec votre achat chez Paddle, pour 5 ordinateurs au maximum ; quand un sixième s'ajoute, le plus ancien est retiré.</li>
+        <li><strong>« J'ai déjà acheté » :</strong> si un achat existe pour l'adresse e-mail que vous saisissez, nous y envoyons un code à usage unique par notre prestataire d'e-mails Resend. Le code expire au bout de 15 minutes et nous ne le conservons pas.</li>
+        <li><strong>Sur votre ordinateur :</strong> l'app garde une licence signée (elle indique Pro, l'identifiant de l'ordinateur, une référence anonyme à votre achat et ses dates de validité) et la renouvelle toute seule en ligne de temps en temps. Elle garde aussi les dates de l'essai et le nombre de fichiers transférés dans la journée, protégés contre les modifications, et note le début de l'essai à un second endroit de l'ordinateur pour que l'essai ne compte qu'une fois. Nous ne gardons aucune copie de la licence.</li>
+        <li><strong>La vérification de l'offre :</strong> à son lancement et une fois par jour, l'app demande à flitdrop.com si Flitdrop Pro est proposé et à quelles conditions. Cette demande ne porte aucun identifiant.</li>
+      </ul>
+      <p>Notre serveur de licences (flitdrop.com/api/license, hébergé chez Cloudflare) ne tient aucune base de données des acheteurs : les informations d'achat restent chez Paddle. Base légale : l'exécution du contrat (vous livrer la licence et la faire fonctionner) et, pour ce que Paddle conserve, ses propres obligations légales (factures, taxes, fraude). Paddle conserve les traces d'achat aussi longtemps que le droit fiscal et comptable l'exige ; les identifiants d'ordinateurs restent avec votre achat tant que vous utilisez votre licence, et vous pouvez nous demander de les retirer à tout moment.</p>
+
       <h2>Sur ce site</h2>
       <h3>Si vous êtes dans l'Union européenne, l'EEE, au Royaume-Uni ou en Suisse</h3>
       <p>Un bandeau vous propose deux boutons équivalents, Accepter et Refuser. Tant que vous n'avez pas accepté, ou si vous refusez, aucun cookie n'est déposé et ni Google Analytics ni Microsoft Clarity ne sont chargés. Tant que vous n'avez pas choisi, seule une mesure d'audience anonyme, sans cookie, fonctionne :</p>
       <ul>
         <li><strong>Cloudflare Web Analytics</strong> compte les visites, sans cookie et sans donnée personnelle.</li>
-        <li><strong>PostHog sans cookie</strong> compte les pages vues, les clics sur les boutons de téléchargement et la réponse donnée à ce bandeau. Il n'enregistre ni les autres clics, ni les cartes de chaleur, ni les sessions. Pour distinguer les visites d'une même journée, les serveurs de PostHog calculent à partir de la connexion un code à sens unique, renouvelé chaque jour. Aucun cookie n'est déposé (après un refus, PostHog retient seulement que vous avez refusé) et l'adresse IP n'est pas conservée.</li>
+        <li><strong>PostHog sans cookie</strong> compte les pages vues, les clics sur les boutons de téléchargement, les étapes d'un achat sur la page Flitdrop Pro (page ouverte, fenêtre de paiement ouverte, achat terminé, avec le prix affiché mais rien d'autre sur le paiement) et la réponse donnée à ce bandeau. Il n'enregistre ni les autres clics, ni les cartes de chaleur, ni les sessions. Pour distinguer les visites d'une même journée, les serveurs de PostHog calculent à partir de la connexion un code à sens unique, renouvelé chaque jour. Aucun cookie n'est déposé (après un refus, PostHog retient seulement que vous avez refusé) et l'adresse IP n'est pas conservée.</li>
       </ul>
       <p>Si vous refusez, PostHog compte ce refus une seule fois, de façon anonyme, puis s'arrête et ne compte plus rien. Seul reste le comptage des visites de Cloudflare, qui fait partie de l'hébergement, sans cookie ni donnée personnelle.</p>
       <p>Si vous acceptez, le site utilise en plus Google Analytics 4, Microsoft Clarity et PostHog avec son cookie (détails plus bas), y compris des enregistrements de navigation (clics, défilement, déplacements du pointeur), des cartes de chaleur, le temps passé sur chaque page et les erreurs du site, où tout ce que vous tapez dans un champ est masqué.</p>
@@ -269,6 +320,9 @@
 
       <h3>Ce que ces outils voient</h3>
       <p>Les pages que vous visitez, le site d'où vous venez, vos clics et votre défilement, le type de navigateur, de système et d'écran, et votre pays approximatif (déduit de la connexion). Jamais votre nom ni votre e-mail, et nous ne cherchons pas à savoir qui vous êtes. Les signaux publicitaires sont toujours refusés et les fonctions publicitaires de Google sont désactivées : rien ne sert à la publicité ni n'est vendu.</p>
+
+      <h3>Sur la page Flitdrop Pro</h3>
+      <p>Quand Flitdrop Pro est en vente, la page Pro charge le script de paiement de Paddle depuis les serveurs de Paddle, pour afficher le prix dans votre devise et ouvrir la fenêtre de paiement. Paddle voit alors votre adresse IP et votre navigateur, comme n'importe quel serveur, et la fenêtre de paiement est une page de Paddle, soumise à la politique de confidentialité de Paddle. Depuis notre page, ce script ne stocke rien sur votre appareil, et les outils de Paddle que nous n'utilisons pas (comme son outil de suivi des abonnements) ne sont pas chargés.</p>
 
       <h3>Liens vers le Microsoft Store</h3>
       <p>Les liens vers Flitdrop sur le Microsoft Store portent un court code de campagne (<code>cid</code>) pour que les statistiques du Store nous disent combien d'installations viennent de ce site. Ce code est le même pour tout le monde et ne dit rien de vous.</p>
@@ -290,7 +344,7 @@
         <h3>PostHog sans cookie</h3>
         <ul>
           <li>Prestataire : PostHog Inc., données stockées dans l'UE (Francfort).</li>
-          <li>Finalité : compter les pages vues, les clics sur les téléchargements et les réponses au bandeau cookies.</li>
+          <li>Finalité : compter les pages vues, les clics sur les téléchargements, les étapes d'un achat sur la page Pro et les réponses au bandeau cookies.</li>
           <li>Sur votre appareil : aucun cookie, seulement l'entrée qui retient un refus (voir « Vos préférences sur ce site »). Un code calculé sur les serveurs de PostHog, renouvelé chaque jour ; l'adresse IP n'est pas conservée.</li>
           <li>Quand : dans l'UE, l'EEE, au Royaume-Uni et en Suisse, tant que vous n'avez pas choisi. Si vous refusez, il compte ce refus une seule fois, puis s'arrête complètement.</li>
         </ul>
@@ -323,6 +377,15 @@
         </ul>
       </div>
       <div class="trk">
+        <h3>Paddle (page Flitdrop Pro)</h3>
+        <ul>
+          <li>Prestataire : Paddle.com Market Limited, Royaume-Uni.</li>
+          <li>Finalité : afficher le prix dans votre devise et encaisser le paiement de Flitdrop Pro.</li>
+          <li>Sur votre appareil : rien depuis notre page ; la fenêtre de paiement est une page de Paddle et suit la politique de confidentialité de Paddle.</li>
+          <li>Quand : seulement sur la page Pro, quand Flitdrop Pro est en vente.</li>
+        </ul>
+      </div>
+      <div class="trk">
         <h3>Vos préférences sur ce site</h3>
         <ul>
           <li>Prestataire : aucun, elles restent dans votre navigateur et ne nous sont jamais envoyées.</li>
@@ -339,9 +402,18 @@
           <li>Quand : statistiques de base par défaut, jusqu'à ce que vous les coupiez dans les Réglages ; statistiques détaillées et rapports d'erreur seulement si vous dites oui.</li>
         </ul>
       </div>
+      <div class="trk">
+        <h3>Flitdrop Pro dans l'application</h3>
+        <ul>
+          <li>Prestataires : Paddle (achat), Cloudflare (serveur de licences, sans base de données des acheteurs) et Resend (e-mails avec un code à usage unique).</li>
+          <li>Finalité : débloquer Pro et le faire fonctionner sur vos ordinateurs.</li>
+          <li>Sur votre ordinateur : la licence signée, les dates de l'essai et le nombre de fichiers transférés dans la journée, protégés contre les modifications, plus une seconde trace du début de l'essai ailleurs sur l'ordinateur, et le nombre de fois où une offre Pro a été montrée (pour qu'elle ne revienne pas trop souvent ; jamais envoyé).</li>
+          <li>Quand : les dates de l'essai et le compteur du jour dès que Flitdrop Pro est proposé ; la licence seulement si vous achetez Pro ou retrouvez un achat.</li>
+        </ul>
+      </div>
 
       <h2>Qui reçoit les données, et transferts hors de l'UE</h2>
-      <p>Nous ne vendons aucune donnée et ne la partageons jamais à des fins publicitaires. Les seuls prestataires qui traitent des données pour nous sont Cloudflare (hébergement, mesure sans cookie, collecteur des statistiques de l'app et sa copie de ces statistiques), PostHog (statistiques, stockées dans l'Union européenne, à Francfort), Google (Google Analytics), Microsoft (Clarity) et GitHub (les boutons de téléchargement demandent à GitHub la liste des derniers fichiers, et les fichiers sont téléchargés depuis GitHub, qui voit votre adresse IP comme n'importe quel serveur). Google, Microsoft, GitHub et Cloudflare peuvent traiter des données aux États-Unis ; ils sont certifiés au titre du Data Privacy Framework UE-États-Unis, que la Commission européenne reconnaît comme offrant un niveau de protection adéquat. PostHog stocke nos données dans l'Union européenne.</p>
+      <p>Nous ne vendons aucune donnée et ne la partageons jamais à des fins publicitaires. Les seuls prestataires qui traitent des données pour nous sont Cloudflare (hébergement, mesure sans cookie, collecteur des statistiques de l'app et sa copie de ces statistiques), PostHog (statistiques, stockées dans l'Union européenne, à Francfort), Google (Google Analytics), Microsoft (Clarity), Resend (les e-mails que nous envoyons : messages du formulaire de contact et codes à usage unique de Flitdrop Pro) et GitHub (les boutons de téléchargement demandent à GitHub la liste des derniers fichiers, et les fichiers sont téléchargés depuis GitHub, qui voit votre adresse IP comme n'importe quel serveur). Si vous achetez Flitdrop Pro, Paddle reçoit les informations de votre achat en tant que revendeur et responsable de traitement indépendant. Google, Microsoft, GitHub, Cloudflare et Resend peuvent traiter des données aux États-Unis ; ils sont certifiés au titre du Data Privacy Framework UE-États-Unis, que la Commission européenne reconnaît comme offrant un niveau de protection adéquat. PostHog stocke nos données dans l'Union européenne. Paddle est établi au Royaume-Uni, que la Commission européenne reconnaît aussi comme offrant un niveau de protection adéquat.</p>
 
       <h2>Durées de conservation</h2>
       <ul>
@@ -350,6 +422,7 @@
         <li>Google Analytics : cookies jusqu'à 13 mois ; données détaillées conservées 14 mois au maximum.</li>
         <li>Microsoft Clarity : cookies jusqu'à 1 an ; Microsoft garde les enregistrements environ 30 jours et les statistiques jusqu'à 13 mois.</li>
         <li>Votre choix sur les cookies : 6 mois, puis nous vous reposons la question.</li>
+        <li>Flitdrop Pro : traces d'achat chez Paddle aussi longtemps que le droit fiscal et comptable l'exige ; identifiants d'ordinateurs avec votre achat tant que vous utilisez votre licence ; codes à usage unique expirés au bout de 15 minutes et jamais conservés.</li>
       </ul>
 
       <h2>Bases légales</h2>
@@ -358,10 +431,11 @@
         <li>Statistiques détaillées et rapports d'erreur de l'application, et, pour les visiteurs de l'UE, de l'EEE, du Royaume-Uni et de Suisse, Google Analytics, Microsoft Clarity et PostHog avec cookie : votre consentement, que vous pouvez retirer à tout moment.</li>
         <li>Ces mêmes outils du site pour les visiteurs d'ailleurs : notre intérêt légitime à améliorer le site. Vous pouvez vous y opposer à tout moment avec le lien « Cookies ».</li>
         <li>Journaux d'hébergement et de sécurité : notre intérêt légitime à garder le site disponible et sûr.</li>
+        <li>Flitdrop Pro (achat, licence, identifiants d'ordinateurs, codes à usage unique) : l'exécution du contrat conclu lors de l'achat.</li>
       </ul>
 
       <h2>Vos droits (RGPD)</h2>
-      <p>Le RGPD vous donne un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité sur vos données personnelles, ainsi que le droit de retirer votre consentement à tout moment. Comme les statistiques que nous collectons ne vous identifient pas, nous ne pouvons généralement pas savoir lesquelles vous concernent ; le plus simple pour tout arrêter reste l'interrupteur des Réglages de l'app et le lien « Cookies » du site. Pour toute question ou demande, écrivez-nous à <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a> et nous répondrons sous un mois. Vous avez aussi le droit d'introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+      <p>Le RGPD vous donne un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité sur vos données personnelles, ainsi que le droit de retirer votre consentement à tout moment. Comme les statistiques que nous collectons ne vous identifient pas, nous ne pouvons généralement pas savoir lesquelles vous concernent ; le plus simple pour tout arrêter reste l'interrupteur des Réglages de l'app et le lien « Cookies » du site. Si vous avez acheté Flitdrop Pro, nous retrouvons votre achat à partir de votre adresse e-mail : écrivez-nous depuis cette adresse. Pour toute question ou demande, écrivez-nous à <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a> et nous répondrons sous un mois. Vous avez aussi le droit d'introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
 
       <h2>Responsable du traitement</h2>
       <p>Flitdrop (Thomas Bidault), entrepreneur individuel, France. Contact : <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>.</p>
@@ -369,7 +443,7 @@
 
     <div class="lang-de" hidden>
       <h1>Datenschutzerklärung</h1>
-      <p class="updated">Zuletzt aktualisiert: 26. September 2026</p>
+      <p class="updated">Zuletzt aktualisiert: 9. Oktober 2026</p>
       <p>Flitdrop ist so gebaut, dass es so wenig Daten wie möglich braucht. Deine Übertragungen laufen direkt zwischen deinen Geräten in deinem eigenen WLAN: keine Cloud, kein Konto, und kein Server bekommt jemals deine Dateien, Fotos, Texte oder deine Zwischenablage. Um zu verstehen, wie die App und diese Website genutzt werden, und um Fehler zu beheben, messen wir allerdings einiges. Hier steht genau, was, warum und wie du ablehnen kannst.</p>
 
       <h2>Kurz gesagt</h2>
@@ -377,6 +451,7 @@
         <li>Deine Dateien, Fotos, Nachrichten und deine Zwischenablage erreichen uns nie. Übertragungen sind Ende-zu-Ende-verschlüsselt und bleiben in deinem Netzwerk.</li>
         <li>Die App sendet einfache anonyme Statistiken (zum Beispiel „App geöffnet“ oder „Übertragung geklappt“), ganz ohne Kennung. Du kannst sie in den Einstellungen ausschalten.</li>
         <li>Ausführliche Statistiken und Fehlerberichte werden nur gesendet, wenn du zustimmst.</li>
+        <li>Wenn du Flitdrop Pro kaufst, läuft die Zahlung über Paddle, unseren Wiederverkäufer. Wir bekommen dann deine E-Mail-Adresse und den Stand deines Kaufs, nie deine Kartendaten.</li>
         <li>Auf dieser Website entscheiden Besucher aus der EU, dem EWR, dem Vereinigten Königreich und der Schweiz, ob sie Cookies akzeptieren. Solange sie nicht gewählt haben, läuft nur eine anonyme Messung ohne Cookies, und eine Ablehnung stoppt auch diese, bis auf die einfache Besuchszählung unseres Hosters Cloudflare.</li>
         <li>Nichts wird für Werbung genutzt und nichts wird verkauft.</li>
       </ul>
@@ -387,7 +462,7 @@
         <li>Was du in die Zwischenablage kopierst.</li>
         <li>Die Namen deiner Geräte oder Ordner und keine Dateipfade, die deinen Benutzernamen enthalten.</li>
         <li>Deine IP-Adresse: Wir speichern sie nie. Unsere Dienstleister nutzen sie kurz, wie jede Website und jeder Server, um den Dienst bereitzustellen; PostHog nutzt sie außerdem, ohne sie zu speichern, um den unten beschriebenen Tagescode für Besuche und das Land zu berechnen.</li>
-        <li>Ein Konto, eine E-Mail-Adresse oder sonst irgendetwas, das uns verrät, wer du bist.</li>
+        <li>Ein Konto, eine E-Mail-Adresse oder sonst irgendetwas, das uns verrät, wer du bist, außer wenn du Flitdrop Pro kaufst (siehe „Wenn du Flitdrop Pro kaufst“ weiter unten).</li>
       </ul>
 
       <h2>In der Flitdrop-App</h2>
@@ -401,6 +476,7 @@
         <li>wenn ein Handy erfolgreich gekoppelt wurde, mit der Art des Handys (iPhone, Android, anderes);</li>
         <li>wenn eine Übertragung klappt oder fehlschlägt, mit ihrer Richtung (vom Handy zum Computer oder vom Computer zum Handy), ihrer Art (Datei, Foto, Text, Zwischenablage) und einer ungefähren Größenklasse, nie die Datei selbst, ihren Namen oder ihren Speicherort; bei einem Fehlschlag einen kurzen Fehlercode;</li>
         <li>ob es das erste Öffnen der Seite durch ein Handy, die erste Kopplung oder die erste Übertragung auf diesem Computer ist;</li>
+        <li>rund um Flitdrop Pro: wenn die App ein Pro-Angebot zeigt und wo (zum Beispiel die Karte, wenn das Tageslimit erreicht ist), wenn sie die Zahlungsseite öffnet und ob ein Einführungspreis gilt, wenn Pro freigeschaltet wird (durch einen Kauf oder durch Wiederherstellen eines früheren Kaufs) und wenn das tägliche Limit kostenloser Dateien erreicht ist (höchstens einmal am Tag); die tägliche Nutzungszählung sagt außerdem, welche Version läuft (kostenlos, Testphase, Pro oder Pro noch nicht angeboten). Nie deine E-Mail-Adresse, eine Kaufnummer oder einen Betrag;</li>
         <li>technische Angaben: App-Version, Betriebssystem, Prozessortyp, wie die App installiert wurde (zum Beispiel Microsoft Store oder Installer), Sprache der Oberfläche, der Monat des ersten Starts und ein grobes Installationsalter (am selben Tag, erste Woche, erster Monat, älter).</li>
       </ul>
       <p>Diese Ereignisse tragen keinerlei Kennung: Sie lassen sich weder miteinander noch mit einer Person verknüpfen. Unser Sammeldienst leitet das Land aus der Verbindung ab und behält nur das Land; die IP-Adresse wird nie gespeichert.</p>
@@ -421,12 +497,24 @@
       <h3>Wohin die App-Daten gehen und wie lange sie bleiben</h3>
       <p>Die App-Statistiken gehen an unseren Sammeldienst bei Cloudflare (flitdrop.com/api/telemetry, für Versionen vor 0.6.4 telemetry.flitdrop.com), der nur das Land behält und die Ereignisse an PostHog weitergibt, wo sie in der Europäischen Union (Frankfurt) gespeichert werden. Einzelne Ereignisse werden dort höchstens 12 Monate aufbewahrt; danach bleiben nur Gesamtzahlen (zum Beispiel die Zahl der Übertragungen pro Monat).</p>
 
+      <h2>Wenn du Flitdrop Pro kaufst</h2>
+      <p>Flitdrop Pro wird von Paddle.com Market Limited verkauft, unserem Wiederverkäufer, der in eigenem Namen verkauft (Merchant of Record), mit Sitz im Vereinigten Königreich. Paddle zeigt das Zahlungsfenster, kassiert die Zahlung, prüft sie auf Betrug, wendet die Steuer deines Landes an und schickt dir die Quittung. Dafür erhebt Paddle, was es braucht (deine E-Mail-Adresse, dein Land, deine Zahlungsdaten und deine IP-Adresse), als eigenständiger Verantwortlicher nach seiner eigenen Datenschutzerklärung (<a href="https://www.paddle.com/legal/privacy" target="_blank" rel="noopener">paddle.com/legal/privacy</a>).</p>
+      <ul>
+        <li><strong>Was wir von Paddle bekommen:</strong> deine E-Mail-Adresse, dein Land, das Datum und den Stand deines Kaufs (bezahlt, erstattet oder angefochten). Nie deine Karten- oder Bankdaten.</li>
+        <li><strong>Die Verbindung zwischen App und Kauf:</strong> Wenn du in der App kaufst, hängt sie einen zufälligen Einmalcode an die Adresse der Zahlungsseite; Paddle speichert ihn mit deinem Kauf, damit die App die Zahlung erkennt.</li>
+        <li><strong>Deine Computer:</strong> Jeder Computer, auf dem du Pro freischaltest, sendet eine Kennung, die auf diesem Computer aus seiner Systemkennung mit einer Einwegfunktion berechnet wird: Sie lässt sich nicht zurückrechnen und sagt nichts über dich oder deine Dateien. Sie wird gehasht mit deinem Kauf bei Paddle gespeichert, für höchstens 5 Computer; kommt ein sechster dazu, wird der älteste entfernt.</li>
+        <li><strong>„Ich habe schon gekauft“:</strong> Wenn es zu der eingegebenen E-Mail-Adresse einen Kauf gibt, schicken wir einen Einmalcode an diese Adresse, über unseren E-Mail-Dienst Resend. Der Code läuft nach 15 Minuten ab und wir speichern ihn nicht.</li>
+        <li><strong>Auf deinem Computer:</strong> Die App speichert eine signierte Lizenz (sie enthält Pro, die Kennung des Computers, einen anonymen Verweis auf deinen Kauf und ihre Gültigkeitsdaten) und erneuert sie ab und zu von selbst online. Sie speichert außerdem die Daten der Testphase und die Zahl der heute übertragenen Dateien, gegen Änderungen geschützt, und notiert den Beginn der Testphase an einer zweiten Stelle auf dem Computer, damit die Testphase nur einmal zählt. Wir behalten keine Kopie der Lizenz.</li>
+        <li><strong>Prüfung des Angebots:</strong> Beim Start und einmal am Tag fragt die App bei flitdrop.com nach, ob Flitdrop Pro angeboten wird und zu welchen Bedingungen. Diese Anfrage enthält keine Kennung.</li>
+      </ul>
+      <p>Unser Lizenzserver (flitdrop.com/api/license, bei Cloudflare gehostet) führt keine Datenbank der Käufer: Die Kaufdaten bleiben bei Paddle. Rechtsgrundlage: die Erfüllung des Vertrags (dir die Lizenz liefern und sie funktionsfähig halten) und, für das, was Paddle aufbewahrt, Paddles eigene gesetzliche Pflichten (Rechnungen, Steuern, Betrugsabwehr). Paddle bewahrt Kaufbelege so lange auf, wie Steuer- und Buchhaltungsrecht es verlangen; die Computerkennungen bleiben bei deinem Kauf, solange du deine Lizenz nutzt, und du kannst jederzeit verlangen, dass wir sie entfernen.</p>
+
       <h2>Auf dieser Website</h2>
       <h3>Wenn du in der EU, im EWR, im Vereinigten Königreich oder in der Schweiz bist</h3>
       <p>Du siehst ein Banner mit zwei gleichwertigen Schaltflächen, Akzeptieren und Ablehnen. Solange du nicht zustimmst, oder wenn du ablehnst, wird kein Cookie gesetzt und weder Google Analytics noch Microsoft Clarity werden geladen. Solange du nicht gewählt hast, läuft nur eine anonyme Messung ohne Cookies:</p>
       <ul>
         <li><strong>Cloudflare Web Analytics</strong> zählt Besuche, ohne Cookie und ohne personenbezogene Daten.</li>
-        <li><strong>PostHog ohne Cookies</strong> zählt aufgerufene Seiten, Klicks auf die Download-Schaltflächen und die Antwort auf dieses Banner. Andere Klicks, Heatmaps oder Sitzungen zeichnet es nicht auf. Um Besuche innerhalb eines Tages auseinanderzuhalten, berechnen die Server von PostHog aus der Verbindung einen nicht umkehrbaren Code, der jeden Tag erneuert wird. Es wird kein Cookie gesetzt (nach einer Ablehnung merkt sich PostHog nur, dass du abgelehnt hast), und die IP-Adresse wird nicht aufbewahrt.</li>
+        <li><strong>PostHog ohne Cookies</strong> zählt aufgerufene Seiten, Klicks auf die Download-Schaltflächen, die Schritte eines Kaufs auf der Seite Flitdrop Pro (Seite geöffnet, Zahlungsfenster geöffnet, Kauf abgeschlossen, mit dem angezeigten Preis, aber sonst nichts zur Zahlung) und die Antwort auf dieses Banner. Andere Klicks, Heatmaps oder Sitzungen zeichnet es nicht auf. Um Besuche innerhalb eines Tages auseinanderzuhalten, berechnen die Server von PostHog aus der Verbindung einen nicht umkehrbaren Code, der jeden Tag erneuert wird. Es wird kein Cookie gesetzt (nach einer Ablehnung merkt sich PostHog nur, dass du abgelehnt hast), und die IP-Adresse wird nicht aufbewahrt.</li>
       </ul>
       <p>Wenn du ablehnst, zählt PostHog diese Ablehnung einmal, anonym, und stoppt dann und zählt nichts mehr. Es bleibt nur die Besuchszählung von Cloudflare, die zum Hosting gehört, ohne Cookie und ohne personenbezogene Daten.</p>
       <p>Wenn du zustimmst, nutzt die Website zusätzlich Google Analytics 4, Microsoft Clarity und PostHog mit Cookie (Details unten), einschließlich Aufzeichnungen, wie Seiten benutzt werden (Klicks, Scrollen, Bewegungen des Mauszeigers), Heatmaps, der Verweildauer auf jeder Seite und Fehlern der Website, wobei alles, was du in Felder tippst, verborgen bleibt.</p>
@@ -438,6 +526,9 @@
 
       <h3>Was diese Werkzeuge sehen</h3>
       <p>Die Seiten, die du besuchst, die Website, von der du kommst, deine Klicks und dein Scrollen, die Art von Browser, System und Bildschirm sowie dein ungefähres Land (aus der Verbindung abgeleitet). Nie deinen Namen oder deine E-Mail-Adresse, und wir versuchen nicht herauszufinden, wer du bist. Werbesignale werden immer abgelehnt und die Werbefunktionen von Google sind abgeschaltet: Nichts wird für Werbung genutzt oder verkauft.</p>
+
+      <h3>Auf der Seite Flitdrop Pro</h3>
+      <p>Wenn Flitdrop Pro erhältlich ist, lädt die Pro-Seite das Zahlungsskript von Paddle von Paddles Servern, um den Preis in deiner Währung anzuzeigen und das Zahlungsfenster zu öffnen. Paddle sieht dann deine IP-Adresse und deinen Browser, wie jeder Server, und das Zahlungsfenster ist eine Seite von Paddle, für die Paddles Datenschutzerklärung gilt. Von unserer Seite aus speichert dieses Skript nichts auf deinem Gerät, und Werkzeuge von Paddle, die wir nicht nutzen (etwa sein Werkzeug zur Abo-Nachverfolgung), werden nicht geladen.</p>
 
       <h3>Links zum Microsoft Store</h3>
       <p>Links zu Flitdrop im Microsoft Store enthalten einen kurzen Kampagnencode (<code>cid</code>), damit uns die Store-Statistik sagen kann, wie viele Installationen von dieser Website kommen. Der Code ist für alle gleich und sagt nichts über dich aus.</p>
@@ -459,7 +550,7 @@
         <h3>PostHog ohne Cookies</h3>
         <ul>
           <li>Anbieter: PostHog Inc., Daten in der EU gespeichert (Frankfurt).</li>
-          <li>Zweck: aufgerufene Seiten, Download-Klicks und Antworten auf das Cookie-Banner zählen.</li>
+          <li>Zweck: aufgerufene Seiten, Download-Klicks, die Schritte eines Kaufs auf der Pro-Seite und Antworten auf das Cookie-Banner zählen.</li>
           <li>Auf deinem Gerät: kein Cookie, nur der Eintrag, der eine Ablehnung merkt (siehe „Deine Einstellungen auf dieser Website“). Ein Code, der auf den Servern von PostHog berechnet und jeden Tag erneuert wird; die IP-Adresse wird nicht gespeichert.</li>
           <li>Wann: in der EU, im EWR, im Vereinigten Königreich und in der Schweiz, solange du nicht gewählt hast. Wenn du ablehnst, zählt es diese Ablehnung einmal und stoppt dann ganz.</li>
         </ul>
@@ -492,6 +583,15 @@
         </ul>
       </div>
       <div class="trk">
+        <h3>Paddle (Seite Flitdrop Pro)</h3>
+        <ul>
+          <li>Anbieter: Paddle.com Market Limited, Vereinigtes Königreich.</li>
+          <li>Zweck: den Preis in deiner Währung anzeigen und die Zahlung für Flitdrop Pro kassieren.</li>
+          <li>Auf deinem Gerät: nichts von unserer Seite aus; das Zahlungsfenster ist eine Seite von Paddle und folgt Paddles Datenschutzerklärung.</li>
+          <li>Wann: nur auf der Pro-Seite, wenn Flitdrop Pro erhältlich ist.</li>
+        </ul>
+      </div>
+      <div class="trk">
         <h3>Deine Einstellungen auf dieser Website</h3>
         <ul>
           <li>Anbieter: keiner, sie bleiben in deinem Browser und werden nie an uns gesendet.</li>
@@ -508,9 +608,18 @@
           <li>Wann: einfache Statistiken standardmäßig, bis du sie in den Einstellungen ausschaltest; ausführliche Statistiken und Fehlerberichte nur, wenn du zustimmst.</li>
         </ul>
       </div>
+      <div class="trk">
+        <h3>Flitdrop Pro in der App</h3>
+        <ul>
+          <li>Anbieter: Paddle (Kauf), Cloudflare (Lizenzserver, ohne Käuferdatenbank) und Resend (E-Mails mit einem Einmalcode).</li>
+          <li>Zweck: Pro freischalten und auf deinen Computern funktionsfähig halten.</li>
+          <li>Auf deinem Computer: die signierte Lizenz, die Daten der Testphase und die Zahl der heute übertragenen Dateien, gegen Änderungen geschützt, dazu eine zweite Notiz zum Beginn der Testphase an anderer Stelle auf dem Computer, und wie oft ein Pro-Angebot gezeigt wurde (damit es nicht zu oft wiederkommt; wird nie gesendet).</li>
+          <li>Wann: die Daten der Testphase und der Tageszähler, sobald Flitdrop Pro angeboten wird; die Lizenz nur, wenn du Pro kaufst oder einen Kauf wiederherstellst.</li>
+        </ul>
+      </div>
 
       <h2>Wer die Daten bekommt, und Übermittlungen außerhalb der EU</h2>
-      <p>Wir verkaufen keine Daten und geben sie nie für Werbung weiter. Die einzigen Dienstleister, die Daten für uns verarbeiten, sind Cloudflare (Hosting, Messung ohne Cookies, Sammeldienst für App-Statistiken und dessen Kopie dieser Statistiken), PostHog (Statistik, gespeichert in der Europäischen Union, in Frankfurt), Google (Google Analytics), Microsoft (Clarity) und GitHub (die Download-Schaltflächen fragen bei GitHub die Liste der neuesten Dateien ab, und die Dateien werden von GitHub heruntergeladen, das deine IP-Adresse wie jeder Server sieht). Google, Microsoft, GitHub und Cloudflare können Daten in den USA verarbeiten; sie sind nach dem EU-US Data Privacy Framework zertifiziert, für das die Europäische Kommission ein angemessenes Schutzniveau anerkannt hat. PostHog speichert unsere Daten in der Europäischen Union.</p>
+      <p>Wir verkaufen keine Daten und geben sie nie für Werbung weiter. Die einzigen Dienstleister, die Daten für uns verarbeiten, sind Cloudflare (Hosting, Messung ohne Cookies, Sammeldienst für App-Statistiken und dessen Kopie dieser Statistiken), PostHog (Statistik, gespeichert in der Europäischen Union, in Frankfurt), Google (Google Analytics), Microsoft (Clarity), Resend (die E-Mails, die wir senden: Nachrichten aus dem Kontaktformular und Einmalcodes für Flitdrop Pro) und GitHub (die Download-Schaltflächen fragen bei GitHub die Liste der neuesten Dateien ab, und die Dateien werden von GitHub heruntergeladen, das deine IP-Adresse wie jeder Server sieht). Wenn du Flitdrop Pro kaufst, bekommt Paddle die Angaben zu deinem Kauf als unser Wiederverkäufer und als eigenständiger Verantwortlicher. Google, Microsoft, GitHub, Cloudflare und Resend können Daten in den USA verarbeiten; sie sind nach dem EU-US Data Privacy Framework zertifiziert, für das die Europäische Kommission ein angemessenes Schutzniveau anerkannt hat. PostHog speichert unsere Daten in der Europäischen Union. Paddle hat seinen Sitz im Vereinigten Königreich, für das die Europäische Kommission ebenfalls ein angemessenes Schutzniveau anerkannt hat.</p>
 
       <h2>Wie lange Daten aufbewahrt werden</h2>
       <ul>
@@ -519,6 +628,7 @@
         <li>Google Analytics: Cookies bis zu 13 Monate; ausführliche Daten höchstens 14 Monate.</li>
         <li>Microsoft Clarity: Cookies bis zu 1 Jahr; Microsoft bewahrt Aufzeichnungen etwa 30 Tage und Statistiken bis zu 13 Monate auf.</li>
         <li>Deine Cookie-Wahl: 6 Monate, dann fragen wir erneut.</li>
+        <li>Flitdrop Pro: Kaufbelege bei Paddle so lange, wie Steuer- und Buchhaltungsrecht es verlangen; Computerkennungen bei deinem Kauf, solange du deine Lizenz nutzt; Einmalcodes laufen nach 15 Minuten ab und werden nicht gespeichert.</li>
       </ul>
 
       <h2>Rechtsgrundlagen</h2>
@@ -527,10 +637,11 @@
         <li>Ausführliche App-Statistiken und Fehlerberichte sowie, für Besucher aus der EU, dem EWR, dem Vereinigten Königreich und der Schweiz, Google Analytics, Microsoft Clarity und PostHog mit Cookie: deine Einwilligung, die du jederzeit widerrufen kannst.</li>
         <li>Dieselben Werkzeuge der Website für Besucher aus anderen Ländern: unser berechtigtes Interesse, die Website zu verbessern. Du kannst jederzeit über den Link „Cookies“ widersprechen.</li>
         <li>Hosting- und Sicherheitsprotokolle: unser berechtigtes Interesse, die Website erreichbar und sicher zu halten.</li>
+        <li>Flitdrop Pro (Kauf, Lizenz, Computerkennungen, Einmalcodes): die Erfüllung des Vertrags, den du beim Kauf schließt.</li>
       </ul>
 
       <h2>Deine Rechte (DSGVO)</h2>
-      <p>Nach der DSGVO hast du das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Widerspruch und Datenübertragbarkeit in Bezug auf deine personenbezogenen Daten sowie das Recht, eine Einwilligung jederzeit zu widerrufen. Da die Statistiken, die wir erheben, dich nicht identifizieren, können wir meist nicht erkennen, welche Daten zu dir gehören; am einfachsten stoppst du jede Erhebung über den Schalter in den App-Einstellungen und den Link „Cookies“ auf der Website. Für Fragen oder Anliegen schreib uns an <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>, wir antworten innerhalb eines Monats. Du hast außerdem das Recht, dich bei einer Datenschutzaufsichtsbehörde zu beschweren, etwa bei der Behörde deines Landes oder in Frankreich bei der CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
+      <p>Nach der DSGVO hast du das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Widerspruch und Datenübertragbarkeit in Bezug auf deine personenbezogenen Daten sowie das Recht, eine Einwilligung jederzeit zu widerrufen. Da die Statistiken, die wir erheben, dich nicht identifizieren, können wir meist nicht erkennen, welche Daten zu dir gehören; am einfachsten stoppst du jede Erhebung über den Schalter in den App-Einstellungen und den Link „Cookies“ auf der Website. Wenn du Flitdrop Pro gekauft hast, finden wir deinen Kauf über deine E-Mail-Adresse: Schreib uns von dieser Adresse aus. Für Fragen oder Anliegen schreib uns an <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>, wir antworten innerhalb eines Monats. Du hast außerdem das Recht, dich bei einer Datenschutzaufsichtsbehörde zu beschweren, etwa bei der Behörde deines Landes oder in Frankreich bei der CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener">cnil.fr</a>).</p>
 
       <h2>Verantwortlicher</h2>
       <p>Flitdrop (Thomas Bidault), Einzelunternehmer (entrepreneur individuel), Frankreich. Kontakt: <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>.</p>
@@ -539,8 +650,11 @@
 
   <footer class="mini-foot">
     <a href="/" data-i18n="foot.home">Home</a>
+    <a href="/pro" data-i18n="footer.pro">Flitdrop Pro</a>
     <a href="/privacy" data-i18n="footer.privacy">Privacy</a>
     <a href="/legal" data-i18n="footer.legal">Legal</a>
+    <a href="/terms" data-i18n="footer.terms">Terms of sale</a>
+    <a href="/refund" data-i18n="footer.refund">Refunds</a>
     <a href="#cookies" role="button" data-consent-open data-consent-link data-i18n="consent.link">Cookies</a>
   </footer>
 

@@ -199,6 +199,13 @@ html[data-os='android'] .bigsend > svg { border-radius: 16px; background: color-
 .qitem.done .qstate { color: var(--ok); font-weight: 600; }
 .qitem.err { border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
 .qitem.err .qstate { color: var(--danger); }
+/* limite du jour du PC (Flitdrop Pro, version gratuite) : calme, aplats */
+.qitem.wait .qstate { color: var(--muted); }
+.limit-note {
+  border: 0.5px solid var(--hair-line); background: var(--glass-strong); border-radius: var(--radius-card);
+  padding: 14px 15px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.45;
+}
+.limit-note .limit-wait { color: var(--muted); font-size: 13px; }
 .qbtn { border: 0.5px solid var(--hair); background: var(--glass-strong); color: var(--blue); border-radius: 999px; padding: 8px 15px; font: 600 13.5px var(--font); cursor: pointer; }
 
 /* texte */

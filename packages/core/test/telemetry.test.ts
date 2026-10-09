@@ -176,6 +176,40 @@ describe('télémétrie : actif du jour', () => {
     tel.stop()
   })
 
+  it('plan Flitdrop Pro joint à l’actif du jour, absent s’il est inconnu', async () => {
+    const home = tmpHome()
+    const cfg = loadConfig(home)
+    cfg.basicNoticeShown = true
+    const rec = recorder()
+    const tel = new Telemetry(
+      { home, cfg, pairedDevices: () => 1, plan: () => 'free' },
+      { version: '0.7.0', channel: 'dev', fetchImpl: rec.fetchImpl, disabled: false }
+    )
+    tel.dailyCheck()
+    await tel.flush()
+    expect(rec.sent[0]!.props.plan).toBe('free')
+    assertContract(rec.sent[0]!)
+    const { tel: tel2, sent } = setup()
+    tel2.dailyCheck()
+    await tel2.flush()
+    expect(sent[0]!.props.plan).toBeUndefined()
+  })
+
+  it('événements Flitdrop Pro : niveau de base, propriétés du contrat seulement', () => {
+    const { tel } = setup()
+    const shown = tel.build('pro_prompt_shown', { where: 'limit', email: 'zoe@example.com' })!
+    expect(shown.tier).toBe('basic')
+    expect(shown.props.where).toBe('limit')
+    expect(shown.props.email).toBeUndefined()
+    assertContract(shown)
+    assertContract(tel.build('pro_checkout_opened', { where: 'settings', early: true })!)
+    assertContract(tel.build('pro_unlocked', { how: 'purchase' })!)
+    assertContract(tel.build('daily_limit_reached', {})!)
+    // statistiques coupées : rien
+    const off = setup({ basic: false })
+    expect(off.tel.build('daily_limit_reached', {})).toBeNull()
+  })
+
   it('un envoi raté n’est pas marqué : retenté au passage suivant', async () => {
     const { tel, sent, cfg } = setup({ status: 503 })
     tel.dailyCheck()

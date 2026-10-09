@@ -149,7 +149,8 @@
   // réponse au bandeau ; après un refus : rien. Filtre appliqué à tout ce que
   // PostHog enverrait (clics automatiques, cartes de chaleur, replays, temps
   // passé, erreurs, événements de app.js).
-  var PH_COOKIELESS = ['$pageview', 'download_click', 'store_click', 'mobile_copy_link', 'consent_choice'];
+  var PH_COOKIELESS = ['$pageview', 'download_click', 'store_click', 'mobile_copy_link', 'consent_choice',
+    'pro_view', 'pro_checkout_opened', 'pro_checkout_completed'];
   function phFilter(ev) {
     if (!ev || state === 'granted') return ev;
     if (state === 'denied') return null;
@@ -194,6 +195,26 @@
         if (state === 'denied') phSilence(p);
       }
     });
+  }
+
+  /* ---------- page Flitdrop Pro ---------- */
+
+  // Appelé par js/pro.js : page vue, fenêtre de paiement ouverte, achat terminé.
+  // PostHog seulement, avec une liste fermée de propriétés : jamais d'e-mail, de
+  // numéro de commande ni de montant autre que le prix affiché sur la page.
+  var PRO_EVENTS = ['pro_view', 'pro_checkout_opened', 'pro_checkout_completed'];
+  function proTrack(name, props) {
+    if (PRO_EVENTS.indexOf(name) === -1) return;
+    var p = props || {};
+    var clean = { from_app: !!p.from_app, early: !!p.early };
+    if (typeof p.available === 'boolean') clean.available = p.available;
+    if (typeof p.price_shown === 'string' && p.price_shown && p.price_shown.length <= 24) clean.price_shown = p.price_shown;
+    phCapture(name, clean);
+  }
+  window.fdTrack = proTrack;
+  // événements arrivés avant ce script (chargé en asynchrone)
+  if (window.fdTrackQ && window.fdTrackQ.splice) {
+    window.fdTrackQ.splice(0).forEach(function (a) { if (a) proTrack(a[0], a[1]); });
   }
 
   /* ---------- Google Analytics 4 ---------- */

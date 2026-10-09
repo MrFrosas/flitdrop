@@ -58,6 +58,10 @@ const PAGES = [
   { slug: 'flitdrop-vs-localsend', src: 'flitdrop-vs-localsend.html', mapped: true },
   { slug: 'flitdrop-vs-snapdrop', src: 'flitdrop-vs-snapdrop.html', mapped: true },
   { slug: 'flitdrop-vs-nearby-share', src: 'flitdrop-vs-nearby-share.html', mapped: true },
+  // Flitdrop Pro : offre, conditions de vente et licence, remboursement et rétractation
+  { slug: 'pro', src: 'pro.html', mapped: true },
+  { slug: 'terms', src: 'terms.html', mapped: true },
+  { slug: 'refund', src: 'refund.html', mapped: true },
 ];
 const LOCALIZED_SLUGS = new Set(PAGES.map((p) => p.slug)); // for internal link rewriting
 

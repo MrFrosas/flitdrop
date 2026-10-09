@@ -68,9 +68,11 @@
   }
 
   // slugs that have a prerendered counterpart under /<lang>/ ('' = home)
-  var LOCALIZED = ['', 'airdrop-windows', 'airdrop-linux', 'airdrop-iphone-android', 'send-files-iphone-to-pc', 'alternative-airdrop', 'snapdrop-alternative', 'localsend-alternative', 'best-airdrop-alternatives', 'transfer-photos-iphone-to-pc-without-losing-quality', 'send-files-android-to-mac', 'copy-paste-phone-to-pc', 'xender-alternative', 'send-anywhere-alternative', 'send-files-without-app', 'pairdrop-alternative', 'quick-share-to-iphone-not-working', 'send-files-linux-to-iphone', 'flitdrop-vs-airdrop', 'flitdrop-vs-localsend', 'flitdrop-vs-snapdrop', 'flitdrop-vs-nearby-share'];
+  var LOCALIZED = ['', 'airdrop-windows', 'airdrop-linux', 'airdrop-iphone-android', 'send-files-iphone-to-pc', 'alternative-airdrop', 'snapdrop-alternative', 'localsend-alternative', 'best-airdrop-alternatives', 'transfer-photos-iphone-to-pc-without-losing-quality', 'send-files-android-to-mac', 'copy-paste-phone-to-pc', 'xender-alternative', 'send-anywhere-alternative', 'send-files-without-app', 'pairdrop-alternative', 'quick-share-to-iphone-not-working', 'send-files-linux-to-iphone', 'flitdrop-vs-airdrop', 'flitdrop-vs-localsend', 'flitdrop-vs-snapdrop', 'flitdrop-vs-nearby-share', 'pro', 'terms', 'refund'];
 
-  // URL of the prerendered counterpart for `next` language, or null if none exists
+  // URL of the prerendered counterpart for `next` language, or null if none exists.
+  // La requête suit (sauf ?lang=, que le chemin remplace) : la page Pro garde ainsi
+  // son ?claim= et son ?early= quand on change de langue.
   function staticAltUrl(next) {
     var p = location.pathname || '/';
     var m = p.match(/^\/(fr|de|es)(\/|$)/);
@@ -78,7 +80,9 @@
     rest = rest.replace(/\/index\.html?$/, '/').replace(/\.html$/, '');
     var bare = (rest === '/' || rest === '') ? '' : rest.replace(/^\//, '');
     if (LOCALIZED.indexOf(bare) === -1) return null; // page has no localized variants
-    return next === 'en' ? '/' + bare : '/' + next + '/' + bare;
+    var qs = '';
+    try { var sp = new URLSearchParams(location.search); sp.delete('lang'); qs = sp.toString(); } catch (e) {}
+    return (next === 'en' ? '/' + bare : '/' + next + '/' + bare) + (qs ? '?' + qs : '') + (location.hash || '');
   }
 
   function set(next) {

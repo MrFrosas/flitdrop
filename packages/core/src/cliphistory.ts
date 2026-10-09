@@ -188,6 +188,17 @@ export class ClipHistory {
     )
   }
 
+  /** Les `n` textes les plus récents (version gratuite de Flitdrop Pro : la
+   *  vue est limitée, rien n'est effacé). */
+  listTexts(n: number): ClipEntry[] {
+    const out: ClipEntry[] = []
+    for (const e of this.entries) {
+      if (out.length >= n) break
+      if (e.kind === 'text') out.push(e)
+    }
+    return out
+  }
+
   size(): number {
     return this.entries.length
   }

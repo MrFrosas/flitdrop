@@ -40,6 +40,16 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     okTransfers: 0,
     rateState: '',
     rateLaterAt: 0,
+    licenseDeviceId: '',
+    licenseFallbackId: '',
+    licenseState: null,
+    licenseConfig: null,
+    licenseConfigAt: '',
+    licenseRenewDay: '',
+    licenseClaim: null,
+    dailyLimitReportedDay: '',
+    sortPhotosByMonth: true,
+    proPromptsShown: { day: '', kind: '', closed: false, limit: 0, trial: 0 },
   }
 }
 
