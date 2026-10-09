@@ -338,6 +338,12 @@ function buildTrayMenu() {
   ])
 }
 
+// App installée : on refuse le débogage à distance de Chromium (aucun fusible
+// ne le couvre). Il ouvrirait la page de la fenêtre, qui porte le jeton admin.
+if (app.isPackaged && (app.commandLine.hasSwitch('remote-debugging-port') || app.commandLine.hasSwitch('remote-debugging-pipe'))) {
+  process.exit(1)
+}
+
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()
