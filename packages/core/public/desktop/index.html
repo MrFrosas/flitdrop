@@ -456,16 +456,23 @@
   <!-- Bienvenue (premier lancement) -->
   <div class="modal hidden" id="welcomeModal">
     <div class="modal-card welcome">
-      <div class="welcome-art" aria-hidden="true">
-        <div class="wring"></div><div class="wring w2"></div><div class="wcore"></div>
+      <!-- deux colonnes : la présentation à gauche, les choix à droite, pour
+           tenir dans la fenêtre même à sa taille minimale (940 x 620) -->
+      <div class="welcome-intro">
+      <div class="welcome-head">
+        <div class="welcome-art" aria-hidden="true">
+          <div class="wring"></div><div class="wring w2"></div><div class="wcore"></div>
+        </div>
+        <h2 data-i18n="welcome.title">Bienvenue dans Flitdrop</h2>
       </div>
-      <h2 data-i18n="welcome.title">Bienvenue dans Flitdrop</h2>
       <p class="cardhint" data-i18n="welcome.intro">L’AirDrop de ton PC. Trois choses à savoir, et c’est tout :</p>
       <ol class="steps welcome-steps">
         <li data-i18n-html="welcome.step1"><b>Appaire ton téléphone une seule fois.</b> Un QR code à scanner, la connexion est mémorisée, même après un redémarrage.</li>
         <li data-i18n-html="welcome.step2"><b>Envoie dans les deux sens.</b> Le téléphone envoie photos et textes ; toi, tu glisses des fichiers ici, il les récupère.</li>
         <li data-i18n-html="welcome.step3"><b>Tout reste chez toi.</b> Chiffré de bout en bout, sur ton wifi, sans cloud ni compte.</li>
       </ol>
+      </div>
+      <div class="welcome-side">
       <div class="consent-box" id="welcomeConsent">
         <b class="consent-title" data-i18n="consent.title">Aider à améliorer Flitdrop ?</b>
         <p class="cardhint" data-i18n="consent.body">Partager des statistiques d’utilisation détaillées (écrans et boutons utilisés) et les rapports d’erreur, avec un identifiant aléatoire de cette installation. Jamais tes fichiers, tes photos, tes textes ni ton presse-papiers. Tu as moins de 15 ans ? Demande d’abord à un parent.</p>
@@ -483,8 +490,11 @@
         <input type="checkbox" id="welcomeAutostartBox" checked>
         <span><b data-i18n="autostart.label">Lancer Flitdrop à l’ouverture de ma session</b><small data-i18n="autostart.hint">Ton téléphone retrouve ce PC après un redémarrage. Flitdrop démarre discrètement en arrière-plan, sans fenêtre. Tu peux changer ça dans les réglages.</small></span>
       </label>
-      <button class="btn primary" id="btnWelcome" data-i18n="welcome.start">Appairer mon téléphone</button>
-      <button class="btn ghost" id="btnWelcomeSkip" data-i18n="welcome.skip">Plus tard</button>
+      <div class="welcome-actions">
+        <button class="btn primary" id="btnWelcome" data-i18n="welcome.start">Appairer mon téléphone</button>
+        <button class="btn ghost" id="btnWelcomeSkip" data-i18n="welcome.skip">Plus tard</button>
+      </div>
+      </div>
     </div>
   </div>
 

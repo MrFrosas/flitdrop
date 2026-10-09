@@ -244,7 +244,9 @@
     loadPaddle().then(function (P) {
       var opts = {
         items: [{ priceId: cfg.priceId, quantity: 1 }],
-        settings: { displayMode: 'overlay', locale: locale, theme: 'light' }
+        // une seule page (coordonnées et carte ensemble) ; couleurs, police et
+        // arrondis de Flitdrop réglés dans Paddle (Checkout settings, Styling)
+        settings: { displayMode: 'overlay', variant: 'one-page', locale: locale, theme: 'light' }
       };
       if (claim) opts.customData = { claim: claim };
       if (early) opts.discountId = cfg.earlyDiscountId;

@@ -389,9 +389,21 @@ details summary { cursor: pointer; font-weight: 600; color: var(--accent-text); 
 .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--stroke-2); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* bienvenue premier lancement */
-.modal-card.welcome { max-width: 470px; align-items: stretch; }
-.welcome-art { position: relative; width: 110px; height: 110px; margin: 4px auto 6px; }
+/* une modale ne dépasse jamais la fenêtre : au pire, son contenu défile */
+.modal-card { max-height: calc(100vh - 48px); overflow-y: auto; overscroll-behavior: contain; }
+
+/* bienvenue premier lancement : présentation à gauche, choix à droite, pour
+   tenir dans la fenêtre même à sa taille minimale (940 x 620) */
+.modal-card.welcome { max-width: 860px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; padding: 28px; align-items: start; }
+.welcome-intro, .welcome-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.welcome-head { display: flex; flex-direction: column; align-items: flex-start; gap: 18px; padding-top: 4px; }
+.welcome-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 2px; }
+/* rien à choisir (consentement déjà donné, pas d'installation neuve) : une
+   seule colonne, plus étroite */
+.modal-card.welcome:has(#welcomeConsent.hidden):has(#welcomeAutostart.hidden) { max-width: 470px; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.welcome-art { position: relative; flex: none; width: 96px; height: 96px; }
+.welcome-intro .welcome-steps { margin: 0; }
+.modal-card.welcome .welcome-intro { align-self: center; }
 .wring { position: absolute; inset: 0; border: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 50%; animation: radarpulse 2.8s ease-out infinite; }
 .wring.w2 { animation-delay: 1.4s; }
 .wcore { position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 55%, transparent); }
