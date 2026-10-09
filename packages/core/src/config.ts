@@ -19,6 +19,9 @@ export interface Config {
   // le PC surveille son presse-papiers et le met à disposition des téléphones
   // dès qu'il change (sens PC vers téléphone, seul sens automatisable côté PC).
   clipboardAutoPush: boolean
+  // la personne l'a déjà coupé elle-même : un achat de Flitdrop Pro ne le
+  // rallume jamais tout seul
+  clipboardAutoPushOffByUser: boolean
   // historique local du presse-papiers (façon Paste) : tout ce qui est copié
   // sur le PC et reçu des téléphones, purgé automatiquement selon la rétention.
   clipHistoryEnabled: boolean
@@ -110,7 +113,7 @@ export interface Config {
   sortPhotosByMonth: boolean
   // invitations Pro dans la fenêtre : au plus une par jour (jour, carte,
   // rangée par « Plus tard »), et combien de fois chacune a été montrée
-  proPromptsShown: { day: string; kind: '' | 'limit' | 'trial'; closed: boolean; limit: number; trial: number }
+  proPromptsShown: { day: string; kind: '' | 'limit' | 'trial' | 'welcome'; closed: boolean; limit: number; trial: number; welcome: number }
 }
 
 /** État de la licence tel qu'enregistré (voir LicenseState dans license.ts),
@@ -126,6 +129,7 @@ export interface LicenseStateStored {
   claimAt: string
   seenAt: string
   markSeen: boolean
+  legacy: boolean
   /** empreinte liée à la machine */
   mac: string
   /** empreinte liée à l'identité gardée et à la session (lancement où
@@ -169,6 +173,7 @@ export function loadConfig(home: string): Config {
     adminToken: typeof stored.adminToken === 'string' && stored.adminToken.length >= 20 ? stored.adminToken : randomToken(24),
     instanceId: typeof stored.instanceId === 'string' && stored.instanceId.length >= 12 ? stored.instanceId : randomToken(12),
     clipboardAutoPush: stored.clipboardAutoPush === true,
+    clipboardAutoPushOffByUser: stored.clipboardAutoPushOffByUser === true,
     clipHistoryEnabled: stored.clipHistoryEnabled !== false,
     clipHistoryMaxItems: clampInt(stored.clipHistoryMaxItems, 10, 1000, 200),
     clipHistoryMaxDays: clampInt(stored.clipHistoryMaxDays, 1, 90, 7),
@@ -234,6 +239,7 @@ function licenseStateFrom(v: unknown): LicenseStateStored | null {
     claimAt: str(s.claimAt, 40),
     seenAt: str(s.seenAt, 40),
     markSeen: s.markSeen === true,
+    legacy: s.legacy === true,
     mac: str(s.mac, 64),
     mac2: str(s.mac2, 64),
   }
@@ -243,10 +249,11 @@ function promptsFrom(v: unknown): Config['proPromptsShown'] {
   const p = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
   return {
     day: typeof p.day === 'string' ? p.day.slice(0, 10) : '',
-    kind: p.kind === 'limit' || p.kind === 'trial' ? p.kind : '',
+    kind: p.kind === 'limit' || p.kind === 'trial' || p.kind === 'welcome' ? p.kind : '',
     closed: p.closed === true,
     limit: clampInt(p.limit, 0, 1_000_000, 0),
     trial: clampInt(p.trial, 0, 1_000_000, 0),
+    welcome: clampInt(p.welcome, 0, 1_000_000, 0),
   }
 }
 

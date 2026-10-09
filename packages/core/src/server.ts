@@ -419,6 +419,15 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       },
       lang: () => resolveLang(cfg.lang, langFrom(systemLocale || Intl.DateTimeFormat().resolvedOptions().locale)),
       openUrl: openExternal,
+      // achat : la synchro automatique du presse-papiers s'allume, sauf si la
+      // personne l'avait coupée elle-même ; le contenu déjà copié ne part pas
+      unlocked: (how): void => {
+        if (how !== 'purchase' || cfg.clipboardAutoPush || cfg.clipboardAutoPushOffByUser) return
+        cfg.clipboardAutoPush = true
+        clip.read().then((t) => (lastClip = t)).catch(() => {})
+        saveConfig(home, cfg)
+        opts.onSettingsChanged?.()
+      },
     },
     {
       active: !!opts.license || !!envBase || !!envConfigUrl,
@@ -438,6 +447,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         opts.license?.markStore ??
         (envMark ? fileMarkStore(envMark) : opts.license ? defaultMarkStore({ userDataDir: opts.license.userDataDir }) : fileMarkStore(home.replace(/[\\/]+$/, '') + '.t')),
       buildDefault: opts.license?.buildDefault,
+      // Microsoft Store : gratuit tant que le serveur ne dit pas storeEnabled
+      storeChannel: (): boolean => telemetry.channel() === 'store',
     }
   )
   // historique du presse-papiers vu (PC et téléphones) : en gratuit, les 20
@@ -2081,6 +2092,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (body.maxFileMB !== undefined) cfg.maxFileMB = clampInt(body.maxFileMB, 1, 128 * 1024, cfg.maxFileMB)
     if (typeof body.requireApproval === 'boolean') cfg.requireApproval = body.requireApproval
     if (typeof body.clipboardAutoPush === 'boolean') {
+      // coupé par la personne elle-même : un achat ne le rallumera pas
+      if (cfg.clipboardAutoPush && !body.clipboardAutoPush) cfg.clipboardAutoPushOffByUser = true
       cfg.clipboardAutoPush = body.clipboardAutoPush
       // en (ré)activant, on prend l'état courant comme référence pour ne pas
       // pousser d'un coup le contenu déjà présent dans le presse-papiers.
@@ -2206,7 +2219,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // l'invitation (limite du jour, fin d'essai) a été vue, fenêtre visible
   admin.post('/pro/seen', jsonSmall, (req, res) => {
     const where = (req.body as { where?: unknown } | undefined)?.where
-    if (where === 'limit' || where === 'trial') license.promptSeen(where)
+    if (where === 'limit' || where === 'trial' || where === 'welcome') license.promptSeen(where)
     res.json({ ok: true })
   })
 

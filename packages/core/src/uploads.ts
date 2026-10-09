@@ -44,7 +44,10 @@ export function saveMultipartFiles(req: Request, destDir: string, maxFileBytes: 
     } catch (e) {
       return reject(new Error('multipart invalide'))
     }
-    const saved: SavedFile[] = []
+    // une place par fichier, dans l'ordre de la requête (pas dans l'ordre où
+    // leurs écritures finissent) : quand la limite du jour n'en garde que
+    // quelques-uns, ce sont les premiers envoyés
+    const saved: (SavedFile | null)[] = []
     const pending: Promise<void>[] = []
     let errored = false
 
@@ -52,13 +55,15 @@ export function saveMultipartFiles(req: Request, destDir: string, maxFileBytes: 
       if (errored) return
       errored = true
       req.unpipe(bb)
-      for (const f of saved) fs.unlink(f.path, () => {})
+      for (const f of saved) if (f) fs.unlink(f.path, () => {})
       reject(err)
     }
 
     bb.on('file', (_field, stream, info) => {
       const rawName = typeof info.filename === 'string' ? info.filename : ''
       const name = rawName ? sanitizeFilename(rawName) : fallbackName(info.mimeType)
+      const slot = saved.length
+      saved.push(null)
       // réservation atomique : le nom est posé sur disque avant l'écriture, donc
       // deux parties du même nom dans la même requête ne se marchent pas dessus.
       let finalPath: string
@@ -88,7 +93,7 @@ export function saveMultipartFiles(req: Request, destDir: string, maxFileBytes: 
               fs.unlink(finalPath, () => {})
               return res()
             }
-            saved.push({ name: path.basename(finalPath), path: finalPath, size, mime: info.mimeType })
+            saved[slot] = { name: path.basename(finalPath), path: finalPath, size, mime: info.mimeType }
             res()
           })
           ws.on('error', rej)
@@ -99,7 +104,7 @@ export function saveMultipartFiles(req: Request, destDir: string, maxFileBytes: 
     bb.on('close', () => {
       Promise.all(pending)
         .then(() => {
-          if (!errored) resolve(saved)
+          if (!errored) resolve(saved.filter((f): f is SavedFile => f !== null))
         })
         .catch((e) => fail(e))
     })

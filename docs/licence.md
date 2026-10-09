@@ -125,6 +125,9 @@ Ne jamais changer cette clé sans raison grave (fuite) : tous les jetons existan
 
 - **Réponses du serveur** : seul `403 { error: "revoked" }` au renouvellement retire un jeton. Hors ligne, `429`, `5xx` (dont `503`), réponse illisible : rien ne change, l'app réessaie plus tard. `403 too_many_devices` (achat ou restauration) : une carte calme avec l'adresse contact@flitdrop.com, le plan ne change pas, plus de vérification automatique.
 - **État signé et deuxième emplacement** (voir l'en-tête de `packages/core/src/license.ts`) : remettre une ancienne copie de `config.json` ne fait ni redescendre le compteur du jour ni revenir un essai fini ; reculer l'horloge ne donne jamais un deuxième jour neuf ; l'essai finit quand l'heure la plus tardive vue (horloge du PC ou en-tête `Date` de la config de flitdrop.com) dépasse sa fin.
+- **Microsoft Store** : une installation du Store (canal gardé dans la config) reste en mode payant coupé, comme avant, tant que la config ne dit pas `storeEnabled: true` (absent = coupé).
+- **Installations d'avant Flitdrop Pro** : config d'une version < 0.7.0 au premier lancement de la version payante, noté une fois dans l'état signé (`legacy`). Après l'essai, la synchro automatique et tout l'historique du presse-papiers restent gratuits ; seules la limite du jour et les dossiers par mois s'appliquent. Une carte d'accueil explique l'essai, une fois.
+- **Prix affichés** : `price: { currency, display, displayEarly }` de la config (prix du pays de la personne) d'abord, puis `displayPrice` / `displayPriceEarly`, puis la moitié du prix affiché seulement si le serveur ne donne aucun prix de lancement.
 - **Identifiant de la machine illisible un lancement** (commande lente au démarrage) : l'identité déjà gardée sert pour la session, Pro et les 30 fichiers restent, nouvelle lecture après 5 s, 30 s, 2 min puis toutes les 10 minutes. Relu différent : traité comme une config copiée sur un autre PC.
 
 ## Tester en sandbox

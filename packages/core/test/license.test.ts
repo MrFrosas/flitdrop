@@ -136,6 +136,8 @@ async function rig(o: {
   configUrl?: string
   tokenEnv?: 'production' | 'sandbox'
   retryMs?: number[]
+  store?: boolean
+  lastVersion?: string
 } = {}): Promise<Rig> {
   const home = o.home ?? newHome()
   const cfg = loadConfig(home)
@@ -143,6 +145,7 @@ async function rig(o: {
     cfg.installedAt = o.installedAt ?? '2026-03-01T00:00:00.000Z'
     fs.writeFileSync(path.join(home, '.keep'), '')
   }
+  if (o.lastVersion !== undefined) cfg.lastVersion = o.lastVersion
   const r: Rig = { lic: null as unknown as License, cfg, home, events: [], changes: 0, opened: [] }
   r.lic = new License(
     {
@@ -167,6 +170,7 @@ async function rig(o: {
       machineRetryMs: o.retryMs ?? [],
       markStore: o.mark ?? memMark(),
       buildDefault: o.buildDefault ?? false,
+      storeChannel: () => o.store === true,
     }
   )
   rigs.push(r.lic)
@@ -1278,6 +1282,128 @@ describe('racine des licences', () => {
     await sandbox.lic.restoreStart('zoe@example.com')
     expect(await sandbox.lic.restoreVerify('ABCDEFGHJKMN')).toEqual({ ok: true })
     expect(sandbox.lic.plan()).toBe('pro')
+  })
+})
+
+describe('Microsoft Store', () => {
+  it('gratuit comme avant (« off ») tant que le serveur ne dit pas storeEnabled ; ensuite l’essai commence', async () => {
+    const home = newHome()
+    const mark = memMark()
+    const r = await rig({ home, mark, store: true })
+    await r.lic.refreshConfig()
+    expect(r.lic.plan()).toBe('off')
+    expect(r.lic.card()).toBeNull()
+    expect(r.lic.state()).toEqual({ plan: 'off' })
+    expect(r.cfg.licenseState?.trialStartAt).toBe('')
+    r.lic.countFiles(50)
+    expect(r.lic.canStartFile(100)).toBe(true)
+    expect(r.lic.fullFeatures()).toBe(true)
+    await new Promise((res) => setTimeout(res, 0))
+    expect(mark.v).toBeNull()
+    // relancé hors ligne : toujours « off »
+    const offline = await rig({ home, mark, store: true, routes: {} })
+    expect(offline.lic.plan()).toBe('off')
+    // même avec le mode payant par défaut d'une version publiée après le lancement
+    const built = await rig({ store: true, routes: {}, buildDefault: true })
+    expect(built.lic.plan()).toBe('off')
+    // le serveur l'allume pour le Store : essai, comme ailleurs
+    const on = await rig({ home, mark, store: true, routes: { 'GET /api/license/config': () => configOn({ storeEnabled: true }) } })
+    await on.lic.refreshConfig()
+    expect(on.lic.plan()).toBe('trial')
+    expect(on.cfg.licenseState?.trialStartAt).toBe(new Date(clock).toISOString())
+    // autre canal : storeEnabled n'y change rien
+    const nsis = await rig()
+    await nsis.lic.refreshConfig()
+    expect(nsis.lic.plan()).toBe('trial')
+  })
+})
+
+describe('installations d’avant Flitdrop Pro (legacy)', () => {
+  it('version < 0.7.0 au premier lancement : notée une fois ; presse-papiers complet gratuit, limite du jour et dossiers par mois comme tout le monde', async () => {
+    const home = newHome()
+    const mark = memMark()
+    const r = await rig({ home, mark, lastVersion: '0.6.7' })
+    await r.lic.refreshConfig()
+    expect(r.cfg.licenseState?.legacy).toBe(true)
+    expect(r.lic.plan()).toBe('trial')
+    expect(r.lic.state().legacy).toBe(true)
+    clock += 15 * DAY
+    expect(r.lic.plan()).toBe('free')
+    expect(r.lic.fullFeatures()).toBe(true)
+    expect(r.lic.monthFolders()).toBe(false)
+    expect(r.lic.limited()).toBe(true)
+    r.lic.countFiles(30)
+    expect(r.lic.canStartFile(0)).toBe(false)
+    // la version notée ensuite ne change rien : décidé une fois
+    const later = await rig({ home, mark, lastVersion: '0.7.0', routes: {} })
+    expect(later.lic.fullFeatures()).toBe(true)
+  })
+
+  it('installation neuve ou config de 0.7.0 : le partage Pro d’aujourd’hui ; « unknown » (config très ancienne) : legacy', async () => {
+    for (const [v, legacy] of [['', false], ['0.7.0', false], ['1.0.0', false], ['0.6.9', true], ['0.5.12', true], ['unknown', true]] as const) {
+      const r = await rig({ lastVersion: v })
+      await r.lic.refreshConfig()
+      clock += 15 * DAY
+      expect(r.lic.fullFeatures(), v).toBe(legacy)
+      clock -= 15 * DAY
+    }
+  })
+
+  it('legacy posé à la main dans la config : empreinte fausse, rien de gagné', async () => {
+    const home = newHome()
+    const mark = memMark()
+    const r = await rig({ home, mark, lastVersion: '' })
+    await r.lic.refreshConfig()
+    clock += 15 * DAY
+    const raw = JSON.parse(fs.readFileSync(configFile(home), 'utf8'))
+    raw.licenseState.legacy = true
+    fs.writeFileSync(configFile(home), JSON.stringify(raw))
+    const r2 = await rig({ home, mark, lastVersion: '0.7.0', routes: {} })
+    expect(r2.lic.fullFeatures()).toBe(false)
+    expect(r2.lic.dailyUsed()).toBe(FREE_DAILY_FILES)
+  })
+
+  it('carte d’accueil pendant l’essai, une seule fois, sans statistique d’invitation', async () => {
+    const r = await rig({ lastVersion: '0.6.7' })
+    await r.lic.refreshConfig()
+    expect(r.lic.card()).toBe('welcome')
+    r.lic.promptSeen('welcome')
+    expect(r.lic.card()).toBe('welcome')
+    expect(r.events.filter((e) => e.event === 'pro_prompt_shown')).toHaveLength(0)
+    r.lic.closeCard()
+    expect(r.lic.card()).toBeNull()
+    clock += DAY
+    expect(r.lic.card()).toBeNull()
+    // installation neuve : pas de carte d'accueil
+    const fresh = await rig({ lastVersion: '' })
+    await fresh.lic.refreshConfig()
+    expect(fresh.lic.card()).toBeNull()
+  })
+})
+
+describe('prix du pays de la personne', () => {
+  it('price { currency, display, displayEarly } : utilisé partout, avant displayPrice et le calcul', async () => {
+    const local = { currency: 'CHF', display: 'CHF 5.90', displayEarly: 'CHF 2.95' }
+    const r = await rig({ routes: { 'GET /api/license/config': () => configOn({ price: local, displayPriceEarly: { EUR: '2,49 €' } }) } })
+    await r.lic.refreshConfig()
+    expect(r.lic.price()).toBe('CHF 5.90')
+    expect(r.lic.state()).toMatchObject({ price: 'CHF 5.90', earlyPrice: 'CHF 2.95' })
+    clock += 15 * DAY
+    expect(r.lic.limitBody().price).toBe('CHF 2.95')
+    expect(r.lic.quota()?.price).toBe('CHF 2.95')
+    // sans prix de lancement local : displayPriceEarly de cette devise, sinon rien d'inventé
+    const r2 = await rig({ routes: { 'GET /api/license/config': () => configOn({ price: { currency: 'CHF', display: 'CHF 5.90' }, displayPriceEarly: { EUR: '2,49 €' } }) } })
+    await r2.lic.refreshConfig()
+    expect(r2.lic.effectivePrice()).toBe('CHF 5.90')
+    expect(r2.lic.state().earlyPrice).toBeUndefined()
+    // aucun prix de lancement du tout : moitié du prix local (calcul d'avant)
+    const r3 = await rig({ routes: { 'GET /api/license/config': () => configOn({ price: { currency: 'CAD', display: 'CA$8.49' } }) } })
+    await r3.lic.refreshConfig()
+    expect(r3.lic.effectivePrice()).toBe('CA$4.24')
+    // forme fausse : ignorée
+    const r4 = await rig({ routes: { 'GET /api/license/config': () => configOn({ price: { currency: 'chf', display: '<b>x</b>' } }) } })
+    await r4.lic.refreshConfig()
+    expect(r4.lic.price()).toBe('5,99 €')
   })
 })
 

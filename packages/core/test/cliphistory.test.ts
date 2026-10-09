@@ -15,6 +15,7 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     adminToken: 'x'.repeat(24),
     instanceId: 'x'.repeat(12),
     clipboardAutoPush: false,
+    clipboardAutoPushOffByUser: false,
     clipHistoryEnabled: true,
     clipHistoryMaxItems: maxItems,
     clipHistoryMaxDays: maxDays,
@@ -48,7 +49,7 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     licenseRenewDay: '',
     dailyLimitReportedDay: '',
     sortPhotosByMonth: true,
-    proPromptsShown: { day: '', kind: '', closed: false, limit: 0, trial: 0 },
+    proPromptsShown: { day: '', kind: '', closed: false, limit: 0, trial: 0, welcome: 0 },
   }
 }
 

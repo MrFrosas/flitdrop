@@ -55,11 +55,15 @@ interface Ctx {
   pair: () => Promise<Phone>
 }
 
-async function boot(o: { license?: 'on' | 'unreachable' | 'none' } = {}): Promise<Ctx> {
+async function boot(o: { license?: 'on' | 'unreachable' | 'none'; lastVersion?: string; config?: Record<string, unknown> } = {}): Promise<Ctx> {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-pro-'))
   const dl = path.join(home, 'dl')
-  // installation existante (avant le lancement du mode payant)
-  fs.writeFileSync(path.join(home, 'config.json'), JSON.stringify({ installId: 'i'.repeat(16), installedAt: '2026-03-01T00:00:00.000Z', downloadDir: dl, lastVersion: '0.6.7' }))
+  // installation existante (avant le lancement du mode payant), déjà passée
+  // par une version de Flitdrop Pro (0.7.0) ; lastVersion < 0.7.0 : legacy
+  fs.writeFileSync(
+    path.join(home, 'config.json'),
+    JSON.stringify({ installId: 'i'.repeat(16), installedAt: '2026-03-01T00:00:00.000Z', downloadDir: dl, lastVersion: o.lastVersion ?? '0.7.0', ...o.config })
+  )
   let now = Date.parse('2026-11-05T10:00:00.000Z')
   const clip = { text: '' }
   const opened: string[] = []
@@ -517,6 +521,104 @@ describe('variables FLITDROP_LICENSE_* : seulement hors app empaquetée', () => 
     } finally {
       delete process.env.FLITDROP_LICENSE_BASE
       delete process.env.FLITDROP_LICENSE_PUBLIC_KEY
+    }
+  })
+})
+
+describe('installation d’avant Flitdrop Pro (config de 0.6.7) : presse-papiers complet gratuit', () => {
+  let c: Ctx
+  let phone: Phone
+  beforeAll(async () => {
+    c = await boot({ lastVersion: '0.6.7' })
+    phone = await c.pair()
+  })
+  afterAll(() => shutdown(c))
+
+  it('carte d’accueil pendant l’essai, puis en gratuit : synchro automatique et historique complet, mais limite du jour et pas de dossiers par mois', async () => {
+    const s0 = await c.state()
+    expect(s0.pro).toMatchObject({ plan: 'trial', legacy: true, card: 'welcome' })
+    expect((await c.adminJSON('/pro/seen', { where: 'welcome' })).status).toBe(200)
+    expect((await c.admin('/pro/close', { method: 'POST' })).status).toBe(200)
+    expect((await c.state()).pro.card).toBeNull()
+    c.setClock(c.clock() + 15 * DAY)
+    expect((await c.state()).pro.plan).toBe('free')
+    c.srv.cfg.clipboardAutoPush = true
+    const before = (await c.state()).outbox.length
+    c.clip.text = 'copié en gratuit, installation ancienne'
+    await c.srv.pollClipboard()
+    expect((await c.state()).outbox.length).toBe(before + 1)
+    for (let i = 0; i < 25; i++) {
+      c.clip.text = `ancien ${i}`
+      await c.srv.pollClipboard()
+    }
+    const s = await c.state()
+    expect(s.clipHidden).toBe(0)
+    expect(s.clipHistory.length).toBeGreaterThan(20)
+    const march = new Date(2025, 2, 15, 12).getTime()
+    const n = await send(c, phone, 'IMG_0009.JPG', { mime: 'image/jpeg', lastModified: march })
+    expect(fs.existsSync(path.join(c.dl, n))).toBe(true)
+    c.srv.license.countFiles(29)
+    expect((await init(phone, 'trop.bin')).status).toBe(402)
+  })
+})
+
+describe('achat : synchro automatique du presse-papiers', () => {
+  async function buy(config: Record<string, unknown>) {
+    const c = await boot({ config })
+    try {
+      c.setClock(c.clock() + 15 * DAY)
+      expect((await c.adminJSON('/pro/checkout', { where: 'settings' })).status).toBe(200)
+      c.claimAnswer.token = tokenFor(deviceIdFrom(MACHINE), c.clock())
+      const r = (await (await c.adminJSON('/pro/claim', { manual: true })).json()) as { status: string }
+      expect(r.status).toBe('unlocked')
+      return { auto: c.srv.cfg.clipboardAutoPush, saved: JSON.parse(fs.readFileSync(path.join(c.home, 'config.json'), 'utf8')).clipboardAutoPush }
+    } finally {
+      await shutdown(c)
+    }
+  }
+  it('allumée à l’achat si la personne ne l’avait jamais coupée ; jamais rallumée si elle l’a coupée', async () => {
+    expect(await buy({})).toEqual({ auto: true, saved: true })
+    expect(await buy({ clipboardAutoPushOffByUser: true })).toEqual({ auto: false, saved: false })
+  })
+  it('coupée dans les réglages : notée comme un choix', async () => {
+    const c = await boot({ config: { clipboardAutoPush: true } })
+    try {
+      expect((await c.adminJSON('/settings', { clipboardAutoPush: false })).status).toBe(200)
+      expect(c.srv.cfg.clipboardAutoPushOffByUser).toBe(true)
+    } finally {
+      await shutdown(c)
+    }
+  })
+})
+
+describe('Microsoft Store (canal gardé dans la config) : gratuit comme avant sans storeEnabled', () => {
+  it('installation du Store mise à jour par l’installeur classique : toujours « off », limite comprise', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-pro-store-'))
+    fs.writeFileSync(
+      path.join(home, 'config.json'),
+      JSON.stringify({ installId: 'i'.repeat(16), installedAt: '2026-03-01T00:00:00.000Z', downloadDir: path.join(home, 'dl'), lastVersion: '0.7.0', installChannel: 'store' })
+    )
+    const now = Date.parse('2026-11-20T10:00:00.000Z')
+    const fetchImpl = (async () =>
+      new Response(JSON.stringify({ enabled: true, launchedAt: '2026-11-01T00:00:00.000Z', trialDays: 14 }), { status: 200 })) as unknown as typeof fetch
+    const srv = await startServer({
+      port: 0,
+      home,
+      quiet: true,
+      manualClipboardPoll: true,
+      clipboardText: { read: () => '', write: () => {} },
+      openExternal: () => {},
+      telemetry: { version: '0.7.0', channel: 'nsis', disabled: true },
+      license: { configUrl: 'https://license.test/api/license/config', fetchImpl, now: () => now, publicKey: TEST_PUB, machineId: async () => MACHINE, markStore: memMark() },
+    })
+    try {
+      await srv.license.refreshConfig()
+      expect(srv.license.plan()).toBe('off')
+      expect(srv.license.state()).toEqual({ plan: 'off' })
+      expect(srv.license.canStartFile(500)).toBe(true)
+    } finally {
+      await srv.close()
+      fs.rmSync(home, { recursive: true, force: true })
     }
   })
 })

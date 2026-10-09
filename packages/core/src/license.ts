@@ -5,13 +5,18 @@
 // modifiée, la page du PC aussi ; seul ce module décide.
 //
 // Plans :
-// - « off » : mode payant coupé (défaut, ou flitdrop.com jamais joint) :
-//   EXACTEMENT le comportement d'avant Flitdrop Pro, tout est ouvert, aucune
-//   interface Pro.
+// - « off » : mode payant coupé (défaut, ou flitdrop.com jamais joint, ou
+//   installation du Microsoft Store tant que le serveur ne dit pas
+//   storeEnabled) : EXACTEMENT le comportement d'avant Flitdrop Pro, tout est
+//   ouvert, aucune interface Pro.
 // - « trial » : 14 jours de Pro (installation existante : depuis la première
 //   fois que l'app voit le mode payant ; installation neuve : depuis le
 //   premier lancement).
-// - « free » : gratuit pour toujours, 30 fichiers par jour local.
+// - « free » : gratuit, 30 fichiers par jour local. Installation d'avant
+//   Flitdrop Pro (config d'une version < 0.7.0 au premier lancement de
+//   celle-ci, noté une fois dans l'état signé : legacy) : la synchro
+//   automatique et tout l'historique du presse-papiers restent gratuits ;
+//   seules la limite du jour et les dossiers par mois s'appliquent.
 // - « pro » : jeton signé valide (Ed25519, clé publique embarquée), pour CET
 //   ordinateur, jusqu'à son échéance + 7 jours hors ligne.
 //
@@ -102,8 +107,11 @@ const STATE_SALT = 'wFFWh6YtojGZ-kIfVRC_i9xuAW_YB0GG'
 const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex')
 
 export type Plan = 'off' | 'trial' | 'free' | 'pro'
-export type CardKind = 'limit' | 'trial' | 'waiting' | 'success' | 'used' | 'devices'
-export type PromptWhere = 'limit' | 'trial'
+export type CardKind = 'limit' | 'trial' | 'welcome' | 'waiting' | 'success' | 'used' | 'devices'
+export type PromptWhere = 'limit' | 'trial' | 'welcome'
+/** Premier lancement de cette version sur une config plus ancienne : noté
+ *  une fois (legacy), voir en tête du fichier. */
+export const LEGACY_BEFORE = [0, 7, 0] as const
 export type CheckoutWhere = 'limit' | 'trial' | 'settings'
 
 // ---------- configuration du serveur ----------
@@ -119,6 +127,10 @@ export interface RemoteConfig {
   displayPrice: Record<string, string>
   /** prix de lancement affichés, s'ils sont fournis (sinon calculés) */
   displayPriceEarly: Record<string, string>
+  /** prix du pays de la personne (aperçu Paddle), prioritaire s'il est là */
+  price: { currency: string; display: string; displayEarly: string | null } | null
+  /** mode payant aussi pour les installations du Microsoft Store */
+  storeEnabled: boolean
 }
 
 const isoOrNull = (v: unknown): string | null => {
@@ -132,17 +144,33 @@ const intIn = (v: unknown, min: number, max: number, fallback: number): number =
   return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback
 }
 
+/** Prix affichable : texte court, sans balise. */
+function priceText(p: unknown): string | null {
+  if (typeof p !== 'string') return null
+  const s = p.trim()
+  return s.length > 0 && s.length <= 24 && !/[<>\u0000-\u001f]/.test(s) ? s : null
+}
+
 /** Prix affichables : devise en 3 lettres, texte court, sans balise. */
 function priceMap(v: unknown): Record<string, string> {
   const out: Record<string, string> = {}
   if (!v || typeof v !== 'object' || Array.isArray(v)) return out
   for (const [k, p] of Object.entries(v as Record<string, unknown>)) {
-    if (!/^[A-Z]{3}$/.test(k) || typeof p !== 'string') continue
-    const s = p.trim()
-    if (s.length > 0 && s.length <= 24 && !/[<>\u0000-\u001f]/.test(s)) out[k] = s
+    const s = priceText(p)
+    if (!/^[A-Z]{3}$/.test(k) || s === null) continue
+    out[k] = s
     if (Object.keys(out).length >= 20) break
   }
   return out
+}
+
+/** Prix du pays de la personne : { currency, display, displayEarly }. */
+function localPrice(v: unknown): RemoteConfig['price'] {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const r = v as Record<string, unknown>
+  const display = priceText(r.display)
+  if (typeof r.currency !== 'string' || !/^[A-Z]{3}$/.test(r.currency) || display === null) return null
+  return { currency: r.currency, display, displayEarly: priceText(r.displayEarly) }
 }
 
 export function sanitizeRemoteConfig(raw: unknown): RemoteConfig | null {
@@ -157,7 +185,20 @@ export function sanitizeRemoteConfig(raw: unknown): RemoteConfig | null {
     earlyDays: intIn(r.earlyDays, 0, 365, DEFAULT_EARLY_DAYS),
     displayPrice: priceMap(r.displayPrice),
     displayPriceEarly: priceMap(r.displayPriceEarly),
+    price: localPrice(r.price),
+    storeEnabled: r.storeEnabled === true,
   }
+}
+
+/** Version « a.b.c » d'avant Flitdrop Pro ? « unknown » : config plus
+ *  ancienne que le suivi des versions ; '' : installation neuve. */
+export function legacyVersion(v: string): boolean {
+  if (v === 'unknown') return true
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(v)
+  if (!m) return false
+  const n = [Number(m[1]), Number(m[2]), Number(m[3])]
+  for (let i = 0; i < 3; i++) if (n[i] !== LEGACY_BEFORE[i]) return n[i]! < LEGACY_BEFORE[i]!
+  return false
 }
 
 // ---------- jeton de licence ----------
@@ -314,9 +355,11 @@ export interface LicenseState {
   seenAt: string
   /** le deuxième emplacement a déjà été écrit ou lu sur ce PC */
   markSeen: boolean
+  /** installation d'avant Flitdrop Pro (presse-papiers complet gratuit) */
+  legacy: boolean
 }
 
-const blankState = (paidMode: boolean): LicenseState => ({
+const blankState = (paidMode: boolean, legacy = false): LicenseState => ({
   paidMode,
   paidModeSeenAt: '',
   trialStartAt: '',
@@ -327,6 +370,7 @@ const blankState = (paidMode: boolean): LicenseState => ({
   claimAt: '',
   seenAt: '',
   markSeen: false,
+  legacy,
 })
 
 export function stateKey(machine: string): Buffer {
@@ -356,6 +400,7 @@ export function stateMac(key: Buffer, deviceId: string, s: LicenseState): string
     s.claimAt,
     s.seenAt,
     s.markSeen,
+    s.legacy,
   ])
   return crypto.createHmac('sha256', key).update(body).digest('hex')
 }
@@ -462,6 +507,8 @@ export interface LicenseOptions {
   machineRetryMs?: number[]
   /** mode payant quand flitdrop.com n'a jamais répondu (license-key.ts) */
   buildDefault?: boolean
+  /** installation du Microsoft Store (canal gardé dans la config) */
+  storeChannel?: () => boolean
 }
 
 export interface LicenseDeps {
@@ -474,6 +521,8 @@ export interface LicenseDeps {
   lang: () => Lang
   /** ouvre une adresse dans le navigateur du système */
   openUrl: (url: string) => void
+  /** Pro vient d'être débloqué (achat ou restauration) */
+  unlocked?: (how: 'purchase' | 'restore') => void
 }
 
 export interface ProState {
@@ -490,6 +539,8 @@ export interface ProState {
   card?: CardKind | null
   waiting?: { since: string; polling: boolean } | null
   restoreEmail?: string | null
+  /** installation d'avant Flitdrop Pro : presse-papiers complet gratuit */
+  legacy?: boolean
 }
 
 export interface Quota {
@@ -566,6 +617,9 @@ export class License {
   private retryTimer: ReturnType<typeof setTimeout> | null = null
   private retryStep = 0
   private stopped = false
+  /** version de la config au lancement (avant sa mise à jour par les
+   *  statistiques) : décide une fois « legacy » */
+  private readonly legacyAtLaunch: boolean
 
   constructor(
     private deps: LicenseDeps,
@@ -578,6 +632,7 @@ export class License {
     this.configUrl = o.configUrl ?? new URL('api/license/config', this.baseUrl).href
     this.tokenEnv = o.tokenEnv ?? 'production'
     this.store = o.markStore ?? defaultMarkStore()
+    this.legacyAtLaunch = legacyVersion(deps.cfg.lastVersion)
     this.st = blankState(false)
     this.ready = this.active ? this.init().catch(() => undefined) : Promise.resolve()
   }
@@ -678,9 +733,11 @@ export class License {
     const s = this.cfg.licenseState
     const now = this.now()
     const today = localDay(now)
-    const cachedOn = this.cfg.licenseConfig?.enabled === true
-    const fallbackPaid = this.o.buildDefault ?? PAID_MODE_BUILD_DEFAULT
-    const days = this.remote()?.trialDays ?? DEFAULT_TRIAL_DAYS
+    const remote = this.remote()
+    const cachedOn = !!remote && this.paidFrom(remote)
+    // Microsoft Store : jamais payant par défaut, seulement sur storeEnabled
+    const fallbackPaid = (this.o.buildDefault ?? PAID_MODE_BUILD_DEFAULT) && !this.storeChannel()
+    const days = remote?.trialDays ?? DEFAULT_TRIAL_DAYS
     const m = this.mark
     const markStart = m && m.start > 0 ? m.start : null
     // empreinte liée à la machine, ou deuxième empreinte (écrite pendant un
@@ -702,15 +759,16 @@ export class License {
       // config remise avec la marque retirée ne fait pas redescendre le compteur
       if (st.markSeen && (this.markStatus === 'absent' || this.markStatus === 'invalid')) closeLimits = true
     } else if (!s && !m && !cachedOn) {
-      // installation neuve, ou mode payant jamais vu : état vierge
-      st = blankState(fallbackPaid)
+      // installation neuve, ou mode payant jamais vu : état vierge (premier
+      // lancement de cette version : installation d'avant Flitdrop Pro ?)
+      st = blankState(fallbackPaid, this.legacyAtLaunch)
     } else if (!s) {
       // état effacé (config supprimée, ou clé retirée à la main) alors que le
       // mode payant avait été vu : l'essai reprend à sa vraie date de début
       // (deuxième emplacement), jamais à zéro ; sans elle, il est terminé.
       // Le compteur du jour est au maximum, jusqu'à minuit seulement.
       st = {
-        ...blankState(true),
+        ...blankState(true, this.legacyAtLaunch),
         paidModeSeenAt: new Date(markStart ?? now).toISOString(),
         trialStartAt: markStart !== null ? new Date(markStart).toISOString() : '',
         trialEndsAt: new Date(markStart !== null ? markStart + days * DAY_MS : now).toISOString(),
@@ -722,7 +780,7 @@ export class License {
       const prev = s
       const ends = validTs(prev.trialEndsAt)
       st = {
-        ...blankState(prev.paidMode === true || markStart !== null || cachedOn || fallbackPaid),
+        ...blankState(prev.paidMode === true || markStart !== null || cachedOn || fallbackPaid, this.legacyAtLaunch),
         paidModeSeenAt: validTs(prev.paidModeSeenAt) !== null ? prev.paidModeSeenAt : markStart !== null ? new Date(markStart).toISOString() : '',
         trialStartAt: markStart !== null ? new Date(markStart).toISOString() : validTs(prev.trialStartAt) !== null ? prev.trialStartAt : '',
         trialEndsAt: new Date(ends !== null ? Math.min(ends, now) : now).toISOString(),
@@ -947,8 +1005,9 @@ export class License {
     this.cfg.licenseConfigAt = new Date(this.now()).toISOString()
     this.save()
     let dirty = false
-    if (this.st.paidMode !== rc.enabled) {
-      this.st.paidMode = rc.enabled
+    const on = this.paidFrom(rc)
+    if (this.st.paidMode !== on) {
+      this.st.paidMode = on
       dirty = true
     }
     // date donnée par flitdrop.com : borne l'essai même si l'horloge du PC
@@ -966,6 +1025,20 @@ export class License {
     }
     this.startTrialIfNeeded()
     if (this.plan() !== before || this.card() !== beforeCard) this.changed()
+  }
+
+  private storeChannel(): boolean {
+    try {
+      return this.o.storeChannel?.() === true
+    } catch {
+      return false
+    }
+  }
+
+  /** Mode payant pour CETTE installation : interrupteur du serveur, et pour
+   *  le Microsoft Store, storeEnabled en plus (absent : gratuit, comme avant). */
+  private paidFrom(rc: RemoteConfig): boolean {
+    return rc.enabled && (!this.storeChannel() || rc.storeEnabled)
   }
 
   /** Mode payant vu pour la première fois : l'essai commence (une fois). */
@@ -1005,6 +1078,8 @@ export class License {
 
   plan(): Plan {
     if (!this.active || !this.inited || !this.st.paidMode) return 'off'
+    // Microsoft Store : comme avant tant que le serveur ne l'allume pas
+    if (this.storeChannel() && this.remote()?.storeEnabled !== true) return 'off'
     const chk = this.tokenCheck()
     if (chk?.ok && tokenUsable(chk.payload, this.now())) return 'pro'
     const ends = validTs(this.st.trialEndsAt)
@@ -1013,9 +1088,10 @@ export class License {
   }
 
   /** Fonctions d'avant Flitdrop Pro réservées à Pro (synchro automatique du
-   *  presse-papiers, historique complet) : ouvertes sauf en gratuit. */
+   *  presse-papiers, historique complet) : ouvertes sauf en gratuit, et
+   *  toujours pour une installation d'avant Flitdrop Pro. */
   fullFeatures(): boolean {
-    return this.plan() !== 'free'
+    return this.plan() !== 'free' || this.st.legacy
   }
 
   /** Photos et vidéos rangées par mois : nouveauté Pro (essai ou Pro), et
@@ -1103,17 +1179,26 @@ export class License {
     return Object.keys(map)[0] ?? 'EUR'
   }
 
+  /** Prix affiché partout (bouton, cartes, téléphone) : celui du pays de la
+   *  personne s'il est donné, sinon celui de la devise devinée par la langue
+   *  du système. */
   price(): string {
+    const local = this.remote()?.price
+    if (local) return local.display
     const map = this.priceMapShown()
     return map[this.priceKey(map)] ?? DEFAULT_PRICES.EUR!
   }
 
-  /** Prix de lancement : celui que donne le serveur (displayPriceEarly), dans
-   *  la devise du prix affiché ; calculé (moitié) seulement si le serveur
-   *  n'en donne aucun. Jamais un prix inventé quand le serveur en donne. */
+  /** Prix de lancement : celui que donne le serveur (pays de la personne,
+   *  sinon displayPriceEarly dans la devise du prix affiché) ; calculé
+   *  (moitié) seulement si le serveur n'en donne aucun. Jamais un prix
+   *  inventé quand le serveur en donne. */
   private earlyPrice(): string | null {
-    const early = this.remote()?.displayPriceEarly ?? {}
-    if (Object.keys(early).length > 0) return early[this.priceKey(this.priceMapShown())] ?? null
+    const remote = this.remote()
+    const local = remote?.price
+    if (local?.displayEarly) return local.displayEarly
+    const early = remote?.displayPriceEarly ?? {}
+    if (Object.keys(early).length > 0) return early[local ? local.currency : this.priceKey(this.priceMapShown())] ?? null
     return halfPrice(this.price())
   }
 
@@ -1174,6 +1259,10 @@ export class License {
     if (plan === 'free' && this.dailyUsed() >= FREE_DAILY_FILES) {
       if (!shownToday || (p.kind === 'limit' && !p.closed)) return 'limit'
     }
+    // installation d'avant Flitdrop Pro : le début de l'essai expliqué, une fois
+    if (plan === 'trial' && this.st.legacy) {
+      if ((!shownToday && p.welcome === 0) || (shownToday && p.kind === 'welcome' && !p.closed)) return 'welcome'
+    }
     if (plan === 'trial' && this.trialDaysLeft() <= 2) {
       if ((!shownToday && p.trial === 0) || (shownToday && p.kind === 'trial' && !p.closed)) return 'trial'
     }
@@ -1192,9 +1281,11 @@ export class License {
       closed: false,
       limit: p.limit + (where === 'limit' ? 1 : 0),
       trial: p.trial + (where === 'trial' ? 1 : 0),
+      welcome: p.welcome + (where === 'welcome' ? 1 : 0),
     }
     this.save()
-    this.deps.track('pro_prompt_shown', { where })
+    // la carte d'accueil n'est pas une invitation à acheter : pas de statistique
+    if (where !== 'welcome') this.deps.track('pro_prompt_shown', { where })
   }
 
   /** « Plus tard », « Super » : la carte se range (pas l'attente du paiement). */
@@ -1342,6 +1433,11 @@ export class License {
     this.tooManyDevices = false
     this.justUnlocked = true
     this.deps.track('pro_unlocked', { how })
+    try {
+      this.deps.unlocked?.(how)
+    } catch {
+      // réglages non critiques
+    }
     this.changed()
     return true
   }
@@ -1505,6 +1601,7 @@ export class License {
       waiting: this.waiting ? { since: new Date(this.waiting.since).toISOString(), polling: now - this.waiting.since <= CLAIM_POLL_MAX_MS } : null,
       restoreEmail: this.restore?.email ?? null,
     }
+    if (this.st.legacy) out.legacy = true
     if (plan === 'trial') {
       out.trialDaysLeft = this.trialDaysLeft()
       out.trialEndsAt = this.st.trialEndsAt

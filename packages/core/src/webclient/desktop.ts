@@ -129,9 +129,11 @@ interface ProStateUI {
   price?: string
   earlyPrice?: string
   earlyUntil?: string
-  card?: 'limit' | 'trial' | 'waiting' | 'success' | 'used' | 'devices' | null
+  card?: 'limit' | 'trial' | 'welcome' | 'waiting' | 'success' | 'used' | 'devices' | null
   waiting?: { since: string; polling: boolean } | null
   restoreEmail?: string | null
+  /** installation d'avant Flitdrop Pro : presse-papiers complet gratuit */
+  legacy?: boolean
 }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
@@ -445,21 +447,27 @@ function renderSettings() {
   ;($('setMax') as unknown as HTMLSelectElement).value = String(state.config.maxFileMB)
   ;($('setApproval') as unknown as HTMLInputElement).checked = state.config.requireApproval
   // Flitdrop Pro : synchro automatique du presse-papiers réservée à Pro en
-  // gratuit (grisée), dossiers par mois cachés quand le mode payant est coupé
+  // gratuit (grisée ; toujours ouverte pour une installation d'avant Flitdrop
+  // Pro), dossiers par mois cachés quand le mode payant est coupé
   const plan = proPlan()
   const locked = plan === 'free'
+  const legacy = state.pro?.legacy === true
+  const clipLocked = locked && !legacy
   const clipBox = $('setClipboard') as unknown as HTMLInputElement
-  clipBox.checked = state.config.clipboardAutoPush && !locked
-  clipBox.disabled = locked
+  clipBox.checked = state.config.clipboardAutoPush && !clipLocked
+  clipBox.disabled = clipLocked
   const monthBox = $('setMonthFolders') as unknown as HTMLInputElement
   monthBox.checked = state.config.sortPhotosByMonth !== false && (plan === 'trial' || plan === 'pro')
   monthBox.disabled = locked
   $('setMonthRow').classList.toggle('hidden', plan === 'off' || state.config.sortPhotosByMonth === undefined)
-  for (const id of ['setClipboardRow', 'setMonthRow']) {
+  for (const [id, rowLocked, free] of [
+    ['setClipboardRow', clipLocked, legacy],
+    ['setMonthRow', locked, false],
+  ] as const) {
     const row = $(id)
-    row.classList.toggle('locked', locked)
-    row.querySelector('[data-pro-badge]')?.classList.toggle('hidden', plan !== 'free' && plan !== 'trial')
-    row.title = locked ? t('pro.only') : ''
+    row.classList.toggle('locked', rowLocked)
+    row.querySelector('[data-pro-badge]')?.classList.toggle('hidden', free || (plan !== 'free' && plan !== 'trial'))
+    row.title = rowLocked ? t('pro.only') : ''
   }
   ;($('setShortcuts') as unknown as HTMLInputElement).checked = state.config.shortcutsEnabled
   ;($('setAutoUpdate') as unknown as HTMLInputElement).checked = state.config.autoUpdate
@@ -1698,11 +1706,21 @@ function renderProCard() {
   }
   let title = ''
   let body = ''
+  // « un seul paiement, prix final par Paddle » à côté de chaque bouton d'achat
+  $('proCardOnce').classList.toggle('hidden', kind !== 'limit' && kind !== 'trial')
   if (kind === 'limit' || kind === 'trial') {
     title = kind === 'limit' ? t('pro.card.limit.title', { n: pro.limit ?? 30 }) : tp(lang, 'pro.card.trial.title', Math.max(1, pro.trialDaysLeft ?? 1))
-    body = kind === 'limit' ? t('pro.card.limit.body', { price: proPrice() }) : t('pro.card.trial.body', { limit: pro.limit ?? 30, price: proPrice() })
+    body =
+      kind === 'limit'
+        ? t('pro.card.limit.body', { price: proPrice() })
+        : t(pro.legacy ? 'pro.card.trial.bodyLegacy' : 'pro.card.trial.body', { limit: pro.limit ?? 30, price: proPrice() })
     button(t('pro.buy', { price: proPrice() }), true, () => void proCheckout(kind))
     button(t('pro.later'), false, () => void proClose())
+  } else if (kind === 'welcome') {
+    // installation d'avant Flitdrop Pro : ce qui change, une fois
+    title = t('pro.card.welcome.title')
+    body = tp(lang, 'pro.card.welcome.body', Math.max(1, pro.trialDaysLeft ?? 1), { limit: pro.limit ?? 30, price: proPrice() })
+    button(t('pro.card.used.ok'), true, () => void proClose())
   } else if (kind === 'waiting') {
     title = t('pro.card.wait.title')
     body = t('pro.card.wait.body')
@@ -1732,7 +1750,8 @@ function renderProCard() {
     button(t('pro.card.used.ok'), false, () => void proClose())
   } else {
     title = t('pro.card.ok.title')
-    body = t('pro.card.ok.body')
+    // jamais « tout est déjà actif » si l'envoi automatique est coupé
+    body = t(state?.config.clipboardAutoPush ? 'pro.card.ok.body' : 'pro.card.ok.bodyClipOff')
     button(t('pro.card.ok.btn'), true, () => void proClose())
   }
   $('proCardTitle').textContent = title
@@ -1748,7 +1767,7 @@ function renderProCard() {
  *  qui la compte au plus une fois par jour. */
 function noteProSeen() {
   const kind = state?.pro?.card
-  if ((kind !== 'limit' && kind !== 'trial') || document.visibilityState !== 'visible' || $('proCard').classList.contains('hidden')) return
+  if ((kind !== 'limit' && kind !== 'trial' && kind !== 'welcome') || document.visibilityState !== 'visible' || $('proCard').classList.contains('hidden')) return
   if (proSeen.has(kind)) return
   proSeen.add(kind)
   void postJSON('/pro/seen', { where: kind }).catch(() => proSeen.delete(kind))
