@@ -22,7 +22,7 @@
   "94": "Dois-je installer quelque chose sur l'iPhone ?",
   "95": "Non. Seul l'ordinateur Linux installe Flitdrop : le .deb sur Ubuntu, Debian ou Mint, ou l'AppImage sur toute distribution, qui se met à jour toute seule (sur Ubuntu 22.04 et plus récent, elle peut demander le paquet libfuse2). L'iPhone n'installe rien depuis l'App Store : il utilise simplement son navigateur comme une appli web légère après un unique scan de QR code, donc il n'y a rien à connecter ni à maintenir à jour sur le téléphone.",
   "96": "Est-ce gratuit et privé ?",
-  "97": "Oui. Flitdrop est gratuit pour les transferts locaux sur votre propre réseau, sans compte ni abonnement. Les fichiers passent directement entre votre ordinateur Linux et l'iPhone sur votre Wi-Fi local, tout est chiffré de bout en bout, et rien n'est envoyé vers un serveur ni le cloud : il n'y a donc pas de détour par iCloud ni par e-mail.",
+  "97": "Oui. Flitdrop est gratuit sur votre propre réseau avec 30 fichiers par jour, sans compte ni abonnement. Flitdrop Pro, un seul paiement à vie, lève la limite quotidienne. Les fichiers passent directement entre votre ordinateur Linux et l'iPhone sur votre Wi-Fi local, tout est chiffré de bout en bout, et rien n'est envoyé vers un serveur ni le cloud : il n'y a donc pas de détour par iCloud ni par e-mail.",
   "98": "Garde-t-il la pleine qualité ?",
   "99": "Oui. Flitdrop envoie photos, vidéos et fichiers en pleine qualité, sans la recompression ni la réduction qui surviennent quand vous vous envoyez des photos par e-mail ou que vous les faites transiter par un service cloud. Ce qui arrive sur l'iPhone ou sur Linux est le fichier d'origine, à l'octet près.",
   "100": "Accueil",

@@ -347,7 +347,7 @@
 
   var FALLBACK = {
     'consent.title': 'Your privacy choice',
-    'consent.text': 'We would like to use cookies to count visits and watch recordings of how the site is used, with typed text hidden (Google Analytics, Microsoft Clarity, PostHog). Without cookies, PostHog only counts visits anonymously; Refuse turns that off too.',
+    'consent.text': 'We would like to use cookies to count visits and watch recordings of how the site is used, with typed text hidden (Google Analytics, Microsoft Clarity, PostHog). Without cookies, PostHog only counts visits and, on the Pro page, the steps of a purchase, anonymously; Refuse turns that off too.',
     'consent.more': 'Learn more',
     'consent.accept': 'Accept',
     'consent.refuse': 'Refuse',

@@ -22,7 +22,7 @@
   "98": "Ai-je besoin d'une appli sur mon téléphone pour Flitdrop ?",
   "99": "Non. Seul l'ordinateur installe l'appli Flitdrop, sur Windows, Mac ou Linux, et elle se met à jour toute seule sous Windows. Le téléphone n'installe rien : il scanne un QR code une fois puis utilise son navigateur comme une appli web légère, donc un iPhone ou un Android n'a aucun téléchargement à faire depuis l'App Store.",
   "100": "Flitdrop est-il gratuit ?",
-  "101": "Oui. Flitdrop est gratuit pour les transferts locaux sur votre propre réseau, sans abonnement ni publicité. AirDrop est gratuit lui aussi, mais seulement parce qu'il est fourni avec les appareils Apple. Vous pouvez télécharger Flitdrop depuis la page officielle des versions GitHub.",
+  "101": "Oui. Flitdrop est gratuit sur votre propre réseau avec 30 fichiers par jour, sans compte, sans abonnement ni publicité. Flitdrop Pro, un seul paiement à vie, lève la limite quotidienne. AirDrop est gratuit lui aussi, sans limite quotidienne, mais seulement parce qu'il est fourni avec les appareils Apple. Vous pouvez télécharger Flitdrop depuis la page officielle des versions GitHub.",
   "102": "Lequel devrais-je utiliser ?",
   "103": "Si tous les appareils avec lesquels vous partagez sont des appareils Apple, AirDrop est excellent et déjà intégré, alors utilisez-le. Dès qu'un appareil non-Apple entre en jeu, un téléphone Android, un PC Windows ou une machine Linux, AirDrop ne peut rien faire et Flitdrop est la réponse, en gardant la même sensation locale, chiffrée et en un geste sur tous les systèmes.",
   "104": "Accueil",

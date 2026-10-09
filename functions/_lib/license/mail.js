@@ -10,9 +10,11 @@ import { formatCode } from './crypto.js'
 
 const MAIL_FROM = 'Flitdrop <contact@flitdrop.com>' // domaine vérifié dans Resend
 // Boîte qui reçoit vraiment : la même que MAIL_TO de functions/api/contact.js (un test
-// vérifie qu'elles restent identiques). contact@flitdrop.com ne reçoit pas encore de
-// courrier : aucune réponse n'y est donc demandée.
+// vérifie qu'elles restent identiques).
 export const OWNER_ADDRESS = 'thomasbidault.tb@gmail.com'
+// Adresse publique de contact (CGV, page /refund, mentions légales) : elle reçoit le
+// courrier (redirection) ; les réponses à l'accusé de rétractation y arrivent.
+export const CONTACT_ADDRESS = 'contact@flitdrop.com'
 
 const TEXTS = {
   fr: {
@@ -126,7 +128,7 @@ const WITHDRAW_TEXTS = {
     none: 'non indiqué',
     sep: ' : ',
     next: "Nous vous remboursons via Paddle sous 14 jours, sur le moyen de paiement utilisé. Vous n'avez rien d'autre à faire.",
-    notYou: "Si vous n'avez rien envoyé, dites-le-nous avec le formulaire de contact de flitdrop.com.",
+    notYou: "Si vous n'avez rien envoyé, dites-le-nous à contact@flitdrop.com, ou répondez simplement à cet e-mail.",
   },
   de: {
     subject: 'Dein Widerruf für Flitdrop Pro ist eingegangen',
@@ -139,7 +141,7 @@ const WITHDRAW_TEXTS = {
     none: 'nicht angegeben',
     sep: ': ',
     next: 'Wir erstatten dir den Betrag über Paddle innerhalb von 14 Tagen auf das verwendete Zahlungsmittel. Du musst nichts weiter tun.',
-    notYou: 'Falls du nichts gesendet hast, sag es uns über das Kontaktformular auf flitdrop.com.',
+    notYou: 'Falls du nichts gesendet hast, sag es uns unter contact@flitdrop.com oder antworte einfach auf diese E-Mail.',
   },
   en: {
     subject: 'Your withdrawal from Flitdrop Pro is received',
@@ -152,7 +154,7 @@ const WITHDRAW_TEXTS = {
     none: 'not given',
     sep: ': ',
     next: 'We refund you through Paddle within 14 days, with the payment method you used. You have nothing else to do.',
-    notYou: 'If you did not send this, tell us with the contact form on flitdrop.com.',
+    notYou: 'If you did not send this, tell us at contact@flitdrop.com, or simply reply to this e-mail.',
   },
 }
 
@@ -162,7 +164,8 @@ const withdrawalLines = (t, w) => [
   [t.order, w.orderRef || t.none],
 ]
 
-// Accusé de réception, à l'adresse TAPÉE (jamais une autre).
+// Accusé de réception, à l'adresse TAPÉE (jamais une autre) ; « Répondre » écrit à
+// contact@flitdrop.com.
 export function withdrawalAckEmail(lang, w) {
   const l = WITHDRAW_TEXTS[lang] ? lang : 'en'
   const t = WITHDRAW_TEXTS[l]
@@ -185,7 +188,7 @@ export function withdrawalAckEmail(lang, w) {
     `<p style="margin:0 0 18px;color:#6e6e73">${escapeHtml(t.notYou)}</p>` +
     `<hr style="border:none;border-top:1px solid #e5e5ea;margin:18px 0">` +
     `<p style="margin:0;color:#6e6e73;font-size:13px">Flitdrop · flitdrop.com</p></div>`
-  return { subject: t.subject, text, html }
+  return { subject: t.subject, text, html, replyTo: CONTACT_ADDRESS }
 }
 
 // Copie pour nous, en français : « Répondre » écrit directement à la personne.

@@ -613,8 +613,8 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
   padding: clamp(24px, 4vw, 36px); box-shadow: 0 1px 2px rgba(12, 16, 26, 0.04), 0 16px 40px rgba(12, 16, 26, 0.07); }
 .pro-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin-bottom: 2px; }
 .pro-price-amount { font-size: clamp(40px, 7vw, 54px); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; color: var(--ink); }
-.pro-price-was { color: var(--muted); font-size: 20px; }
-.pro-price-was[hidden] { display: none; }
+.pro-price-tax { color: var(--muted); font-size: 18px; }
+.pro-price-tax[hidden] { display: none; }
 .pro-price-note { color: var(--muted); font-size: 16px; margin-bottom: 18px; }
 .pro-checks { list-style: none; display: flex; flex-direction: column; gap: 9px; margin: 0 0 22px; }
 .pro-checks li { position: relative; padding-left: 28px; color: var(--ink); font-size: 15.5px; line-height: 1.5; }
@@ -645,6 +645,9 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
 .pro-plan--pro { border: 2px solid var(--blue); }
 .pro-plan h3 { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 650; margin-bottom: 18px; }
 .pro-badge { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #fff; background: var(--blue); border-radius: 999px; padding: 3px 10px; }
+.pro-change { max-width: 780px; margin: 0 auto; padding-left: 22px; display: flex; flex-direction: column; gap: 10px; }
+.pro-change li { color: var(--muted); font-size: 16px; }
+.pro-change a { color: var(--blue-ink); text-decoration: underline; text-underline-offset: 2px; }
 .pro-faq { max-width: 780px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
 .pro-faq details { background: var(--panel); border: 1px solid var(--stroke); border-radius: 14px; padding: 0 22px; }
 .pro-faq details[open] { border-color: var(--stroke-2); }
@@ -654,6 +657,8 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
 .pro-faq details[open] summary::after { content: "\2212"; }
 .pro-faq p { color: var(--muted); font-size: 15.5px; max-width: 66ch; padding: 0 0 18px; }
 /* pages de conditions : carte d'action en tête, boutons dans le texte */
+.doc-box { border: 1px solid var(--stroke-2); border-radius: 14px; background: var(--panel); padding: 16px 18px 6px; margin: 0 0 16px; }
+.doc .doc-box p { font-size: 15px; }
 .doc-action { border: 1px solid var(--stroke-2); border-radius: 18px; background: var(--bg-2); padding: 20px 22px 8px; margin: 0 0 30px; }
 .doc .doc-action p { color: var(--ink); }
 .doc a.btn-primary { color: #fff; }

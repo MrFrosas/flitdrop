@@ -22,7 +22,7 @@
   "94": "Utilise-t-il le cloud ou faut-il un compte ?",
   "95": "Non. Flitdrop n'est ni un service internet ni un service cloud, et il n'y a pas de compte à créer. Le texte du presse-papiers va directement d'un appareil à l'autre sur votre Wi-Fi local : il ne passe donc jamais par un serveur, contrairement aux historiques de presse-papiers dans le cloud.",
   "96": "Est-ce gratuit ?",
-  "97": "Oui. Flitdrop est gratuit sur votre propre réseau, sans abonnement ni coût de serveur pour les transferts locaux, contrairement à des outils payants comme Pushbullet Pro. Vous pouvez le télécharger depuis la page officielle des versions GitHub.",
+  "97": "Oui. Flitdrop est gratuit sur votre propre réseau avec 30 fichiers par jour, sans compte ni abonnement, et les textes et le presse-papiers ne comptent pas dans cette limite. Flitdrop envoie le presse-papiers dans les deux sens en un geste, gratuitement ; l'envoi automatique depuis le PC fait partie de Flitdrop Pro, un seul paiement à vie, qui lève aussi la limite quotidienne. Vous pouvez le télécharger depuis la page officielle des versions GitHub.",
   "98": "Est-ce privé et chiffré ?",
   "99": "Oui. Tout est chiffré de bout en bout et reste sur votre Wi-Fi local, sans compte, donc le texte de votre presse-papiers n'est pas stocké sur le serveur d'une entreprise ni synchronisé vers le cloud comme le font certains services d'historique de presse-papiers.",
   "100": "Accueil",

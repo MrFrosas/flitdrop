@@ -101,7 +101,7 @@ function paddle(world, url, method, init) {
     return paginate(url, items, 30, 30)
   }
   if (method === 'POST' && path === '/pricing-preview') {
-    // aperçu de prix : devise selon le pays, remise de lancement de 50 % (arrondi bas)
+    // aperçu de prix : devise selon le pays, remise de lancement de 50 % (arrondie au plus proche, comme Paddle)
     const body = JSON.parse(init.body)
     const country = body && body.address && body.address.country_code
     const currency = { FR: 'EUR', DE: 'EUR', AT: 'EUR', GB: 'GBP', US: 'USD', JP: 'JPY' }[country] || 'USD'

@@ -24,7 +24,7 @@
   "96": "Dois-je installer une appli ?",
   "97": "Seul l'ordinateur a besoin de l'appli Flitdrop, qui s'installe sur Windows, Mac ou Linux. Le téléphone n'installe rien : il utilise simplement son navigateur comme une appli web légère après un unique scan de QR code, donc aucune appli chargée de pubs à garder sur le téléphone.",
   "98": "Flitdrop est-il gratuit ?",
-  "99": "Oui. Flitdrop est gratuit sur votre propre réseau, sans abonnement, sans publicité et sans coût de serveur pour les transferts locaux. Vous pouvez le télécharger depuis la page officielle des versions GitHub.",
+  "99": "Oui. Flitdrop est gratuit sur votre propre réseau avec 30 fichiers par jour, sans compte, sans abonnement ni publicité. Flitdrop Pro, un seul paiement à vie, lève la limite quotidienne. Vous pouvez le télécharger depuis la page officielle des versions GitHub.",
   "100": "Accueil",
   "101": "Alternative à Xender"
 }

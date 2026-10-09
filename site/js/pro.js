@@ -90,6 +90,14 @@
     priceShown = el.textContent.trim();
   }
 
+  // « TTC » / « inkl. MwSt. » / « taxes included » à côté du prix : seulement pour un
+  // prix en euros ou en livres (TVA comprise chez Paddle). En dollars et autres
+  // devises, la taxe locale peut s'ajouter au paiement : la mention est cachée.
+  function setTax(c) {
+    var cur = hasPrice(c) ? c.price.currency : 'EUR';
+    show('proTax', cur === 'EUR' || cur === 'GBP');
+  }
+
   // Fin du prix de lancement : launchedAt + earlyDays (dernier jour compris).
   function earlyEnd(c) {
     var start = c.launchedAt ? Date.parse(c.launchedAt) : NaN;
@@ -260,6 +268,7 @@
     loadConfig().then(function (c) {
       if (hasPrice(c)) setPrice(c.price.display);
       else setPrice(null);
+      setTax(c);
       if (!usable(c)) {
         cfg = c && typeof c === 'object' ? c : null;
         showSoon();
