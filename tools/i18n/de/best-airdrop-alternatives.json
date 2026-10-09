@@ -22,7 +22,7 @@
   "20": "LocalSend",
   "21": "Stärke: quelloffen, komplett lokal und privat, und es läuft auf iPhone, Android, Windows, Mac und Linux. Schwäche gegenüber Flitdrop: Du musst die App auf jedem Gerät installieren, auch auf dem Handy, während Flitdrop auf dem Handy nichts weiter braucht als einen einmaligen QR-Scan.",
   "22": "PairDrop / Snapdrop",
-  "23": "Stärke: gar nichts zu installieren, es läuft im Browser und ist quelloffen und lokal. Schwäche gegenüber Flitdrop: Beide Browser-Tabs müssen gleichzeitig offen bleiben, die Verbindung ist also fragil, und anders als Flitdrop bietet es weder Zwischenablage-Sync noch einen Verlauf der Zwischenablage.",
+  "23": "Stärke: gar nichts zu installieren, es läuft im Browser und ist quelloffen und lokal. Schwäche gegenüber Flitdrop: Beide Browser-Tabs müssen gleichzeitig offen bleiben, die Verbindung ist also fragil, und es führt keinen Verlauf der Zwischenablage: Text geht als Nachricht, die du schreibst oder einfügst, während Flitdrop die Zwischenablage mit einem Tippen sendet.",
   "24": "Send Anywhere",
   "25": "Stärke: sehr plattformübergreifend und kann per 6-stelligem Schlüssel auch an jemanden weit weg senden. Schwäche gegenüber Flitdrop: Übertragungen können über seine Server und das Internet laufen, es ist werbefinanziert und verlangt, dass du seine App installierst. Damit ist es weniger privat und weniger lokal als Flitdrop.",
   "26": "Quick Share / Nearby Share",
