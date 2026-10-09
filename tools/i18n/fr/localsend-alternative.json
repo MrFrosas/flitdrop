@@ -20,7 +20,7 @@
   "100": "Quelle est la différence entre Flitdrop et LocalSend ?",
   "101": "LocalSend est un bon outil open source et multiplateforme, mais il repose sur la détection automatique du réseau et une appli sur chaque appareil. Flitdrop est à source disponible, appaire par QR code plutôt que par détection, n'installe rien sur le téléphone, et ajoute le presse-papiers bidirectionnel, un historique du presse-papiers et une appli de bureau persistante.",
   "102": "Flitdrop est-il gratuit ?",
-  "103": "Oui. Flitdrop est gratuit sur votre propre réseau, sans abonnement ni coût de serveur pour les transferts locaux. Vous pouvez le télécharger depuis la page officielle des versions GitHub.",
+  "103": "Oui. Flitdrop est gratuit sur votre propre réseau avec 30 fichiers par jour, sans compte ni abonnement. Flitdrop Pro, un seul paiement à vie, lève la limite quotidienne. Vous pouvez le télécharger depuis la page officielle des versions GitHub.",
   "104": "Flitdrop est-il privé et chiffré ?",
   "105": "Oui. Comme LocalSend, les transferts Flitdrop vont directement d'un appareil à l'autre sur votre Wi-Fi local, jamais par un serveur cloud. Tout est chiffré de bout en bout et il n'y a aucun compte à créer.",
   "106": "Fonctionne-t-il entre iPhone et Windows ou Android ?",

@@ -22,7 +22,7 @@
   "93": "Dois-je installer quelque chose sur le téléphone ?",
   "94": "Avec Flitdrop, rien n'est installé sur le téléphone : il scanne un QR code une fois et utilise son navigateur comme une appli web légère, tandis que seul l'ordinateur installe l'appli. Quick Share est intégré à Android et Samsung et a besoin de son appli Windows sur un PC, donc sur Android il n'y a rien de plus à installer mais il reste dans cet écosystème.",
   "95": "Sont-ils gratuits ?",
-  "96": "Oui, les deux sont gratuits. Quick Share est intégré à Android, Samsung et son appli Windows sans frais. Flitdrop est gratuit pour les transferts locaux sur votre propre réseau, sans abonnement ni publicité, et vous le téléchargez depuis la page officielle des versions GitHub.",
+  "96": "Oui, les deux sont gratuits. Quick Share est intégré à Android, Samsung et son appli Windows sans frais. Flitdrop est gratuit sur votre propre réseau avec 30 fichiers par jour, sans abonnement ni publicité, et Flitdrop Pro, un seul paiement à vie, lève la limite quotidienne ; vous le téléchargez depuis la page officielle des versions GitHub.",
   "97": "Lequel couvre le plus d'appareils ?",
   "98": "Flitdrop couvre plus de combinaisons d'appareils. Il fonctionne avec iPhone, Android et Samsung côté téléphone et Windows, Mac et Linux côté ordinateur, dans les deux sens. Quick Share est solide au sein d'Android, Samsung, ChromeOS et Windows mais laisse de côté l'iPhone, Mac et Linux, il est donc plus limité pour un ensemble d'appareils varié.",
   "99": "Accueil",

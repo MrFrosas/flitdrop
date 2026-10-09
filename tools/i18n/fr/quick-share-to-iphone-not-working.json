@@ -22,7 +22,7 @@
   "94": "Ai-je besoin d'une appli sur l'un ou l'autre téléphone ?",
   "95": "Non. Flitdrop ne s'installe que sur l'ordinateur, sur Windows, Mac ou Linux. Les deux téléphones, Android et iPhone, n'installent rien : chacun scanne un QR code une fois puis utilise son navigateur comme une appli web légère, donc il n'y a rien à installer sur l'un ou l'autre téléphone.",
   "96": "Est-ce gratuit ?",
-  "97": "Oui. Flitdrop est gratuit pour les transferts locaux sur votre propre réseau, sans abonnement ni publicité. Vous pouvez le télécharger depuis la page officielle des versions GitHub.",
+  "97": "Oui. Flitdrop est gratuit sur votre propre réseau avec 30 fichiers par jour, sans compte, sans abonnement ni publicité. Flitdrop Pro, un seul paiement à vie, lève la limite quotidienne. Vous pouvez le télécharger depuis la page officielle des versions GitHub.",
   "98": "Est-ce privé ?",
   "99": "Oui. Flitdrop n'est ni un service internet ni un service cloud. Les transferts vont directement d'un appareil à l'autre sur votre Wi-Fi local, tout est chiffré de bout en bout, et il n'y a pas de compte, donc vos fichiers ne passent jamais par un serveur.",
   "100": "Accueil",

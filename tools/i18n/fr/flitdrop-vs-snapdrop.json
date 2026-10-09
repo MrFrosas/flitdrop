@@ -22,7 +22,7 @@
   "94": "Flitdrop est-il privé et local ?",
   "95": "Oui. Flitdrop garde chaque transfert sur votre Wi-Fi local avec un chiffrement de bout en bout et sans compte, donc les fichiers vont directement entre vos appareils et ne passent jamais par un serveur ni par le cloud. Le code est source-available : chacun peut vérifier comment le partage fonctionne.",
   "96": "Sont-ils gratuits ?",
-  "97": "Oui, les deux sont gratuits. Snapdrop et PairDrop sont des outils de navigateur open source et gratuits. Flitdrop est gratuit pour les transferts locaux sur votre propre réseau, sans abonnement et sans rien à installer sur le téléphone, et vous pouvez télécharger l'application de bureau depuis la page officielle des versions GitHub.",
+  "97": "Oui, les deux sont gratuits. Snapdrop et PairDrop sont des outils de navigateur open source et gratuits. Flitdrop est gratuit sur votre propre réseau avec 30 fichiers par jour, sans abonnement et sans rien à installer sur le téléphone, et Flitdrop Pro, un seul paiement à vie, lève la limite quotidienne ; vous pouvez télécharger l'application de bureau depuis la page officielle des versions GitHub.",
   "98": "Lequel est le plus fiable ?",
   "99": "Pour des envois ponctuels rapides sans rien installer, Snapdrop est pratique. Pour un partage quotidien répété, Flitdrop tend à être plus fiable : c'est une application de bureau persistante qui reste détectable, donc vous évitez la découverte WebRTC capricieuse et l'obligation de garder les deux onglets ouverts qui peuvent échouer sur Snapdrop, et les transferts locaux sont rapides car ils restent sur votre Wi-Fi.",
   "100": "Accueil",
