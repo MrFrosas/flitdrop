@@ -19,6 +19,9 @@ import {
   sanitizeRemoteConfig,
   claimFromSecret,
   parseMark,
+  stateMac,
+  stateKey,
+  sessionKey,
   FREE_DAILY_FILES,
   LICENSE_PUBLIC_KEY,
   SUPPORT_MAILTO,
@@ -707,6 +710,179 @@ describe('identifiant de la machine illisible un lancement (pas une copie)', () 
     await new Promise((res) => setTimeout(res, 0))
     expect(mark.v).toBe(saved)
     expect(r2.lic.dailyUsed()).toBe(21)
+  })
+})
+
+describe('identité de secours (identifiant illisible au premier lancement), puis identifiant lu', () => {
+  /** Premier lancement sans identifiant lisible, puis Pro débloqué par la
+   *  restauration : jeton lié à l'identité de secours. */
+  async function proOnFallback(home: string, mark: MarkStore) {
+    let fbDev = ''
+    const net = fakeFetch({
+      'GET /api/license/config': () => configOn(),
+      'POST /api/license/restore/start': () => ({ status: 200, body: { challenge: 'ch' } }),
+      'POST /api/license/restore/verify': () => ({ status: 200, body: { token: tokenFor(fbDev, clock, 30) } }),
+    })
+    const r = await rig({ home, mark, machine: null, fetchImpl: net.f })
+    fbDev = r.lic.deviceId
+    expect(r.cfg.licenseFallbackId).toMatch(/^[0-9a-f]{32}$/)
+    expect(fbDev).toBe(deviceIdFrom('fallback:' + r.cfg.licenseFallbackId))
+    await r.lic.refreshConfig()
+    await r.lic.restoreStart('zoe@example.com')
+    await r.lic.restoreVerify('ABCDEFGHJKMN')
+    expect(r.lic.plan()).toBe('pro')
+    expect(net.calls.find((c) => c.key === 'POST /api/license/restore/verify')?.body?.device).toBe(fbDev)
+    await new Promise((res) => setTimeout(res, 0))
+    return { r, fbDev }
+  }
+
+  it('même session : l’état passe à l’identifiant de la machine, dates de l’essai et legacy gardés', async () => {
+    const home = newHome()
+    const mark = memMark()
+    const first = await rig({ home, mark, machine: null, lastVersion: '0.6.7' })
+    await first.lic.refreshConfig()
+    expect(first.lic.plan()).toBe('trial')
+    const fbDev = first.lic.deviceId
+    expect(first.cfg.licenseState?.fallbackHost).toMatch(/^[0-9a-f]{32}$/)
+    const start = first.cfg.licenseState?.trialStartAt
+    // toujours illisible au lancement suivant : même identité de secours
+    clock += 2 * DAY
+    const again = await rig({ home, mark, machine: null, routes: {} })
+    expect(again.lic.deviceId).toBe(fbDev)
+    expect(again.lic.trialDaysLeft()).toBe(12)
+    // enfin lu : rien de perdu, l'état et la marque passent à la machine
+    clock += 3 * DAY
+    const r = await rig({ home, mark, routes: {} })
+    expect(r.lic.deviceId).toBe(DEV_A)
+    expect(r.cfg.licenseDeviceId).toBe(DEV_A)
+    expect(r.cfg.licenseFallbackId).toBe('')
+    expect(r.lic.plan()).toBe('trial')
+    expect(r.lic.trialDaysLeft()).toBe(9)
+    expect(r.cfg.licenseState).toMatchObject({ trialStartAt: start, legacy: true, fallbackHost: '', machineDev: '' })
+    expect(r.cfg.licenseState?.mac).toMatch(/^[0-9a-f]{64}$/)
+    expect(parseMark(DEV_A, mark.v)).not.toBeNull()
+    expect(r.changes).toBe(0)
+    // et ça tient au lancement suivant
+    const next = await rig({ home, mark, routes: {} })
+    expect(next.lic.plan()).toBe('trial')
+    expect(next.lic.trialDaysLeft()).toBe(9)
+    expect(next.lic.state().legacy).toBe(true)
+  })
+
+  it('même session, gratuit : le compteur du jour continue, jamais au maximum', async () => {
+    const home = newHome()
+    const mark = memMark()
+    const first = await rig({ home, mark, machine: null })
+    await first.lic.refreshConfig()
+    clock += 15 * DAY
+    first.lic.countFiles(3)
+    await new Promise((res) => setTimeout(res, 0))
+    const r = await rig({ home, mark, routes: {} })
+    expect(r.lic.deviceId).toBe(DEV_A)
+    expect(r.lic.plan()).toBe('free')
+    expect(r.lic.dailyUsed()).toBe(3)
+    expect(r.lic.canStartFile(0)).toBe(true)
+    r.lic.countFiles(1)
+    // le compteur continue, sous l'identifiant de la machine
+    const again = await rig({ home, mark, routes: {} })
+    expect(again.lic.dailyUsed()).toBe(4)
+  })
+
+  it('Pro acheté sous l’identité de secours : gardé, renouvelé sous la même identité, lu ou non ensuite', async () => {
+    const home = newHome()
+    const mark = memMark()
+    const { fbDev } = await proOnFallback(home, mark)
+    const renew = fakeFetch({ 'POST /api/license/renew': (b) => ({ status: 200, body: { token: tokenFor(String(b?.device), clock, 30) } }) })
+    const r = await rig({ home, mark, fetchImpl: renew.f })
+    expect(r.lic.plan()).toBe('pro')
+    // le serveur des licences connaît cet ordinateur sous l'identité de secours
+    expect(r.lic.deviceId).toBe(fbDev)
+    expect(r.cfg.licenseDeviceId).toBe(fbDev)
+    expect(r.cfg.licenseFallbackId).toBe('')
+    expect(r.cfg.licenseState).toMatchObject({ fallbackHost: '', machineDev: DEV_A })
+    expect(r.cfg.licenseState?.mac).toMatch(/^[0-9a-f]{64}$/)
+    expect(parseMark(DEV_A, mark.v)).not.toBeNull()
+    clock += 25 * DAY
+    await r.lic.maybeRenew()
+    expect(renew.calls.map((c) => c.body?.device)).toEqual([fbDev])
+    expect(r.lic.plan()).toBe('pro')
+    // identifiant illisible un lancement, puis relu : toujours Pro, même identité
+    const lost = await rig({ home, mark, machine: null, routes: {} })
+    expect(lost.lic.plan()).toBe('pro')
+    expect(lost.lic.deviceId).toBe(fbDev)
+    const back = await rig({ home, mark, routes: {} })
+    expect(back.lic.plan()).toBe('pro')
+    expect(back.lic.deviceId).toBe(fbDev)
+    expect(back.lic.dailyLeft()).toBe(Infinity)
+    expect(parseMark(DEV_A, mark.v)).not.toBeNull()
+  })
+
+  it('config copiée sur un autre PC (autre session) : comme une copie, jeton ignoré, limites fermées', async () => {
+    const homeA = newHome()
+    const { fbDev } = await proOnFallback(homeA, memMark())
+    const homeB = newHome()
+    fs.copyFileSync(configFile(homeA), configFile(homeB))
+    const rb = await rig({ home: homeB, machine: MACHINE_B, host: 'host-b', routes: {} })
+    expect(rb.lic.deviceId).toBe(deviceIdFrom(MACHINE_B))
+    expect(rb.lic.deviceId).not.toBe(fbDev)
+    expect(rb.cfg.licenseState?.token).toBe('')
+    expect(rb.lic.plan()).toBe('free')
+    expect(rb.lic.dailyUsed()).toBe(FREE_DAILY_FILES)
+    // config déjà passée à la machine A (jeton gardé), copiée sur un PC de
+    // session identique (même compte, même processeur) : refusée aussi
+    const homeA2 = newHome()
+    const markA2 = memMark()
+    await proOnFallback(homeA2, markA2)
+    expect((await rig({ home: homeA2, mark: markA2, routes: {} })).lic.plan()).toBe('pro')
+    const homeC = newHome()
+    fs.copyFileSync(configFile(homeA2), configFile(homeC))
+    const rc = await rig({ home: homeC, machine: MACHINE_B, routes: {} })
+    expect(rc.lic.deviceId).toBe(deviceIdFrom(MACHINE_B))
+    expect(rc.lic.plan()).toBe('free')
+    expect(rc.lic.dailyUsed()).toBe(FREE_DAILY_FILES)
+    expect(rc.cfg.licenseState?.machineDev).toBe('')
+  })
+
+  it('état de secours sans la note de sa session (ancienne version, retouche) : comme une copie', async () => {
+    const home = newHome()
+    const mark = memMark()
+    const first = await rig({ home, mark, machine: null })
+    await first.lic.refreshConfig()
+    expect(first.lic.plan()).toBe('trial')
+    // note retirée, état re-signé avec les clés de l'identité de secours
+    const raw = JSON.parse(fs.readFileSync(configFile(home), 'utf8'))
+    const seed = 'fallback:' + raw.licenseFallbackId
+    const fbDev = deviceIdFrom(seed)
+    raw.licenseState.fallbackHost = ''
+    raw.licenseState.mac = stateMac(stateKey(seed), fbDev, raw.licenseState)
+    raw.licenseState.mac2 = stateMac(sessionKey(fbDev, 'host-a'), fbDev, raw.licenseState)
+    fs.writeFileSync(configFile(home), JSON.stringify(raw))
+    const still = await rig({ home, mark, machine: null, routes: {} })
+    expect(still.lic.plan()).toBe('trial')
+    const r = await rig({ home, mark, routes: {} })
+    expect(r.lic.deviceId).toBe(DEV_A)
+    expect(r.lic.plan()).toBe('free')
+    expect(r.lic.dailyUsed()).toBe(FREE_DAILY_FILES)
+  })
+
+  it('deuxième emplacement illisible au moment de la première lecture : le passage attend, rien ne se ferme', async () => {
+    const home = newHome()
+    const mark = memMark()
+    const first = await rig({ home, mark, machine: null })
+    await first.lic.refreshConfig()
+    const fbDev = first.lic.deviceId
+    clock += 15 * DAY
+    first.lic.countFiles(4)
+    await new Promise((res) => setTimeout(res, 0))
+    const flaky: MarkStore = { read: async () => Promise.reject(new Error('lent')), write: mark.write }
+    const wait = await rig({ home, mark: flaky, routes: {} })
+    expect(wait.lic.deviceId).toBe(fbDev)
+    expect(wait.cfg.licenseFallbackId).toMatch(/^[0-9a-f]{32}$/)
+    expect(wait.lic.dailyUsed()).toBe(4)
+    const r = await rig({ home, mark, routes: {} })
+    expect(r.lic.deviceId).toBe(DEV_A)
+    expect(r.lic.dailyUsed()).toBe(4)
+    expect(parseMark(DEV_A, mark.v)).not.toBeNull()
   })
 })
 
