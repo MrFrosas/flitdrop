@@ -5,31 +5,60 @@
 // modifiée, la page du PC aussi ; seul ce module décide.
 //
 // Plans :
-// - « off » : mode payant coupé (défaut, ou flitdrop.com jamais joint) :
-//   EXACTEMENT le comportement d'avant Flitdrop Pro, tout est ouvert, aucune
-//   interface Pro.
+// - « off » : mode payant coupé (défaut, ou flitdrop.com jamais joint, ou
+//   installation du Microsoft Store tant que le serveur ne dit pas
+//   storeEnabled) : EXACTEMENT le comportement d'avant Flitdrop Pro, tout est
+//   ouvert, aucune interface Pro.
 // - « trial » : 14 jours de Pro (installation existante : depuis la première
 //   fois que l'app voit le mode payant ; installation neuve : depuis le
 //   premier lancement).
-// - « free » : gratuit pour toujours, 30 fichiers par jour local.
+// - « free » : gratuit, 30 fichiers par jour local. Installation d'avant
+//   Flitdrop Pro (config d'une version < 0.7.0 au premier lancement de
+//   celle-ci, noté une fois dans l'état signé : legacy) : la synchro
+//   automatique et tout l'historique du presse-papiers restent gratuits ;
+//   seules la limite du jour et les dossiers par mois s'appliquent.
 // - « pro » : jeton signé valide (Ed25519, clé publique embarquée), pour CET
 //   ordinateur, jusqu'à son échéance + 7 jours hors ligne.
 //
 // Anti-copie (machine) : l'identifiant d'appareil est une empreinte de
-// l'identifiant que le système donne à la machine (machineid.ts). Illisible :
-// un identifiant aléatoire gardé dans la config (licenseFallbackId) le
-// remplace ; il ne protège alors plus contre la copie de la config sur un
-// autre PC où l'identifiant serait aussi illisible (cas rare, accepté).
+// l'identifiant que le système donne à la machine (machineid.ts). Jamais lu
+// sur cette installation : un identifiant aléatoire gardé dans la config
+// (licenseFallbackId) le remplace ; il ne protège alors plus contre la copie
+// de la config sur un autre PC où l'identifiant serait aussi illisible (cas
+// rare, accepté).
 //
-// État de la licence (essai, compteur du jour, jeton, mode payant vu) :
-// rangé dans config.licenseState avec une empreinte HMAC-SHA256 dont la clé
-// vient de l'identifiant de la machine et d'une constante de l'app. Empreinte
-// absente ou fausse (config retouchée à la main, copiée d'un autre PC) :
-// l'essai est considéré terminé et le compteur du jour est au maximum. Rien
-// d'autre ne se ferme : les fichiers dans la limite et toutes les fonctions
-// gratuites marchent, et le lendemain repart d'un compteur neuf et valide.
-// Le début de l'essai est aussi noté, signé, en dehors du dossier de config
-// (machineid.ts) : effacer la config ne redonne pas un essai neuf.
+// Lecture ratée CE lancement (commande lente au démarrage, ordinateur
+// chargé) alors que la config est déjà liée à cette machine : ce n'est pas
+// une copie. L'identité gardée (licenseDeviceId) sert pour la session, l'état
+// signé et le jeton restent valables s'ils portent aussi une deuxième
+// empreinte, liée à cette identité et à la session (compte, dossier
+// personnel, processeur) ; la lecture est retentée en arrière-plan (5 s,
+// 30 s, 2 min, puis toutes les 10 minutes). Relue et identique : tout
+// redevient normal. Relue et DIFFÉRENTE : c'est une copie, les limites se
+// ferment comme ci-dessous. Pendant une telle session, le jeton n'est pas
+// renouvelé : une config copiée sur un PC qui cache son identifiant ne
+// garderait Pro que jusqu'à l'échéance du jeton (+ 7 jours).
+//
+// État de la licence (essai, compteur du jour, jeton, mode payant vu, achat
+// en attente) : rangé dans config.licenseState avec une empreinte
+// HMAC-SHA256 dont la clé vient de l'identifiant de la machine et d'une
+// constante de l'app. Empreinte absente ou fausse (config retouchée à la
+// main, copiée d'un autre PC) : l'essai est considéré terminé et le compteur
+// du jour est au maximum. Rien d'autre ne se ferme : les fichiers dans la
+// limite et toutes les fonctions gratuites marchent, et le lendemain repart
+// d'un compteur neuf et valide.
+//
+// Deuxième emplacement, signé, en dehors du dossier de config (machineid.ts) :
+// début et fin de l'essai, compteur du jour le plus haut, heure la plus
+// tardive vue. Effacer la config ne redonne pas un essai neuf ; remettre une
+// ancienne copie de config.json ne fait ni redescendre le compteur du jour
+// ni revenir un essai fini. Cette marque déjà écrite puis effacée ou abîmée :
+// compteur du jour au maximum (jusqu'à minuit).
+//
+// Horloge : avancer d'un jour donne un compteur neuf (accepté), mais revenir
+// en arrière garde le compteur du jour le plus tardif vu (jamais un deuxième
+// jour neuf) ; l'essai se termine quand l'heure la plus tardive vue (horloge
+// du PC, ou date donnée par flitdrop.com) dépasse sa fin.
 //
 // Réseau : configuration au lancement puis au plus une fois par jour (sur une
 // minuterie qui existe déjà, voir server.ts), vérification d'un achat
@@ -42,10 +71,16 @@ import { saveConfig, type Config, type LicenseStateStored } from './config.js'
 import { localDay } from './telemetry.js'
 import type { Lang } from './i18n.js'
 import { LICENSE_PUBLIC_KEY_B64, PAID_MODE_BUILD_DEFAULT } from './license-key.js'
-import { readMachineIdentifier, deviceIdFrom, defaultMarkStore, type MarkStore } from './machineid.js'
+import { readMachineIdentifier, deviceIdFrom, defaultMarkStore, hostFingerprint, type MarkStore } from './machineid.js'
 
 export const LICENSE_PUBLIC_KEY = LICENSE_PUBLIC_KEY_B64
-export const LICENSE_CONFIG_URL = 'https://flitdrop.com/api/license/config'
+/** Racine des licences : /api/license/* et la page d'achat /pro. */
+export const LICENSE_BASE_URL = 'https://flitdrop.com'
+export const LICENSE_CONFIG_URL = LICENSE_BASE_URL + '/api/license/config'
+/** Environnement des jetons : l'app publiée n'accepte que « production ». */
+export type TokenEnv = 'production' | 'sandbox'
+/** Écrire au support (achat utilisé sur trop d'ordinateurs). */
+export const SUPPORT_MAILTO = 'mailto:contact@flitdrop.com?subject=Flitdrop%20Pro'
 export const FREE_DAILY_FILES = 30
 export const FREE_CLIP_TEXTS = 20
 const DAY_MS = 86_400_000
@@ -60,6 +95,9 @@ const MAX_BODY_CHARS = 64 * 1024
 const DEFAULT_TRIAL_DAYS = 14
 const DEFAULT_EARLY_DAYS = 30
 const DEFAULT_PRICES: Record<string, string> = { EUR: '5,99 €', USD: '$5.99', GBP: '£5.49' }
+// identité de la machine illisible : nouvelles lectures après 5 s, 30 s,
+// 2 min (puis la minuterie existante, toutes les 10 minutes)
+const MACHINE_RETRY_MS = [5_000, 30_000, 120_000]
 // constante de l'app mêlée à l'identifiant de la machine pour la clé de
 // l'empreinte de l'état (pas un secret absolu : elle est dans l'app ; elle
 // rend une retouche à la main de config.json visible)
@@ -69,8 +107,11 @@ const STATE_SALT = 'wFFWh6YtojGZ-kIfVRC_i9xuAW_YB0GG'
 const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex')
 
 export type Plan = 'off' | 'trial' | 'free' | 'pro'
-export type CardKind = 'limit' | 'trial' | 'waiting' | 'success' | 'used'
-export type PromptWhere = 'limit' | 'trial'
+export type CardKind = 'limit' | 'trial' | 'welcome' | 'waiting' | 'success' | 'used' | 'devices'
+export type PromptWhere = 'limit' | 'trial' | 'welcome'
+/** Premier lancement de cette version sur une config plus ancienne : noté
+ *  une fois (legacy), voir en tête du fichier. */
+export const LEGACY_BEFORE = [0, 7, 0] as const
 export type CheckoutWhere = 'limit' | 'trial' | 'settings'
 
 // ---------- configuration du serveur ----------
@@ -86,6 +127,10 @@ export interface RemoteConfig {
   displayPrice: Record<string, string>
   /** prix de lancement affichés, s'ils sont fournis (sinon calculés) */
   displayPriceEarly: Record<string, string>
+  /** prix du pays de la personne (aperçu Paddle), prioritaire s'il est là */
+  price: { currency: string; display: string; displayEarly: string | null } | null
+  /** mode payant aussi pour les installations du Microsoft Store */
+  storeEnabled: boolean
 }
 
 const isoOrNull = (v: unknown): string | null => {
@@ -99,17 +144,33 @@ const intIn = (v: unknown, min: number, max: number, fallback: number): number =
   return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : fallback
 }
 
+/** Prix affichable : texte court, sans balise. */
+function priceText(p: unknown): string | null {
+  if (typeof p !== 'string') return null
+  const s = p.trim()
+  return s.length > 0 && s.length <= 24 && !/[<>\u0000-\u001f]/.test(s) ? s : null
+}
+
 /** Prix affichables : devise en 3 lettres, texte court, sans balise. */
 function priceMap(v: unknown): Record<string, string> {
   const out: Record<string, string> = {}
   if (!v || typeof v !== 'object' || Array.isArray(v)) return out
   for (const [k, p] of Object.entries(v as Record<string, unknown>)) {
-    if (!/^[A-Z]{3}$/.test(k) || typeof p !== 'string') continue
-    const s = p.trim()
-    if (s.length > 0 && s.length <= 24 && !/[<>\u0000-\u001f]/.test(s)) out[k] = s
+    const s = priceText(p)
+    if (!/^[A-Z]{3}$/.test(k) || s === null) continue
+    out[k] = s
     if (Object.keys(out).length >= 20) break
   }
   return out
+}
+
+/** Prix du pays de la personne : { currency, display, displayEarly }. */
+function localPrice(v: unknown): RemoteConfig['price'] {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const r = v as Record<string, unknown>
+  const display = priceText(r.display)
+  if (typeof r.currency !== 'string' || !/^[A-Z]{3}$/.test(r.currency) || display === null) return null
+  return { currency: r.currency, display, displayEarly: priceText(r.displayEarly) }
 }
 
 export function sanitizeRemoteConfig(raw: unknown): RemoteConfig | null {
@@ -124,13 +185,27 @@ export function sanitizeRemoteConfig(raw: unknown): RemoteConfig | null {
     earlyDays: intIn(r.earlyDays, 0, 365, DEFAULT_EARLY_DAYS),
     displayPrice: priceMap(r.displayPrice),
     displayPriceEarly: priceMap(r.displayPriceEarly),
+    price: localPrice(r.price),
+    storeEnabled: r.storeEnabled === true,
   }
+}
+
+/** Version « a.b.c » d'avant Flitdrop Pro ? « unknown » : config plus
+ *  ancienne que le suivi des versions ; '' : installation neuve. */
+export function legacyVersion(v: string): boolean {
+  if (v === 'unknown') return true
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(v)
+  if (!m) return false
+  const n = [Number(m[1]), Number(m[2]), Number(m[3])]
+  for (let i = 0; i < 3; i++) if (n[i] !== LEGACY_BEFORE[i]) return n[i]! < LEGACY_BEFORE[i]!
+  return false
 }
 
 // ---------- jeton de licence ----------
 
 export interface TokenPayload {
   v: 1
+  env: TokenEnv
   plan: 'pro'
   dev: string
   cus: string
@@ -155,9 +230,10 @@ function publicKeyObject(b64: string): crypto.KeyObject | null {
 }
 
 /** Vérifie un jeton « base64url(JSON).base64url(signature Ed25519) » : forme,
- *  signature, contenu, et appareil (doit être CET ordinateur). L'échéance
+ *  signature, contenu, environnement (un jeton du bac à sable ne vaut rien
+ *  dans l'app publiée), et appareil (doit être CET ordinateur). L'échéance
  *  n'est pas vérifiée ici (voir tokenUsable). */
-export function verifyToken(token: unknown, deviceId: string, publicKeyB64: string = LICENSE_PUBLIC_KEY): TokenCheck {
+export function verifyToken(token: unknown, deviceId: string, publicKeyB64: string = LICENSE_PUBLIC_KEY, env: TokenEnv = 'production'): TokenCheck {
   if (typeof token !== 'string' || token.length > 2048 || !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) return { ok: false, reason: 'format' }
   const [p, s] = token.split('.') as [string, string]
   const payloadBytes = Buffer.from(p, 'base64url')
@@ -180,6 +256,7 @@ export function verifyToken(token: unknown, deviceId: string, publicKeyB64: stri
   if (
     !j ||
     j.v !== 1 ||
+    j.env !== env ||
     j.plan !== 'pro' ||
     typeof j.dev !== 'string' ||
     !/^[0-9a-f]{32}$/.test(j.dev) ||
@@ -267,42 +344,110 @@ export interface LicenseState {
   trialStartAt: string
   /** '' : essai pas encore décidé ; une date passée : essai terminé */
   trialEndsAt: string
+  /** compteur du jour LE PLUS TARDIF vu (jamais un jour plus ancien) */
   dailyFiles: { day: string; count: number }
   token: string
+  /** achat en attente : secret dont le claim est l'empreinte (64 hex, ne
+   *  part que vers le serveur des licences), et sa date ; '' sinon */
+  claimSecret: string
+  claimAt: string
+  /** heure la plus tardive vue sur ce PC (borne l'essai si l'horloge recule) */
+  seenAt: string
+  /** le deuxième emplacement a déjà été écrit ou lu sur ce PC */
+  markSeen: boolean
+  /** installation d'avant Flitdrop Pro (presse-papiers complet gratuit) */
+  legacy: boolean
 }
 
-const blankState = (paidMode: boolean): LicenseState => ({
+const blankState = (paidMode: boolean, legacy = false): LicenseState => ({
   paidMode,
   paidModeSeenAt: '',
   trialStartAt: '',
   trialEndsAt: '',
   dailyFiles: { day: '', count: 0 },
   token: '',
+  claimSecret: '',
+  claimAt: '',
+  seenAt: '',
+  markSeen: false,
+  legacy,
 })
 
 export function stateKey(machine: string): Buffer {
   return crypto.createHash('sha256').update(`flitdrop-state-v1|${STATE_SALT}|${machine}`).digest()
 }
 
+/** Clé de la deuxième empreinte de l'état : identité gardée + session
+ *  (machineid.ts, hostFingerprint). Calculable sans lire l'identifiant de la
+ *  machine ; une config copiée chez un autre compte ou un autre PC ne la
+ *  retrouve pas. */
+export function sessionKey(deviceId: string, host: string): Buffer {
+  return crypto.createHash('sha256').update(`flitdrop-state-v2|${STATE_SALT}|${deviceId}|${host}`).digest()
+}
+
 export function stateMac(key: Buffer, deviceId: string, s: LicenseState): string {
-  const body = JSON.stringify(['v1', deviceId, s.paidMode, s.paidModeSeenAt, s.trialStartAt, s.trialEndsAt, s.dailyFiles.day, s.dailyFiles.count, s.token])
+  const body = JSON.stringify([
+    'v2',
+    deviceId,
+    s.paidMode,
+    s.paidModeSeenAt,
+    s.trialStartAt,
+    s.trialEndsAt,
+    s.dailyFiles.day,
+    s.dailyFiles.count,
+    s.token,
+    s.claimSecret,
+    s.claimAt,
+    s.seenAt,
+    s.markSeen,
+    s.legacy,
+  ])
   return crypto.createHmac('sha256', key).update(body).digest('hex')
 }
 
-/** Marque du début de l'essai dans le deuxième emplacement : « v1.<ms>.<empreinte> ». */
-export function markValue(key: Buffer, deviceId: string, startMs: number): string {
-  const mac = crypto.createHmac('sha256', key).update(`mark|${deviceId}|${startMs}`).digest('hex').slice(0, 32)
-  return `v1.${startMs}.${mac}`
+/** Contenu du deuxième emplacement. Dates en ms (0 : aucune), jour local
+ *  « AAAA-MM-JJ » ('' : aucun). */
+export interface MarkData {
+  start: number
+  ends: number
+  day: string
+  count: number
+  seen: number
 }
 
-export function parseMark(key: Buffer, deviceId: string, v: string | null): number | null {
-  const m = typeof v === 'string' ? v.match(/^v1\.(\d{10,15})\.([0-9a-f]{32})$/) : null
+const markKey = (deviceId: string): Buffer => crypto.createHash('sha256').update(`flitdrop-mark-v2|${STATE_SALT}|${deviceId}`).digest()
+
+/** « v2.<début>.<fin>.<jour>.<compteur>.<vu>.<empreinte> » : seulement des
+ *  chiffres, des lettres, des points et des tirets (registre de Windows). */
+export function markValue(deviceId: string, m: MarkData): string {
+  const body = `v2.${Math.max(0, Math.floor(m.start))}.${Math.max(0, Math.floor(m.ends))}.${m.day || '0'}.${Math.max(0, Math.floor(m.count))}.${Math.max(0, Math.floor(m.seen))}`
+  const mac = crypto.createHmac('sha256', markKey(deviceId)).update(`mark|${deviceId}|${body}`).digest('hex').slice(0, 32)
+  return `${body}.${mac}`
+}
+
+export function parseMark(deviceId: string, v: string | null): MarkData | null {
+  const m = typeof v === 'string' ? v.match(/^v2\.(\d{1,15})\.(\d{1,15})\.(\d{4}-\d{2}-\d{2}|0)\.(\d{1,7})\.(\d{1,15})\.([0-9a-f]{32})$/) : null
   if (!m) return null
-  const ms = Number(m[1])
-  const want = markValue(key, deviceId, ms)
+  const data: MarkData = { start: Number(m[1]), ends: Number(m[2]), day: m[3] === '0' ? '' : m[3]!, count: Number(m[4]), seen: Number(m[5]) }
+  const want = markValue(deviceId, data)
   const a = Buffer.from(v as string)
   const b = Buffer.from(want)
-  return a.length === b.length && crypto.timingSafeEqual(a, b) ? ms : null
+  return a.length === b.length && crypto.timingSafeEqual(a, b) ? data : null
+}
+
+/** Claim de la page d'achat : empreinte du secret gardé par l'app. Le claim
+ *  seul (vu dans l'adresse, l'historique du navigateur, les statistiques de
+ *  la page) ne débloque rien : le serveur demande le secret. */
+export function claimFromSecret(secret: string): string {
+  return crypto.createHash('sha256').update('flitdrop-claim-v1:' + secret).digest('hex').slice(0, 32)
+}
+
+/** Compteur du jour le plus tardif des deux (même jour : le plus haut). */
+function laterDaily(a: { day: string; count: number }, b: { day: string; count: number }): { day: string; count: number } {
+  if (!b.day) return { ...a }
+  if (!a.day) return { ...b }
+  if (a.day === b.day) return { day: a.day, count: Math.max(a.count, b.count) }
+  return a.day > b.day ? { ...a } : { ...b }
 }
 
 const macEqual = (a: string, b: string): boolean => {
@@ -339,19 +484,31 @@ export interface LicenseOptions {
   /** licence active (app de bureau, ou adresse imposée en développement).
    *  Faux : plan « off » pour toujours, rien ne tourne, aucun réseau. */
   active: boolean
+  /** racine des licences (https://flitdrop.com par défaut) : /api/license/*
+   *  et la page d'achat /pro */
+  baseUrl?: string
+  /** adresse de la configuration (ancien réglage) : la racine en est déduite */
   configUrl?: string
   fetchImpl?: typeof fetch
   now?: () => number
   publicKey?: string
+  /** environnement attendu des jetons (« production » par défaut) */
+  tokenEnv?: TokenEnv
   /** langue du système (devise affichée) */
   systemLocale?: string
   /** identifiant brut de la machine (tests) ; par défaut lu sur le système */
   machineId?: () => Promise<string | null>
-  /** deuxième emplacement du début de l'essai */
+  /** empreinte de la session (tests) ; par défaut machineid.ts */
+  hostFingerprint?: () => string
+  /** deuxième emplacement (essai, compteur du jour, heure vue) */
   markStore?: MarkStore
   timeoutMs?: number
+  /** délais des nouvelles lectures de l'identifiant de la machine (tests) */
+  machineRetryMs?: number[]
   /** mode payant quand flitdrop.com n'a jamais répondu (license-key.ts) */
   buildDefault?: boolean
+  /** installation du Microsoft Store (canal gardé dans la config) */
+  storeChannel?: () => boolean
 }
 
 export interface LicenseDeps {
@@ -364,6 +521,8 @@ export interface LicenseDeps {
   lang: () => Lang
   /** ouvre une adresse dans le navigateur du système */
   openUrl: (url: string) => void
+  /** Pro vient d'être débloqué (achat ou restauration) */
+  unlocked?: (how: 'purchase' | 'restore') => void
 }
 
 export interface ProState {
@@ -380,6 +539,8 @@ export interface ProState {
   card?: CardKind | null
   waiting?: { since: string; polling: boolean } | null
   restoreEmail?: string | null
+  /** installation d'avant Flitdrop Pro : presse-papiers complet gratuit */
+  legacy?: boolean
 }
 
 export interface Quota {
@@ -390,7 +551,21 @@ export interface Quota {
   price: string
 }
 
-type NetResult = { status: number; body: Record<string, unknown> } | null
+type NetResult = { status: number; body: Record<string, unknown>; date: number | null } | null
+type ClaimResult = 'unlocked' | 'pending' | 'offline' | 'used' | 'devices'
+
+const SECRET_RE = /^[0-9a-f]{64}$/
+
+/** Racine des licences, terminée par « / ». */
+function licenseBase(o: { baseUrl?: string; configUrl?: string }): string {
+  try {
+    if (o.baseUrl) return new URL(o.baseUrl.replace(/\/*$/, '/')).href
+    if (o.configUrl) return new URL('../../', o.configUrl).href
+  } catch {
+    // adresse illisible : la vraie
+  }
+  return LICENSE_BASE_URL + '/'
+}
 
 export class License {
   readonly active: boolean
@@ -398,28 +573,53 @@ export class License {
   readonly ready: Promise<void>
   private inited = false
   private deviceIdValue = ''
+  /** clé de l'empreinte liée à la machine (null : identifiant illisible ce lancement) */
   private key: Buffer | null = null
-  /** identifiant de la machine illisible ce lancement, alors que la config
-   *  est liée à une machine : rien n'est réécrit, limites fermées en mémoire */
+  /** clé de la deuxième empreinte : identité gardée + session */
+  private key2: Buffer = Buffer.alloc(32)
+  /** identifiant de la machine illisible ce lancement, config déjà liée à
+   *  cette machine : l'identité gardée sert, la lecture est retentée */
+  private unreadable = false
+  /** ... et l'état gardé ne porte aucune empreinte valable pour cette
+   *  session : rien n'est réécrit, limites fermées en mémoire */
   private degraded = false
   private st: LicenseState
-  private markStart: number | null = null
+  /** dernier contenu connu du deuxième emplacement */
+  private mark: MarkData | null = null
+  /** deuxième emplacement lu ce lancement : valable, absent, abîmé, ou
+   *  illisible (alors rien n'y est écrit : on écraserait un compteur plus haut) */
+  private markStatus: 'ok' | 'absent' | 'invalid' | 'unknown' = 'unknown'
+  /** heure la plus tardive vue (ms), et celle déjà enregistrée */
+  private seenMs = 0
+  private seenSavedMs = 0
   private now: () => number
   private fetchImpl: typeof fetch | undefined
+  private baseUrl: string
   private configUrl: string
+  private tokenEnv: TokenEnv
+  private store: MarkStore
   private tokenCache: { token: string; check: TokenCheck } | null = null
   private lastConfigAttempt = 0
-  private waiting: { claim: string; since: number; where: CheckoutWhere; early: boolean } | null = null
-  private claimInFlight: Promise<'unlocked' | 'pending' | 'offline' | 'used'> | null = null
+  private waiting: { since: number; where: CheckoutWhere; early: boolean } | null = null
+  private claimInFlight: Promise<ClaimResult> | null = null
   private lastClaimAt = 0
   private justUnlocked = false
   /** l'achat sert déjà sur 5 ordinateurs (403 claim_used) : on le dit, et
    *  « J'ai déjà acheté » reste le chemin */
   private claimUsed = false
+  /** l'achat sert sur trop d'ordinateurs ce mois-ci (403 too_many_devices) :
+   *  on le dit calmement, avec l'adresse du support ; le plan ne change pas */
+  private tooManyDevices = false
   private restore: { email: string; challenge: string; at: number } | null = null
   private lastRestoreStart = 0
   private lastDay = ''
   private retrying = false
+  private retryTimer: ReturnType<typeof setTimeout> | null = null
+  private retryStep = 0
+  private stopped = false
+  /** version de la config au lancement (avant sa mise à jour par les
+   *  statistiques) : décide une fois « legacy » */
+  private readonly legacyAtLaunch: boolean
 
   constructor(
     private deps: LicenseDeps,
@@ -428,7 +628,11 @@ export class License {
     this.active = o.active
     this.now = o.now ?? (() => Date.now())
     this.fetchImpl = o.fetchImpl ?? (typeof fetch === 'function' ? fetch : undefined)
-    this.configUrl = o.configUrl ?? LICENSE_CONFIG_URL
+    this.baseUrl = licenseBase(o)
+    this.configUrl = o.configUrl ?? new URL('api/license/config', this.baseUrl).href
+    this.tokenEnv = o.tokenEnv ?? 'production'
+    this.store = o.markStore ?? defaultMarkStore()
+    this.legacyAtLaunch = legacyVersion(deps.cfg.lastVersion)
     this.st = blankState(false)
     this.ready = this.active ? this.init().catch(() => undefined) : Promise.resolve()
   }
@@ -450,142 +654,289 @@ export class License {
     return this.deviceIdValue
   }
 
+  /** Arrêt (fermeture du serveur) : plus de nouvelle lecture programmée. */
+  stop(): void {
+    this.stopped = true
+    if (this.retryTimer) clearTimeout(this.retryTimer)
+    this.retryTimer = null
+  }
+
   // ---------- identité de la machine et état ----------
 
   private async init(): Promise<void> {
-    let machine: string | null = null
+    // les deux lectures en même temps (chacune 8 s au plus)
+    const [machine, mark] = await Promise.all([this.readMachine(), this.readMark()])
+    this.setup(machine, mark)
+    this.inited = true
+    this.lastDay = localDay(this.now())
+    if (this.unreadable) this.scheduleRetry()
+  }
+
+  private async readMachine(): Promise<string | null> {
     try {
-      machine = await (this.o.machineId ?? (() => readMachineIdentifier()))()
+      return (await (this.o.machineId ?? (() => readMachineIdentifier()))()) || null
     } catch {
-      machine = null
+      return null
     }
-    const fromMachine = !!machine
-    if (!machine) {
-      if (!/^[0-9a-f]{32}$/.test(this.cfg.licenseFallbackId)) {
+  }
+
+  private async readMark(): Promise<{ ok: boolean; v: string | null }> {
+    try {
+      return { ok: true, v: await this.store.read() }
+    } catch {
+      return { ok: false, v: null }
+    }
+  }
+
+  /** Identité de l'appareil, clés, deuxième emplacement, puis l'état. */
+  private setup(machine: string | null, mark: { ok: boolean; v: string | null }): void {
+    const stored = this.cfg.licenseDeviceId
+    const fb = this.cfg.licenseFallbackId
+    const fbDev = /^[0-9a-f]{32}$/.test(fb) ? deviceIdFrom('fallback:' + fb) : ''
+    this.unreadable = false
+    this.degraded = false
+    if (machine) {
+      this.deviceIdValue = deviceIdFrom(machine)
+      this.key = stateKey(machine)
+    } else if (stored !== '' && stored !== fbDev) {
+      // config déjà liée à CETTE machine (identifiant lu à un lancement
+      // précédent), illisible cette fois : pas une copie, on garde l'identité
+      this.unreadable = true
+      this.deviceIdValue = stored
+      this.key = null
+    } else {
+      // jamais lu sur cette installation : identifiant aléatoire gardé
+      if (!fbDev) {
         this.cfg.licenseFallbackId = crypto.randomBytes(16).toString('hex')
         this.save()
       }
-      machine = 'fallback:' + this.cfg.licenseFallbackId
+      const m = 'fallback:' + this.cfg.licenseFallbackId
+      this.deviceIdValue = deviceIdFrom(m)
+      this.key = stateKey(m)
     }
-    const dev = deviceIdFrom(machine)
-    const stored = this.cfg.licenseDeviceId
-    this.key = stateKey(machine)
-    this.deviceIdValue = dev
-    this.degraded = !fromMachine && stored !== '' && stored !== dev
-    const mark = await this.markStore().read().catch(() => null)
-    this.markStart = parseMark(this.key, dev, mark)
+    this.key2 = sessionKey(this.deviceIdValue, (this.o.hostFingerprint ?? hostFingerprint)())
+    this.mark = null
+    if (!mark.ok) this.markStatus = 'unknown'
+    else if (mark.v === null) this.markStatus = 'absent'
+    else {
+      this.mark = parseMark(this.deviceIdValue, mark.v)
+      this.markStatus = this.mark ? 'ok' : 'invalid'
+    }
+    this.tokenCache = null
     this.loadState()
-    this.inited = true
-    this.lastDay = localDay(this.now())
   }
 
-  private markStore(): MarkStore {
-    return this.o.markStore ?? defaultMarkStore()
-  }
-
-  /** Lit et vérifie l'état signé (voir en tête du fichier). */
+  /** Lit et vérifie l'état signé, puis le confronte au deuxième emplacement
+   *  (voir en tête du fichier). */
   private loadState(): void {
-    const key = this.key!
     const dev = this.deviceIdValue
     const s = this.cfg.licenseState
     const now = this.now()
-    const cachedOn = this.cfg.licenseConfig?.enabled === true
-    const fallbackPaid = this.o.buildDefault ?? PAID_MODE_BUILD_DEFAULT
+    const today = localDay(now)
+    const remote = this.remote()
+    const cachedOn = !!remote && this.paidFrom(remote)
+    // Microsoft Store : jamais payant par défaut, seulement sur storeEnabled
+    const fallbackPaid = (this.o.buildDefault ?? PAID_MODE_BUILD_DEFAULT) && !this.storeChannel()
+    const days = remote?.trialDays ?? DEFAULT_TRIAL_DAYS
+    const m = this.mark
+    const markStart = m && m.start > 0 ? m.start : null
+    // empreinte liée à la machine, ou deuxième empreinte (écrite pendant un
+    // lancement où l'identifiant était illisible, sur cette même session)
+    const valid = !!s && ((!!this.key && macEqual(s.mac, stateMac(this.key, dev, s))) || macEqual(s.mac2, stateMac(this.key2, dev, s)))
+    // illisible ce lancement et rien de vérifiable : comme une copie, en
+    // mémoire seulement (rien n'est réécrit), jusqu'à la prochaine lecture
+    this.degraded = this.unreadable && !!s && !valid
     let st: LicenseState
-    let trusted = false
-    if (s && !this.degraded && macEqual(s.mac, stateMac(key, dev, s))) {
-      const { mac: _mac, ...rest } = s
+    let closeLimits = false
+    if (s && valid) {
+      const { mac: _mac, mac2: _mac2, ...rest } = s
       st = { ...rest, dailyFiles: { ...s.dailyFiles } }
-      trusted = true
-    } else if (!s && this.markStart === null && !cachedOn) {
-      // installation neuve, ou mode payant jamais vu : état vierge
-      st = blankState(fallbackPaid)
-      trusted = true
+      if (!SECRET_RE.test(st.claimSecret)) {
+        st.claimSecret = ''
+        st.claimAt = ''
+      }
+      // marque déjà écrite sur ce PC, puis effacée ou abîmée : une ancienne
+      // config remise avec la marque retirée ne fait pas redescendre le compteur
+      if (st.markSeen && (this.markStatus === 'absent' || this.markStatus === 'invalid')) closeLimits = true
+    } else if (!s && !m && !cachedOn) {
+      // installation neuve, ou mode payant jamais vu : état vierge (premier
+      // lancement de cette version : installation d'avant Flitdrop Pro ?)
+      st = blankState(fallbackPaid, this.legacyAtLaunch)
     } else if (!s) {
       // état effacé (config supprimée, ou clé retirée à la main) alors que le
       // mode payant avait été vu : l'essai reprend à sa vraie date de début
       // (deuxième emplacement), jamais à zéro ; sans elle, il est terminé.
       // Le compteur du jour est au maximum, jusqu'à minuit seulement.
-      const days = this.remote()?.trialDays ?? DEFAULT_TRIAL_DAYS
-      const start = this.markStart
       st = {
-        paidMode: true,
-        paidModeSeenAt: new Date(start ?? now).toISOString(),
-        trialStartAt: start !== null ? new Date(start).toISOString() : '',
-        trialEndsAt: new Date(start !== null ? start + days * DAY_MS : now).toISOString(),
-        dailyFiles: { day: localDay(now), count: FREE_DAILY_FILES },
-        token: '',
+        ...blankState(true, this.legacyAtLaunch),
+        paidModeSeenAt: new Date(markStart ?? now).toISOString(),
+        trialStartAt: markStart !== null ? new Date(markStart).toISOString() : '',
+        trialEndsAt: new Date(markStart !== null ? markStart + days * DAY_MS : now).toISOString(),
       }
+      closeLimits = true
     } else {
       // retouché à la main, ou copié d'un autre PC : on ferme les limites
       // (essai terminé, compteur du jour au maximum), jamais le reste
       const prev = s
       const ends = validTs(prev.trialEndsAt)
       st = {
-        paidMode: prev.paidMode === true || this.markStart !== null || cachedOn || fallbackPaid,
-        paidModeSeenAt: validTs(prev.paidModeSeenAt) !== null ? prev.paidModeSeenAt : this.markStart !== null ? new Date(this.markStart).toISOString() : '',
-        trialStartAt: this.markStart !== null ? new Date(this.markStart).toISOString() : validTs(prev.trialStartAt) !== null ? prev.trialStartAt : '',
+        ...blankState(prev.paidMode === true || markStart !== null || cachedOn || fallbackPaid, this.legacyAtLaunch),
+        paidModeSeenAt: validTs(prev.paidModeSeenAt) !== null ? prev.paidModeSeenAt : markStart !== null ? new Date(markStart).toISOString() : '',
+        trialStartAt: markStart !== null ? new Date(markStart).toISOString() : validTs(prev.trialStartAt) !== null ? prev.trialStartAt : '',
         trialEndsAt: new Date(ends !== null ? Math.min(ends, now) : now).toISOString(),
-        dailyFiles: { day: localDay(now), count: FREE_DAILY_FILES },
         token: typeof prev.token === 'string' ? prev.token : '',
+        seenAt: validTs(prev.seenAt) !== null ? prev.seenAt : '',
+        markSeen: prev.markSeen === true,
       }
+      closeLimits = true
     }
-    // début de l'essai : le plus ancien des deux emplacements
-    if (trusted && this.markStart !== null) {
-      const start = validTs(st.trialStartAt)
-      if (start === null || this.markStart < start) {
-        st.trialStartAt = new Date(this.markStart).toISOString()
-        const days = this.remote()?.trialDays ?? DEFAULT_TRIAL_DAYS
-        const capped = this.markStart + days * DAY_MS
+    if (m) {
+      // début de l'essai : le plus ancien des deux emplacements
+      if (markStart !== null) {
+        const start = validTs(st.trialStartAt)
+        if (start === null || markStart < start) {
+          st.trialStartAt = new Date(markStart).toISOString()
+          const capped = markStart + days * DAY_MS
+          const ends = validTs(st.trialEndsAt)
+          st.trialEndsAt = new Date(ends === null ? capped : Math.min(ends, capped)).toISOString()
+          st.paidModeSeenAt ||= st.trialStartAt
+        }
+      }
+      // fin de l'essai : la plus proche (une ancienne config ne fait pas
+      // revenir un essai terminé)
+      if (m.ends > 0) {
         const ends = validTs(st.trialEndsAt)
-        st.trialEndsAt = new Date(ends === null ? capped : Math.min(ends, capped)).toISOString()
-        st.paidModeSeenAt ||= st.trialStartAt
+        if (ends === null || m.ends < ends) st.trialEndsAt = new Date(m.ends).toISOString()
       }
+      // compteur du jour : jamais plus bas que la marque, jamais un jour plus ancien
+      st.dailyFiles = laterDaily(st.dailyFiles, { day: m.day, count: m.count })
     }
-    // jeton : seulement s'il est signé par nous et pour CETTE machine
-    if (st.token && !this.degraded && !verifyToken(st.token, dev, this.pub()).ok) st.token = ''
+    if (closeLimits) {
+      // compteur au maximum pour le jour le plus tardif vu (minuit le libère)
+      const d = st.dailyFiles
+      const day = d.day > today ? d.day : today
+      st.dailyFiles = { day, count: Math.max(FREE_DAILY_FILES, day === d.day ? d.count : 0) }
+    }
+    if (this.markStatus === 'ok') st.markSeen = true
+    this.seenMs = Math.max(validTs(st.seenAt) ?? 0, m?.seen ?? 0)
+    // jeton : seulement s'il est signé par nous, pour CETTE machine et le bon
+    // environnement (en mode dégradé il est gardé, mais ne compte pas)
+    if (st.token && !this.degraded && !verifyToken(st.token, dev, this.pub(), this.tokenEnv).ok) st.token = ''
     this.st = st
     if (this.degraded) return
-    if (this.cfg.licenseDeviceId !== dev) this.cfg.licenseDeviceId = dev
+    if (!this.unreadable && this.cfg.licenseDeviceId !== dev) this.cfg.licenseDeviceId = dev
     this.commit()
-    // essai commencé sans marque valide ailleurs : on la (re)pose
-    const start = validTs(st.trialStartAt)
-    if (start !== null && (this.markStart === null || this.markStart > start)) void this.writeMark(start)
+    // deuxième emplacement à jour (mode payant seulement)
+    if (this.markOutdated()) this.writeMark()
   }
 
   private pub(): string {
     return this.o.publicKey ?? LICENSE_PUBLIC_KEY
   }
 
-  /** Signe et enregistre l'état (jamais en mode dégradé). */
+  /** Signe et enregistre l'état (jamais en mode dégradé). Identifiant de la
+   *  machine illisible ce lancement : seule la deuxième empreinte est posée. */
   private commit(): void {
-    if (this.degraded || !this.key) return
-    const mac = stateMac(this.key, this.deviceIdValue, this.st)
-    const stored: LicenseStateStored = { ...this.st, dailyFiles: { ...this.st.dailyFiles }, mac }
+    if (this.degraded || !this.deviceIdValue) return
+    const dev = this.deviceIdValue
+    const mac = this.key ? stateMac(this.key, dev, this.st) : ''
+    const mac2 = stateMac(this.key2, dev, this.st)
+    const stored: LicenseStateStored = { ...this.st, dailyFiles: { ...this.st.dailyFiles }, mac, mac2 }
     this.cfg.licenseState = stored
+    this.seenSavedMs = validTs(this.st.seenAt) ?? 0
     this.save()
   }
 
-  private async writeMark(startMs: number): Promise<void> {
-    if (!this.key || this.degraded) return
-    const ok = await this.markStore()
-      .write(markValue(this.key, this.deviceIdValue, startMs))
-      .catch(() => false)
-    if (ok) this.markStart = startMs
+  /** Heure la plus tardive vue, notée dans l'état (à enregistrer ensuite). */
+  private touchSeen(): void {
+    this.seenMs = Math.max(this.seenMs, this.now())
+    this.st.seenAt = new Date(this.seenMs).toISOString()
   }
 
-  /** Identifiant de la machine illisible au lancement : on réessaie (minuterie
-   *  existante, toutes les 10 minutes) ; relu, tout redevient normal. */
+  private markData(): MarkData {
+    const st = this.st
+    return {
+      start: validTs(st.trialStartAt) ?? 0,
+      ends: validTs(st.trialEndsAt) ?? 0,
+      day: st.dailyFiles.day,
+      count: Math.min(9_999_999, Math.max(0, Math.floor(st.dailyFiles.count))),
+      seen: Math.max(0, this.seenMs),
+    }
+  }
+
+  private markOutdated(): boolean {
+    if (!this.st.paidMode || this.markStatus === 'unknown' || this.degraded) return false
+    const m = this.mark
+    const d = this.markData()
+    return !m || this.markStatus !== 'ok' || m.start !== d.start || m.ends !== d.ends || m.day !== d.day || m.count !== d.count || d.seen - m.seen >= HOUR_MS
+  }
+
+  /** Met le deuxième emplacement à jour : en mode payant seulement, jamais en
+   *  mode dégradé ni sur une marque illisible ce lancement (on écraserait un
+   *  compteur plus haut). Écrit dès l'appel, sans file d'attente : le fichier
+   *  (macOS, Linux) de façon synchrone, le registre (Windows) par reg.exe
+   *  lancé tout de suite ; un arrêt brutal ne perd au pire que le dernier
+   *  fichier compté dans la marque (la config, elle, l'a). */
+  private writeMark(): void {
+    if (!this.st.paidMode || this.markStatus === 'unknown' || this.degraded || !this.deviceIdValue) return
+    const data = this.markData()
+    this.mark = data
+    const v = markValue(this.deviceIdValue, data)
+    if (this.store.writeSync) {
+      let ok = false
+      try {
+        ok = this.store.writeSync(v)
+      } catch {
+        ok = false
+      }
+      this.markWritten(ok)
+      return
+    }
+    this.store.write(v).then(
+      (ok) => this.markWritten(ok),
+      () => {}
+    )
+  }
+
+  /** Première écriture confirmée : la marque existe désormais sur ce PC. */
+  private markWritten(ok: boolean): void {
+    if (!ok || this.markStatus === 'ok') return
+    this.markStatus = 'ok'
+    if (!this.st.markSeen && !this.degraded) {
+      this.st.markSeen = true
+      this.commit()
+    }
+  }
+
+  /** Nouvelle lecture de l'identifiant, programmée (5 s, 30 s, 2 min), puis
+   *  la minuterie existante (tick) prend le relais. */
+  private scheduleRetry(): void {
+    if (this.retryTimer || this.stopped || !this.unreadable) return
+    const delays = this.o.machineRetryMs ?? MACHINE_RETRY_MS
+    const delay = delays[this.retryStep]
+    if (delay === undefined) return
+    this.retryStep++
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null
+      void this.retryMachine().then(() => this.scheduleRetry())
+    }, delay)
+    this.retryTimer.unref?.()
+  }
+
+  /** Identifiant de la machine illisible au lancement : relu. Identique :
+   *  tout redevient normal. Différent : c'est une copie, les limites se
+   *  ferment à ce moment (comme au lancement). */
   private async retryMachine(): Promise<void> {
-    if (this.retrying) return
+    if (this.retrying || !this.unreadable || this.stopped) return
     this.retrying = true
     try {
-      const machine = await (this.o.machineId ?? (() => readMachineIdentifier()))().catch(() => null)
-      if (machine && deviceIdFrom(machine) === this.cfg.licenseDeviceId) {
-        const before = this.plan()
-        await this.init()
-        if (this.plan() !== before) this.changed()
-      }
+      const machine = await this.readMachine()
+      if (!machine || this.stopped) return
+      const mark = await this.readMark()
+      const before = this.plan()
+      const beforeCard = this.card()
+      this.setup(machine, mark)
+      if (this.plan() !== before || this.card() !== beforeCard) this.changed()
     } finally {
       this.retrying = false
     }
@@ -598,7 +949,7 @@ export class License {
   }
 
   private apiUrl(p: string): string {
-    return new URL(p, new URL('./', this.configUrl)).href
+    return new URL('api/license/' + p, this.baseUrl).href
   }
 
   private async request(url: string, init: RequestInit): Promise<NetResult> {
@@ -619,7 +970,14 @@ export class License {
           body = {}
         }
       }
-      return { status: r.status, body }
+      let date: number | null = null
+      try {
+        const d = Date.parse(r.headers?.get?.('date') ?? '')
+        date = Number.isFinite(d) && d > Date.UTC(2020, 0, 1) && d < Date.UTC(2100, 0, 1) ? d : null
+      } catch {
+        date = null
+      }
+      return { status: r.status, body, date }
     } catch {
       // hors ligne, DNS, délai dépassé : jamais d'erreur
       return null
@@ -646,17 +1004,46 @@ export class License {
     this.cfg.licenseConfig = rc as unknown as Record<string, unknown>
     this.cfg.licenseConfigAt = new Date(this.now()).toISOString()
     this.save()
-    if (this.st.paidMode !== rc.enabled) {
-      this.st.paidMode = rc.enabled
+    let dirty = false
+    const on = this.paidFrom(rc)
+    if (this.st.paidMode !== on) {
+      this.st.paidMode = on
+      dirty = true
+    }
+    // date donnée par flitdrop.com : borne l'essai même si l'horloge du PC
+    // est retenue en arrière
+    if (r.date !== null && r.date > this.seenMs) {
+      this.seenMs = r.date
+      if (this.st.paidMode && r.date - this.seenSavedMs >= HOUR_MS) {
+        this.st.seenAt = new Date(r.date).toISOString()
+        dirty = true
+      }
+    }
+    if (dirty) {
       this.commit()
+      this.writeMark()
     }
     this.startTrialIfNeeded()
     if (this.plan() !== before || this.card() !== beforeCard) this.changed()
   }
 
+  private storeChannel(): boolean {
+    try {
+      return this.o.storeChannel?.() === true
+    } catch {
+      return false
+    }
+  }
+
+  /** Mode payant pour CETTE installation : interrupteur du serveur, et pour
+   *  le Microsoft Store, storeEnabled en plus (absent : gratuit, comme avant). */
+  private paidFrom(rc: RemoteConfig): boolean {
+    return rc.enabled && (!this.storeChannel() || rc.storeEnabled)
+  }
+
   /** Mode payant vu pour la première fois : l'essai commence (une fois). */
   private startTrialIfNeeded(): void {
-    if (!this.inited || !this.st.paidMode || this.st.trialEndsAt) return
+    if (!this.inited || !this.st.paidMode || this.st.trialEndsAt || this.degraded) return
     const now = this.now()
     const remote = this.remote()
     const days = remote?.trialDays ?? DEFAULT_TRIAL_DAYS
@@ -665,36 +1052,46 @@ export class License {
     // installation neuve (après le lancement du mode payant) : depuis son
     // premier lancement ; installation existante : depuis maintenant
     let start = Number.isFinite(launched) && Number.isFinite(installed) && installed >= launched && installed <= now ? installed : now
-    if (this.markStart !== null && this.markStart < start) start = this.markStart
+    if (this.mark && this.mark.start > 0 && this.mark.start < start) start = this.mark.start
     this.st.paidModeSeenAt ||= new Date(now).toISOString()
     this.st.trialStartAt = new Date(start).toISOString()
     this.st.trialEndsAt = new Date(start + days * DAY_MS).toISOString()
+    this.touchSeen()
     this.commit()
-    if (this.markStart === null || this.markStart > start) void this.writeMark(start)
+    this.writeMark()
   }
 
   // ---------- plan ----------
 
   private tokenCheck(): TokenCheck | null {
     const tok = this.st.token
-    if (!tok) return null
-    if (this.tokenCache?.token !== tok) this.tokenCache = { token: tok, check: verifyToken(tok, this.deviceIdValue, this.pub()) }
+    // mode dégradé : l'état n'est pas vérifiable, son jeton ne compte pas
+    if (!tok || this.degraded) return null
+    if (this.tokenCache?.token !== tok) this.tokenCache = { token: tok, check: verifyToken(tok, this.deviceIdValue, this.pub(), this.tokenEnv) }
     return this.tokenCache.check
+  }
+
+  /** Heure de référence de l'essai : jamais avant la plus tardive vue. */
+  private latestNow(): number {
+    return Math.max(this.now(), this.seenMs)
   }
 
   plan(): Plan {
     if (!this.active || !this.inited || !this.st.paidMode) return 'off'
+    // Microsoft Store : comme avant tant que le serveur ne l'allume pas
+    if (this.storeChannel() && this.remote()?.storeEnabled !== true) return 'off'
     const chk = this.tokenCheck()
     if (chk?.ok && tokenUsable(chk.payload, this.now())) return 'pro'
     const ends = validTs(this.st.trialEndsAt)
-    if (ends !== null && this.now() < ends) return 'trial'
+    if (ends !== null && this.latestNow() < ends) return 'trial'
     return 'free'
   }
 
   /** Fonctions d'avant Flitdrop Pro réservées à Pro (synchro automatique du
-   *  presse-papiers, historique complet) : ouvertes sauf en gratuit. */
+   *  presse-papiers, historique complet) : ouvertes sauf en gratuit, et
+   *  toujours pour une installation d'avant Flitdrop Pro. */
   fullFeatures(): boolean {
-    return this.plan() !== 'free'
+    return this.plan() !== 'free' || this.st.legacy
   }
 
   /** Photos et vidéos rangées par mois : nouveauté Pro (essai ou Pro), et
@@ -706,7 +1103,7 @@ export class License {
 
   trialDaysLeft(): number {
     const ends = validTs(this.st.trialEndsAt)
-    return ends === null ? 0 : Math.max(0, Math.ceil((ends - this.now()) / DAY_MS))
+    return ends === null ? 0 : Math.max(0, Math.ceil((ends - this.latestNow()) / DAY_MS))
   }
 
   // ---------- limite du jour ----------
@@ -715,9 +1112,12 @@ export class License {
     return this.plan() === 'free'
   }
 
+  /** Fichiers comptés aujourd'hui. Horloge reculée (jour plus ancien que le
+   *  dernier compté) : le compteur de ce dernier jour, jamais un jour neuf. */
   dailyUsed(): number {
     const d = this.st.dailyFiles
-    return d.day === localDay(this.now()) ? d.count : 0
+    if (!d.day) return 0
+    return localDay(this.now()) <= d.day ? d.count : 0
   }
 
   /** Fichiers encore possibles aujourd'hui (Infinity sans limite). */
@@ -731,13 +1131,18 @@ export class License {
     return !this.limited() || this.dailyUsed() + Math.max(0, inFlight) < FREE_DAILY_FILES
   }
 
-  /** Compte des fichiers arrivés ou envoyés (gratuit seulement). */
+  /** Compte des fichiers arrivés ou envoyés (gratuit seulement), aussi dans
+   *  le deuxième emplacement. */
   countFiles(n = 1): void {
     if (!this.limited() || !(n > 0)) return
     const today = localDay(this.now())
-    if (this.st.dailyFiles.day !== today) this.st.dailyFiles = { day: today, count: 0 }
+    const d = this.st.dailyFiles
+    // nouveau jour ; horloge reculée : le compteur du dernier jour continue
+    if (!d.day || today > d.day) this.st.dailyFiles = { day: today, count: 0 }
     this.st.dailyFiles.count = Math.min(1_000_000, this.st.dailyFiles.count + Math.floor(n))
+    this.touchSeen()
     this.commit()
+    this.writeMark()
     if (this.st.dailyFiles.count >= FREE_DAILY_FILES) this.limitReached()
   }
 
@@ -756,17 +1161,45 @@ export class License {
     this.changed()
   }
 
-  price(): string {
-    const remote = this.remote()
-    const map = remote && Object.keys(remote.displayPrice).length > 0 ? remote.displayPrice : DEFAULT_PRICES
-    const cur = currencyFor(this.o.systemLocale ?? Intl.DateTimeFormat().resolvedOptions().locale)
-    return map[cur] ?? map.EUR ?? Object.values(map)[0] ?? DEFAULT_PRICES.EUR!
+  private currency(): string {
+    return currencyFor(this.o.systemLocale ?? Intl.DateTimeFormat().resolvedOptions().locale)
   }
 
+  /** Prix affichés : ceux du serveur, sinon ceux de l'app. */
+  private priceMapShown(): Record<string, string> {
+    const remote = this.remote()
+    return remote && Object.keys(remote.displayPrice).length > 0 ? remote.displayPrice : DEFAULT_PRICES
+  }
+
+  /** Devise du prix affiché : celle du système si le prix existe, sinon l'euro. */
+  private priceKey(map: Record<string, string>): string {
+    const cur = this.currency()
+    if (map[cur]) return cur
+    if (map.EUR) return 'EUR'
+    return Object.keys(map)[0] ?? 'EUR'
+  }
+
+  /** Prix affiché partout (bouton, cartes, téléphone) : celui du pays de la
+   *  personne s'il est donné, sinon celui de la devise devinée par la langue
+   *  du système. */
+  price(): string {
+    const local = this.remote()?.price
+    if (local) return local.display
+    const map = this.priceMapShown()
+    return map[this.priceKey(map)] ?? DEFAULT_PRICES.EUR!
+  }
+
+  /** Prix de lancement : celui que donne le serveur (pays de la personne,
+   *  sinon displayPriceEarly dans la devise du prix affiché) ; calculé
+   *  (moitié) seulement si le serveur n'en donne aucun. Jamais un prix
+   *  inventé quand le serveur en donne. */
   private earlyPrice(): string | null {
     const remote = this.remote()
-    const cur = currencyFor(this.o.systemLocale ?? Intl.DateTimeFormat().resolvedOptions().locale)
-    return remote?.displayPriceEarly[cur] ?? halfPrice(this.price())
+    const local = remote?.price
+    if (local?.displayEarly) return local.displayEarly
+    const early = remote?.displayPriceEarly ?? {}
+    if (Object.keys(early).length > 0) return early[local ? local.currency : this.priceKey(this.priceMapShown())] ?? null
+    return halfPrice(this.price())
   }
 
   /** Prix réellement proposé à CETTE installation (celui de lancement quand
@@ -819,11 +1252,16 @@ export class License {
     if (this.waiting && plan !== 'pro') return 'waiting'
     if (this.justUnlocked && plan === 'pro') return 'success'
     if (this.claimUsed && plan !== 'pro') return 'used'
+    if (this.tooManyDevices && plan !== 'pro') return 'devices'
     const p = this.cfg.proPromptsShown
     const today = localDay(this.now())
     const shownToday = p.day === today
     if (plan === 'free' && this.dailyUsed() >= FREE_DAILY_FILES) {
       if (!shownToday || (p.kind === 'limit' && !p.closed)) return 'limit'
+    }
+    // installation d'avant Flitdrop Pro : le début de l'essai expliqué, une fois
+    if (plan === 'trial' && this.st.legacy) {
+      if ((!shownToday && p.welcome === 0) || (shownToday && p.kind === 'welcome' && !p.closed)) return 'welcome'
     }
     if (plan === 'trial' && this.trialDaysLeft() <= 2) {
       if ((!shownToday && p.trial === 0) || (shownToday && p.kind === 'trial' && !p.closed)) return 'trial'
@@ -843,16 +1281,19 @@ export class License {
       closed: false,
       limit: p.limit + (where === 'limit' ? 1 : 0),
       trial: p.trial + (where === 'trial' ? 1 : 0),
+      welcome: p.welcome + (where === 'welcome' ? 1 : 0),
     }
     this.save()
-    this.deps.track('pro_prompt_shown', { where })
+    // la carte d'accueil n'est pas une invitation à acheter : pas de statistique
+    if (where !== 'welcome') this.deps.track('pro_prompt_shown', { where })
   }
 
   /** « Plus tard », « Super » : la carte se range (pas l'attente du paiement). */
   closeCard(): void {
-    if (this.justUnlocked || this.claimUsed) {
+    if (this.justUnlocked || this.claimUsed || this.tooManyDevices) {
       this.justUnlocked = false
       this.claimUsed = false
+      this.tooManyDevices = false
       return
     }
     const p = this.cfg.proPromptsShown
@@ -862,10 +1303,29 @@ export class License {
     }
   }
 
+  /** « Nous écrire » : la messagerie du système, vers l'adresse du support
+   *  (adresse fixe, jamais reçue de la page). */
+  contactSupport(): void {
+    try {
+      this.deps.openUrl(SUPPORT_MAILTO)
+    } catch {
+      // pas de messagerie : l'adresse est écrite dans la carte
+    }
+  }
+
   // ---------- achat ----------
 
+  /** Achat en attente oublié (payé, annulé, refusé) : le secret part. */
+  private clearClaim(): void {
+    if (!this.st.claimSecret && !this.st.claimAt) return
+    this.st.claimSecret = ''
+    this.st.claimAt = ''
+    this.commit()
+  }
+
   /** Ouvre la page d'achat (navigateur du système) et attend le paiement.
-   *  `reopen` : même achat, page rouverte (pas recompté). */
+   *  `reopen` : même achat, page rouverte (pas recompté). L'adresse ne porte
+   *  que le claim, empreinte d'un secret qui reste dans l'app. */
   checkout(where: CheckoutWhere, reopen = false): { ok: boolean; url?: string } {
     const plan = this.plan()
     if (plan === 'off' || plan === 'pro' || this.degraded || !this.deviceIdValue) return { ok: false }
@@ -873,14 +1333,18 @@ export class License {
     const now = this.now()
     const early = this.earlyUntil() !== null
     this.claimUsed = false
-    const claim = this.waiting?.claim ?? crypto.randomBytes(16).toString('hex')
-    const origin = new URL(this.configUrl).origin
-    const url = `${origin}/pro?claim=${claim}&lang=${this.deps.lang()}${early ? '&early=1' : ''}`
-    if (!this.waiting) {
-      this.waiting = { claim, since: now, where, early }
-      this.cfg.licenseClaim = { claim, at: new Date(now).toISOString() }
-      this.save()
-    } else if (!reopen) {
+    this.tooManyDevices = false
+    // même achat tant qu'il a moins de 48 h (page déjà payée, puis recliquée)
+    const at = Date.parse(this.st.claimAt)
+    if (!SECRET_RE.test(this.st.claimSecret) || !Number.isFinite(at) || now - at > CLAIM_KEEP_MS) {
+      this.st.claimSecret = crypto.randomBytes(32).toString('hex')
+      this.st.claimAt = new Date(now).toISOString()
+      this.commit()
+    }
+    const claim = claimFromSecret(this.st.claimSecret)
+    const url = `${new URL('pro', this.baseUrl).href}?claim=${claim}&lang=${this.deps.lang()}${early ? '&early=1' : ''}`
+    if (!this.waiting) this.waiting = { since: now, where, early }
+    else if (!reopen) {
       // nouveau clic après 30 minutes : la vérification automatique repart
       this.waiting.since = now
     }
@@ -895,64 +1359,85 @@ export class License {
   }
 
   /** Le paiement est-il arrivé ? Automatique (toutes les 5 s, carte visible,
-   *  30 minutes au plus) ou « J'ai payé » (`manual`). */
-  async claim(manual: boolean): Promise<'unlocked' | 'pending' | 'stopped' | 'offline' | 'used' | 'none'> {
+   *  30 minutes au plus) ou « J'ai payé » (`manual`). Le secret part vers le
+   *  serveur des licences, et nulle part ailleurs. */
+  async claim(manual: boolean): Promise<ClaimResult | 'stopped' | 'none'> {
     const w = this.waiting
-    if (!w) return this.plan() === 'pro' ? 'unlocked' : 'none'
+    if (!w || !SECRET_RE.test(this.st.claimSecret)) return this.plan() === 'pro' ? 'unlocked' : 'none'
     const now = this.now()
     if (!manual && now - w.since > CLAIM_POLL_MAX_MS) return 'stopped'
     if (this.claimInFlight) return this.claimInFlight
     if (now - this.lastClaimAt < (manual ? 1000 : CLAIM_MIN_GAP_MS)) return 'pending'
     this.lastClaimAt = now
-    this.claimInFlight = (async () => {
-      const r = await this.post('claim', { claim: w.claim, device: this.deviceIdValue })
-      if (!r) return 'offline' as const
-      if (r.status === 200 && this.acceptToken(r.body.token, 'purchase')) return 'unlocked' as const
-      if (r.status === 403 && r.body.error === 'claim_used') {
-        this.claimWasUsed()
-        return 'used' as const
-      }
+    const secret = this.st.claimSecret
+    this.claimInFlight = (async (): Promise<ClaimResult> => {
+      const r = await this.post('claim', { secret, device: this.deviceIdValue })
+      if (!r) return 'offline'
+      if (r.status === 200 && this.acceptToken(r.body.token, 'purchase')) return 'unlocked'
+      const refused = this.claimRefused(r)
+      if (refused) return refused
       // 202 en attente, 429 trop de demandes, 503 indisponible : on garde
       // l'état et on redemande plus tard
-      return 'pending' as const
+      return 'pending'
     })().finally(() => {
       this.claimInFlight = null
     })
     return this.claimInFlight
   }
 
-  /** Achat déjà utilisé sur 5 ordinateurs : plus d'attente ni de
-   *  vérification ; la carte l'explique et renvoie vers « J'ai déjà acheté ». */
-  private claimWasUsed(): void {
+  /** Refus définitifs du serveur pour cet achat : plus d'attente ni de
+   *  vérification, le plan ne change pas, la carte l'explique. */
+  private claimRefused(r: { status: number; body: Record<string, unknown> }): 'used' | 'devices' | null {
+    if (r.status !== 403) return null
+    if (r.body.error === 'claim_used') {
+      // déjà utilisé sur 5 ordinateurs : « J'ai déjà acheté » reste le chemin
+      this.endWaiting()
+      this.claimUsed = true
+      this.changed()
+      return 'used'
+    }
+    if (r.body.error === 'too_many_devices') {
+      // trop d'ordinateurs ce mois-ci : le support s'en occupe
+      this.endWaiting()
+      this.tooManyDevices = true
+      this.changed()
+      return 'devices'
+    }
+    return null
+  }
+
+  private endWaiting(): void {
     this.waiting = null
-    this.cfg.licenseClaim = null
-    this.save()
-    this.claimUsed = true
-    this.changed()
+    this.clearClaim()
   }
 
   cancelCheckout(): void {
     if (!this.waiting) return
-    this.waiting = null
-    this.cfg.licenseClaim = null
-    this.save()
+    this.endWaiting()
     this.changed()
   }
 
   /** Jeton reçu (achat ou restauration) : gardé seulement s'il est signé par
-   *  nous, pour CETTE machine, et encore valable. */
+   *  nous, pour CETTE machine, du bon environnement, et encore valable. */
   private acceptToken(token: unknown, how: 'purchase' | 'restore'): boolean {
     if (this.degraded) return false
-    const chk = verifyToken(token, this.deviceIdValue, this.pub())
+    const chk = verifyToken(token, this.deviceIdValue, this.pub(), this.tokenEnv)
     if (!chk.ok || !tokenUsable(chk.payload, this.now())) return false
     this.st.token = token as string
+    this.st.claimSecret = ''
+    this.st.claimAt = ''
     this.commit()
     this.waiting = null
     this.restore = null
-    this.cfg.licenseClaim = null
-    this.save()
+    this.claimUsed = false
+    this.tooManyDevices = false
     this.justUnlocked = true
     this.deps.track('pro_unlocked', { how })
+    try {
+      this.deps.unlocked?.(how)
+    } catch {
+      // réglages non critiques
+    }
     this.changed()
     return true
   }
@@ -977,7 +1462,7 @@ export class License {
     return { error: r.status === 429 ? 'busy' : 'error' }
   }
 
-  async restoreVerify(code: unknown): Promise<{ ok: true } | { error: 'code' | 'expired' | 'nopurchase' | 'offline' | 'busy' | 'nochallenge' | 'error' }> {
+  async restoreVerify(code: unknown): Promise<{ ok: true } | { error: 'code' | 'expired' | 'nopurchase' | 'devices' | 'offline' | 'busy' | 'nochallenge' | 'error' }> {
     const rs = this.restore
     if (!rs) return { error: 'nochallenge' }
     const c = normalizeRestoreCode(code)
@@ -987,6 +1472,8 @@ export class License {
     if (r.status === 200 && this.acceptToken(r.body.token, 'restore')) return { ok: true }
     const e = r.body.error
     if (r.status === 400 && (e === 'code' || e === 'expired' || e === 'nopurchase')) return { error: e }
+    // achat utilisé sur trop d'ordinateurs ce mois-ci : le plan ne change pas
+    if (r.status === 403 && e === 'too_many_devices') return { error: 'devices' }
     return { error: r.status === 429 ? 'busy' : 'error' }
   }
 
@@ -999,9 +1486,13 @@ export class License {
 
   // ---------- renouvellement ----------
 
-  /** Jeton qui expire dans moins de 10 jours : renouvelé, une fois par jour. */
+  /** Jeton qui expire dans moins de 10 jours : renouvelé, une fois par jour.
+   *  Seul un refus explicite (403 revoked) retire le jeton : hors ligne,
+   *  429, 5xx ou réponse inattendue, il reste tel quel jusqu'à son échéance
+   *  + 7 jours. Pas pendant une session où l'identifiant de la machine est
+   *  illisible (une config copiée ne se prolonge pas ainsi). */
   async maybeRenew(): Promise<void> {
-    if (!this.active || this.degraded || !this.st.paidMode || !this.st.token) return
+    if (!this.active || this.degraded || this.unreadable || !this.st.paidMode || !this.st.token) return
     const chk = this.tokenCheck()
     if (!chk?.ok) return
     const now = this.now()
@@ -1010,11 +1501,12 @@ export class License {
     if (this.cfg.licenseRenewDay === today) return
     this.cfg.licenseRenewDay = today
     this.save()
-    const r = await this.post('renew', { token: this.st.token, device: this.deviceIdValue })
-    if (!r) return
+    const sent = this.st.token
+    const r = await this.post('renew', { token: sent, device: this.deviceIdValue })
+    if (!r || this.st.token !== sent) return
     const before = this.plan()
     if (r.status === 200) {
-      const fresh = verifyToken(r.body.token, this.deviceIdValue, this.pub())
+      const fresh = verifyToken(r.body.token, this.deviceIdValue, this.pub(), this.tokenEnv)
       if (fresh.ok && fresh.payload.exp >= chk.payload.exp) {
         this.st.token = r.body.token as string
         this.commit()
@@ -1044,31 +1536,37 @@ export class License {
   /** Achat commencé lors d'un lancement précédent (moins de 48 h) : une
    *  seule vérification silencieuse, sans attente ni carte. */
   private async launchClaimCheck(): Promise<void> {
-    const c = this.cfg.licenseClaim
-    if (!c) return
-    const at = Date.parse(c.at)
-    if (!Number.isFinite(at) || this.now() - at > CLAIM_KEEP_MS || !/^[0-9a-f]{32}$/.test(c.claim)) {
-      this.cfg.licenseClaim = null
-      this.save()
+    const secret = this.st.claimSecret
+    if (!secret) return
+    const at = Date.parse(this.st.claimAt)
+    if (!SECRET_RE.test(secret) || !Number.isFinite(at) || this.now() - at > CLAIM_KEEP_MS) {
+      this.clearClaim()
       return
     }
     const plan = this.plan()
     if ((plan !== 'free' && plan !== 'trial') || this.degraded) return
-    const r = await this.post('claim', { claim: c.claim, device: this.deviceIdValue })
+    const r = await this.post('claim', { secret, device: this.deviceIdValue })
     if (r && r.status === 200) this.acceptToken(r.body.token, 'purchase')
-    else if (r && r.status === 403 && r.body.error === 'claim_used') this.claimWasUsed()
+    else if (r) this.claimRefused(r)
   }
 
   /** Appelé par une minuterie qui existe déjà (toutes les 10 minutes) :
    *  configuration au plus une fois par jour (une heure après un échec),
-   *  renouvellement, changement de jour. Aucune minuterie à soi. */
+   *  renouvellement, heure vue, changement de jour, et nouvelle lecture de
+   *  l'identifiant de la machine s'il était illisible. Aucune minuterie à soi. */
   tick(): void {
     if (!this.active || !this.inited) return
-    if (this.degraded) void this.retryMachine()
+    if (this.unreadable) void this.retryMachine()
     const now = this.now()
     const okAt = Date.parse(this.cfg.licenseConfigAt) || 0
     if (now - okAt >= DAY_MS && now - this.lastConfigAttempt >= HOUR_MS) void this.refreshConfig()
     void this.maybeRenew()
+    // heure la plus tardive vue : enregistrée au plus une fois par heure
+    if (this.st.paidMode && !this.degraded && Math.max(now, this.seenMs) - this.seenSavedMs >= HOUR_MS) {
+      this.touchSeen()
+      this.commit()
+      this.writeMark()
+    }
     const today = localDay(now)
     if (today !== this.lastDay) {
       // minuit : nouveau compteur, peut-être une carte de fin d'essai
@@ -1103,6 +1601,7 @@ export class License {
       waiting: this.waiting ? { since: new Date(this.waiting.since).toISOString(), polling: now - this.waiting.since <= CLAIM_POLL_MAX_MS } : null,
       restoreEmail: this.restore?.email ?? null,
     }
+    if (this.st.legacy) out.legacy = true
     if (plan === 'trial') {
       out.trialDaysLeft = this.trialDaysLeft()
       out.trialEndsAt = this.st.trialEndsAt

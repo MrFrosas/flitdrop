@@ -129,9 +129,11 @@ interface ProStateUI {
   price?: string
   earlyPrice?: string
   earlyUntil?: string
-  card?: 'limit' | 'trial' | 'waiting' | 'success' | 'used' | null
+  card?: 'limit' | 'trial' | 'welcome' | 'waiting' | 'success' | 'used' | 'devices' | null
   waiting?: { since: string; polling: boolean } | null
   restoreEmail?: string | null
+  /** installation d'avant Flitdrop Pro : presse-papiers complet gratuit */
+  legacy?: boolean
 }
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
@@ -445,21 +447,27 @@ function renderSettings() {
   ;($('setMax') as unknown as HTMLSelectElement).value = String(state.config.maxFileMB)
   ;($('setApproval') as unknown as HTMLInputElement).checked = state.config.requireApproval
   // Flitdrop Pro : synchro automatique du presse-papiers réservée à Pro en
-  // gratuit (grisée), dossiers par mois cachés quand le mode payant est coupé
+  // gratuit (grisée ; toujours ouverte pour une installation d'avant Flitdrop
+  // Pro), dossiers par mois cachés quand le mode payant est coupé
   const plan = proPlan()
   const locked = plan === 'free'
+  const legacy = state.pro?.legacy === true
+  const clipLocked = locked && !legacy
   const clipBox = $('setClipboard') as unknown as HTMLInputElement
-  clipBox.checked = state.config.clipboardAutoPush && !locked
-  clipBox.disabled = locked
+  clipBox.checked = state.config.clipboardAutoPush && !clipLocked
+  clipBox.disabled = clipLocked
   const monthBox = $('setMonthFolders') as unknown as HTMLInputElement
   monthBox.checked = state.config.sortPhotosByMonth !== false && (plan === 'trial' || plan === 'pro')
   monthBox.disabled = locked
   $('setMonthRow').classList.toggle('hidden', plan === 'off' || state.config.sortPhotosByMonth === undefined)
-  for (const id of ['setClipboardRow', 'setMonthRow']) {
+  for (const [id, rowLocked, free] of [
+    ['setClipboardRow', clipLocked, legacy],
+    ['setMonthRow', locked, false],
+  ] as const) {
     const row = $(id)
-    row.classList.toggle('locked', locked)
-    row.querySelector('[data-pro-badge]')?.classList.toggle('hidden', plan !== 'free' && plan !== 'trial')
-    row.title = locked ? t('pro.only') : ''
+    row.classList.toggle('locked', rowLocked)
+    row.querySelector('[data-pro-badge]')?.classList.toggle('hidden', free || (plan !== 'free' && plan !== 'trial'))
+    row.title = rowLocked ? t('pro.only') : ''
   }
   ;($('setShortcuts') as unknown as HTMLInputElement).checked = state.config.shortcutsEnabled
   ;($('setAutoUpdate') as unknown as HTMLInputElement).checked = state.config.autoUpdate
@@ -1605,7 +1613,7 @@ const fmtDay = (iso?: string): string => {
 
 // « J'ai déjà acheté » ouvert, et dernier message sous la restauration
 let restoreOpen = false
-let restoreMsg: { text: string; err: boolean } | null = null
+let restoreMsg: { text: string; err: boolean; code?: string } | null = null
 // message sous la carte d'attente du paiement
 let claimStatus = ''
 // vérification du paiement : une à la fois, toutes les 5 s, seulement carte
@@ -1628,7 +1636,7 @@ function renderProSection() {
         ? tp(lang, 'pro.status.trial', pro.trialDaysLeft ?? 0)
         : t('pro.status.free', { used: pro.used ?? 0, limit: pro.limit ?? 30 })
   $('proOffer').classList.toggle('hidden', plan === 'pro')
-  $('proFree').textContent = t('pro.freeForever', { n: pro.limit ?? 30 })
+  $('proFree').textContent = t('pro.free', { n: pro.limit ?? 30 })
   const early = $('proEarly')
   early.classList.toggle('hidden', !pro.earlyPrice || !pro.price)
   if (pro.earlyPrice && pro.price) early.textContent = t('pro.early', { early: pro.earlyPrice, price: pro.price, date: fmtDay(pro.earlyUntil) })
@@ -1638,7 +1646,7 @@ function renderProSection() {
   renderRestore()
 }
 
-const RESTORE_ERRORS = new Set(['code', 'expired', 'nopurchase', 'email', 'busy', 'nochallenge'])
+const RESTORE_ERRORS = new Set(['code', 'expired', 'nopurchase', 'email', 'busy', 'nochallenge', 'devices'])
 const restoreErrText = (e: unknown): string =>
   e === 'offline' ? t('pro.err.offline') : t('pro.restore.err.' + (typeof e === 'string' && RESTORE_ERRORS.has(e) ? e : 'error'))
 
@@ -1653,7 +1661,12 @@ function renderRestore() {
   msg.classList.toggle('hidden', !restoreMsg)
   msg.classList.toggle('err', !!restoreMsg?.err)
   msg.textContent = restoreMsg?.text ?? ''
+  // achat utilisé sur trop d'ordinateurs : « Nous écrire » juste dessous
+  $('btnProRestoreContact').classList.toggle('hidden', restoreMsg?.code !== 'devices')
 }
+
+/** « Nous écrire » : le PC ouvre la messagerie vers l'adresse du support. */
+const proContact = () => void postJSON('/pro/contact', {}).catch(() => {})
 
 /** Carte en haut de la fenêtre : limite du jour, fin d'essai, attente du
  *  paiement, merci. Jamais par-dessus l'écran d'accueil (sauf l'attente). */
@@ -1693,11 +1706,21 @@ function renderProCard() {
   }
   let title = ''
   let body = ''
+  // « un seul paiement, prix final par Paddle » à côté de chaque bouton d'achat
+  $('proCardOnce').classList.toggle('hidden', kind !== 'limit' && kind !== 'trial')
   if (kind === 'limit' || kind === 'trial') {
     title = kind === 'limit' ? t('pro.card.limit.title', { n: pro.limit ?? 30 }) : tp(lang, 'pro.card.trial.title', Math.max(1, pro.trialDaysLeft ?? 1))
-    body = kind === 'limit' ? t('pro.card.limit.body', { price: proPrice() }) : t('pro.card.trial.body', { limit: pro.limit ?? 30, price: proPrice() })
+    body =
+      kind === 'limit'
+        ? t('pro.card.limit.body', { price: proPrice() })
+        : t(pro.legacy ? 'pro.card.trial.bodyLegacy' : 'pro.card.trial.body', { limit: pro.limit ?? 30, price: proPrice() })
     button(t('pro.buy', { price: proPrice() }), true, () => void proCheckout(kind))
     button(t('pro.later'), false, () => void proClose())
+  } else if (kind === 'welcome') {
+    // installation d'avant Flitdrop Pro : ce qui change, une fois
+    title = t('pro.card.welcome.title')
+    body = tp(lang, 'pro.card.welcome.body', Math.max(1, pro.trialDaysLeft ?? 1), { limit: pro.limit ?? 30, price: proPrice() })
+    button(t('pro.card.used.ok'), true, () => void proClose())
   } else if (kind === 'waiting') {
     title = t('pro.card.wait.title')
     body = t('pro.card.wait.body')
@@ -1719,9 +1742,16 @@ function renderProCard() {
       })
     })
     button(t('pro.card.used.ok'), false, () => void proClose())
+  } else if (kind === 'devices') {
+    // trop d'ordinateurs ce mois-ci : le support s'en occupe, le plan ne change pas
+    title = t('pro.card.devices.title')
+    body = t('pro.card.devices.body')
+    button(t('pro.contact'), true, proContact)
+    button(t('pro.card.used.ok'), false, () => void proClose())
   } else {
     title = t('pro.card.ok.title')
-    body = t('pro.card.ok.body')
+    // jamais « tout est déjà actif » si l'envoi automatique est coupé
+    body = t(state?.config.clipboardAutoPush ? 'pro.card.ok.body' : 'pro.card.ok.bodyClipOff')
     button(t('pro.card.ok.btn'), true, () => void proClose())
   }
   $('proCardTitle').textContent = title
@@ -1737,7 +1767,7 @@ function renderProCard() {
  *  qui la compte au plus une fois par jour. */
 function noteProSeen() {
   const kind = state?.pro?.card
-  if ((kind !== 'limit' && kind !== 'trial') || document.visibilityState !== 'visible' || $('proCard').classList.contains('hidden')) return
+  if ((kind !== 'limit' && kind !== 'trial' && kind !== 'welcome') || document.visibilityState !== 'visible' || $('proCard').classList.contains('hidden')) return
   if (proSeen.has(kind)) return
   proSeen.add(kind)
   void postJSON('/pro/seen', { where: kind }).catch(() => proSeen.delete(kind))
@@ -1753,7 +1783,7 @@ function pollClaim() {
     if (state?.pro?.card !== 'waiting' || !w?.polling) return
     if (document.hidden || $('proCard').classList.contains('hidden')) return
     const r = (await postJSON('/pro/claim', {}).catch(() => null)) as { status?: string } | null
-    if (r?.status === 'unlocked' || r?.status === 'used') return void refresh()
+    if (r?.status === 'unlocked' || r?.status === 'used' || r?.status === 'devices') return void refresh()
     if (r?.status === 'stopped') {
       claimStatus = t('pro.card.wait.stopped')
       if (state?.pro?.waiting) state.pro.waiting.polling = false
@@ -1776,7 +1806,7 @@ async function proCheckout(where: 'limit' | 'trial' | 'settings') {
 
 async function proClaim(manual: boolean) {
   const r = (await postJSON('/pro/claim', { manual }).catch(() => null)) as { status?: string } | null
-  if (r?.status === 'unlocked' || r?.status === 'used') return void refresh()
+  if (r?.status === 'unlocked' || r?.status === 'used' || r?.status === 'devices') return void refresh()
   claimStatus = !r || r.status === 'offline' ? t('pro.err.offline') : t('pro.card.wait.notYet')
   renderProCard()
 }
@@ -1824,10 +1854,11 @@ function initProUI() {
       restoreOpen = false
       restoreMsg = null
       ;($('proRestoreCode') as unknown as HTMLInputElement).value = ''
-    } else restoreMsg = { text: restoreErrText(r.error), err: true }
+    } else restoreMsg = { text: restoreErrText(r.error), err: true, code: r.error }
     await refresh()
   }
   $('btnProRestoreVerify').onclick = () => void verify()
+  $('btnProRestoreContact').onclick = proContact
   ;($('proRestoreCode') as unknown as HTMLInputElement).onkeydown = (e) => {
     if (e.key === 'Enter') void verify()
   }

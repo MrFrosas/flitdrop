@@ -106,6 +106,7 @@
       <p class="cardhint" id="proCardBody"></p>
       <p class="pro-status hidden" id="proCardStatus" aria-live="polite"></p>
       <div class="consent-actions" id="proCardActions"></div>
+      <small class="consent-note hidden" id="proCardOnce" data-i18n="pro.once">Un seul paiement, sans abonnement. Prix final TTC affiché avant de payer, dans ton navigateur, par Paddle, notre revendeur.</small>
       <div class="pro-card-links" id="proCardLinks"></div>
     </div>
 
@@ -216,7 +217,7 @@
         <ul class="pro-feats">
           <li data-i18n="pro.feat.unlimited">Autant de fichiers que tu veux, tous les jours</li>
           <li data-i18n="pro.feat.months">Photos et vidéos rangées toutes seules par mois</li>
-          <li data-i18n="pro.feat.clip">Presse-papiers synchronisé tout seul, et tout son historique avec les images</li>
+          <li data-i18n="pro.feat.clip">Ce que tu copies sur le PC part tout seul vers le téléphone, et tout l’historique du presse-papiers avec les images</li>
           <li data-i18n="pro.feat.future">Les futures fonctions avancées, et toutes les mises à jour</li>
         </ul>
         <div class="pro-offer" id="proOffer">
@@ -226,7 +227,7 @@
             <button class="btn pro-buy" id="btnProBuy" type="button"></button>
             <button class="consent-more" id="btnProRestore" type="button" data-i18n="pro.restore">J’ai déjà acheté</button>
           </div>
-          <small class="consent-note" data-i18n="pro.once">Un seul paiement, pas d’abonnement.</small>
+          <small class="consent-note" data-i18n="pro.once">Un seul paiement, sans abonnement. Prix final TTC affiché avant de payer, dans ton navigateur, par Paddle, notre revendeur.</small>
           <div class="pro-restore hidden" id="proRestore">
             <p class="cardhint" id="proRestoreHint" data-i18n="pro.restore.hint">Entre l’adresse e-mail de ton achat : tu reçois un code pour débloquer ce PC.</p>
             <div class="row" id="proRestoreEmailRow">
@@ -238,6 +239,7 @@
               <button class="btn" id="btnProRestoreVerify" type="button" data-i18n="pro.restore.verify">Débloquer ce PC</button>
             </div>
             <p class="pro-status hidden" id="proRestoreMsg" aria-live="polite"></p>
+            <button class="consent-more hidden" id="btnProRestoreContact" type="button" data-i18n="pro.contact">Nous écrire</button>
             <button class="consent-more hidden" id="btnProRestoreBack" type="button" data-i18n="pro.restore.back">Changer d’adresse</button>
           </div>
         </div>

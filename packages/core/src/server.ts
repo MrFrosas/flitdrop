@@ -38,8 +38,8 @@ import { saveMultipartFiles } from './uploads.js'
 import { pcLink, type PcLink } from './wifi.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
 import { answerRating, countTransfer, ratingDue } from './rating.js'
-import { t as tr, resolveLang, langFrom, acceptLang } from './i18n.js'
-import { License, FREE_CLIP_TEXTS, FREE_DAILY_FILES, monthFolder, photoDate, isMedia, type CheckoutWhere } from './license.js'
+import { t as tr, tp, resolveLang, langFrom, acceptLang } from './i18n.js'
+import { License, FREE_CLIP_TEXTS, FREE_DAILY_FILES, SUPPORT_MAILTO, monthFolder, photoDate, isMedia, type CheckoutWhere, type TokenEnv } from './license.js'
 import { defaultMarkStore, fileMarkStore, type MarkStore } from './machineid.js'
 import {
   b64u,
@@ -223,21 +223,29 @@ export interface StartOptions {
   }
   // fourni par l'app de bureau : Flitdrop Pro (licence, essai, limite du
   // jour, voir license.ts). Sans lui (ligne de commande, tests), le mode
-  // payant reste coupé et rien ne part sur le réseau, sauf adresse de
-  // configuration imposée (FLITDROP_LICENSE_CONFIG_URL, développement).
+  // payant reste coupé et rien ne part sur le réseau, sauf racine des
+  // licences imposée (FLITDROP_LICENSE_BASE, développement).
   license?: {
     /** dossier de données de l'app Electron (deuxième emplacement de l'essai) */
     userDataDir?: string
     /** langue du système (devise des prix affichés) */
     systemLocale?: string
-    /** variables FLITDROP_LICENSE_* acceptées (app non empaquetée seulement) */
+    /** variables FLITDROP_LICENSE_* acceptées (app non empaquetée seulement) :
+     *  FLITDROP_LICENSE_BASE (racine des licences, page d'achat comprise),
+     *  FLITDROP_LICENSE_PUBLIC_KEY (clé du bac à sable : jetons « sandbox »),
+     *  FLITDROP_LICENSE_ENV, FLITDROP_LICENSE_MARK_FILE, et l'ancien
+     *  FLITDROP_LICENSE_CONFIG_URL */
     allowEnvOverride?: boolean
     // injectables pour les tests
+    baseUrl?: string
     configUrl?: string
     fetchImpl?: typeof fetch
     now?: () => number
     publicKey?: string
+    tokenEnv?: TokenEnv
     machineId?: () => Promise<string | null>
+    hostFingerprint?: () => string
+    machineRetryMs?: number[]
     markStore?: MarkStore
     buildDefault?: boolean
   }
@@ -366,9 +374,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   let settingsGen = 0
 
   // Adresse ouverte dans le navigateur du système (page d'achat de Flitdrop
-  // Pro) : seulement http(s), jamais interprétée par un shell.
+  // Pro) : seulement http(s), ou l'adresse fixe du support, jamais
+  // interprétée par un shell.
   const openExternal = (url: string): void => {
-    if (!/^https?:\/\/[^\s]+$/i.test(url) || url.length > 2048) return
+    if ((!/^https?:\/\/[^\s]+$/i.test(url) && url !== SUPPORT_MAILTO) || url.length > 2048) return
     if (opts.openExternal) {
       opts.openExternal(url)
       return
@@ -380,12 +389,24 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   }
 
   // ---------- Flitdrop Pro ----------
-  // Active dans l'app de bureau (opts.license). En développement, une adresse
-  // de configuration imposée l'active aussi (jamais dans l'app empaquetée).
+  // Active dans l'app de bureau (opts.license). En développement, une racine
+  // des licences imposée l'active aussi. Variables FLITDROP_LICENSE_* : jamais
+  // dans l'app empaquetée (elle ne connaît que flitdrop.com, la clé publique
+  // de production et les jetons « production »).
   const allowEnv = !opts.license || opts.license.allowEnvOverride === true
-  const envUrl = allowEnv ? (process.env.FLITDROP_LICENSE_CONFIG_URL ?? '') : ''
-  const licenseUrl = /^https?:\/\/[^\s]+$/i.test(envUrl) ? envUrl : opts.license?.configUrl
-  const envMark = allowEnv ? (process.env.FLITDROP_LICENSE_MARK_FILE ?? '') : ''
+  const envOf = (name: string): string => (allowEnv ? (process.env[name] ?? '').trim() : '')
+  const httpUrl = (v: string): string | undefined => (/^https?:\/\/[^\s]+$/i.test(v) && v.length <= 512 ? v : undefined)
+  // racine (config, claim, renew, restore, page /pro) ; l'ancienne adresse
+  // de configuration reste lue (la racine en est déduite)
+  const envBase = httpUrl(envOf('FLITDROP_LICENSE_BASE'))
+  const envConfigUrl = envBase ? undefined : httpUrl(envOf('FLITDROP_LICENSE_CONFIG_URL'))
+  // clé publique du bac à sable : 32 octets en base64, sinon ignorée
+  const envKeyRaw = envOf('FLITDROP_LICENSE_PUBLIC_KEY')
+  const envKey = /^[A-Za-z0-9+/]{43}=$/.test(envKeyRaw) && Buffer.from(envKeyRaw, 'base64').length === 32 ? envKeyRaw : undefined
+  const envTokenEnv = envOf('FLITDROP_LICENSE_ENV')
+  const tokenEnv: TokenEnv =
+    envTokenEnv === 'sandbox' || envTokenEnv === 'production' ? envTokenEnv : envKey ? 'sandbox' : (opts.license?.tokenEnv ?? 'production')
+  const envMark = envOf('FLITDROP_LICENSE_MARK_FILE')
   const systemLocale = opts.license?.systemLocale ?? opts.telemetry?.systemLocale
   const license = new License(
     {
@@ -398,21 +419,36 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       },
       lang: () => resolveLang(cfg.lang, langFrom(systemLocale || Intl.DateTimeFormat().resolvedOptions().locale)),
       openUrl: openExternal,
+      // achat : la synchro automatique du presse-papiers s'allume, sauf si la
+      // personne l'avait coupée elle-même ; le contenu déjà copié ne part pas
+      unlocked: (how): void => {
+        if (how !== 'purchase' || cfg.clipboardAutoPush || cfg.clipboardAutoPushOffByUser) return
+        cfg.clipboardAutoPush = true
+        clip.read().then((t) => (lastClip = t)).catch(() => {})
+        saveConfig(home, cfg)
+        opts.onSettingsChanged?.()
+      },
     },
     {
-      active: !!opts.license || !!licenseUrl,
-      configUrl: licenseUrl || undefined,
+      active: !!opts.license || !!envBase || !!envConfigUrl,
+      baseUrl: envBase ?? (envConfigUrl ? undefined : opts.license?.baseUrl),
+      configUrl: envBase ? undefined : (envConfigUrl ?? opts.license?.configUrl),
       fetchImpl: opts.license?.fetchImpl,
       now: opts.license?.now,
-      publicKey: opts.license?.publicKey,
+      publicKey: envKey ?? opts.license?.publicKey,
+      tokenEnv,
       systemLocale,
       machineId: opts.license?.machineId,
+      hostFingerprint: opts.license?.hostFingerprint,
+      machineRetryMs: opts.license?.machineRetryMs,
       // deuxième emplacement de l'essai : registre (Windows) ou dossier de
       // l'app Electron ; en ligne de commande, un fichier à côté du dossier
       markStore:
         opts.license?.markStore ??
         (envMark ? fileMarkStore(envMark) : opts.license ? defaultMarkStore({ userDataDir: opts.license.userDataDir }) : fileMarkStore(home.replace(/[\\/]+$/, '') + '.t')),
       buildDefault: opts.license?.buildDefault,
+      // Microsoft Store : gratuit tant que le serveur ne dit pas storeEnabled
+      storeChannel: (): boolean => telemetry.channel() === 'store',
     }
   )
   // historique du presse-papiers vu (PC et téléphones) : en gratuit, les 20
@@ -1497,22 +1533,42 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     return dev
   }
 
+  // places encore libres aujourd'hui pour le Raccourci (gratuit) : les
+  // transferts déjà commencés par la page du téléphone finiront et comptent
+  const shortcutRoom = (): number => {
+    const left = license.dailyLeft()
+    return Number.isFinite(left) ? Math.max(0, left - transfers.activeCount()) : left
+  }
+  const shortcutLimited = (req: Request, res: Response) => {
+    license.noteRefused()
+    res.setHeader('x-flitdrop-daily-limit', String(FREE_DAILY_FILES))
+    res.setHeader('x-flitdrop-kept', '0')
+    return res.status(402).type('text/plain; charset=utf-8').send(st(req, 'srv.scDailyLimit', { n: FREE_DAILY_FILES, pc: cfg.deviceName }))
+  }
+
   app.post('/api/shortcut/upload', rlShortcut, trackBody('sc', 0, (req) => !!shortcutDevice(req)), async (req, res) => {
     const dev = shortcutDevice(req)
     if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
-    // limite du jour (gratuit) : vérifiée au début ; un envoi accepté arrive
-    // en entier, tous ses fichiers comptés
-    if (!license.canStartFile(transfers.activeCount())) {
-      license.noteRefused()
-      return res.status(402).type('text/plain; charset=utf-8').send(st(req, 'srv.scDailyLimit', { n: FREE_DAILY_FILES, pc: cfg.deviceName }))
-    }
+    // limite du jour (gratuit) : rien de possible, refusé avant de lire le
+    // moindre octet
+    if (shortcutRoom() <= 0) return shortcutLimited(req, res)
     fs.mkdirSync(cfg.downloadDir, { recursive: true })
     try {
-      const saved = (await saveMultipartFiles(req, cfg.downloadDir, cfg.maxFileMB * 1024 * 1024)).map(placeByMonth)
-      if (saved.length === 0) {
+      const all = await saveMultipartFiles(req, cfg.downloadDir, cfg.maxFileMB * 1024 * 1024)
+      if (all.length === 0) {
         telemetry.transferFail('phone_to_pc', 'file', 400, 'noFile')
         return res.status(400).type('text/plain; charset=utf-8').send(st(req, 'srv.scNoFile'))
       }
+      // plus de fichiers que de places (jusqu'à 20 par envoi) : les premiers
+      // sont gardés, le reste est retiré du disque, comme pour le PC vers le
+      // téléphone. Places relues APRÈS la réception (un autre envoi a pu les
+      // prendre entre-temps), sans attente jusqu'au compte.
+      const room = shortcutRoom()
+      const kept = all.slice(0, Math.min(all.length, room))
+      for (const f of all.slice(kept.length)) fs.unlink(f.path, () => {})
+      if (kept.length === 0) return shortcutLimited(req, res)
+      const saved = kept.map(placeByMonth)
+      const refused = all.length - kept.length
       for (const f of saved) {
         transferOk('phone_to_pc', kindOf(f.mime), f.size)
         history.add({
@@ -1530,9 +1586,19 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       devices.touch(dev.id)
       license.countFiles(saved.length)
       const total = saved.length
-      res
-        .type('text/plain; charset=utf-8')
-        .send(total === 1 ? st(req, 'srv.scArrivedOne', { name: saved[0]?.name ?? '', pc: cfg.deviceName }) : st(req, 'srv.scArrivedMany', { n: total, pc: cfg.deviceName }))
+      const arrived = total === 1 ? st(req, 'srv.scArrivedOne', { name: saved[0]?.name ?? '', pc: cfg.deviceName }) : st(req, 'srv.scArrivedMany', { n: total, pc: cfg.deviceName })
+      res.setHeader('x-flitdrop-kept', String(total))
+      if (refused > 0) {
+        // la limite du jour est atteinte : dit en clair (le Raccourci affiche
+        // le texte), et en en-têtes pour un client qui les lit
+        license.noteRefused()
+        res.setHeader('x-flitdrop-refused', String(refused))
+        res.setHeader('x-flitdrop-daily-limit', String(FREE_DAILY_FILES))
+        return res
+          .type('text/plain; charset=utf-8')
+          .send(arrived + ' ' + tp(reqLang(req), 'srv.scLimitRest', refused, { n: refused, limit: FREE_DAILY_FILES, pc: cfg.deviceName }))
+      }
+      res.type('text/plain; charset=utf-8').send(arrived)
     } catch (e) {
       const err = e as Error & { code?: number }
       telemetry.transferFail('phone_to_pc', 'file', err.code === 413 ? 413 : 400, err.code === 413 ? 'tooBig' : 'uploadFailed')
@@ -2026,6 +2092,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     if (body.maxFileMB !== undefined) cfg.maxFileMB = clampInt(body.maxFileMB, 1, 128 * 1024, cfg.maxFileMB)
     if (typeof body.requireApproval === 'boolean') cfg.requireApproval = body.requireApproval
     if (typeof body.clipboardAutoPush === 'boolean') {
+      // coupé par la personne elle-même : un achat ne le rallumera pas
+      if (cfg.clipboardAutoPush && !body.clipboardAutoPush) cfg.clipboardAutoPushOffByUser = true
       cfg.clipboardAutoPush = body.clipboardAutoPush
       // en (ré)activant, on prend l'état courant comme référence pour ne pas
       // pousser d'un coup le contenu déjà présent dans le presse-papiers.
@@ -2151,7 +2219,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // l'invitation (limite du jour, fin d'essai) a été vue, fenêtre visible
   admin.post('/pro/seen', jsonSmall, (req, res) => {
     const where = (req.body as { where?: unknown } | undefined)?.where
-    if (where === 'limit' || where === 'trial') license.promptSeen(where)
+    if (where === 'limit' || where === 'trial' || where === 'welcome') license.promptSeen(where)
     res.json({ ok: true })
   })
 
@@ -2173,6 +2241,13 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   admin.post('/pro/restore/reset', (_req, res) => {
     license.restoreReset()
+    res.json({ ok: true })
+  })
+
+  // « Nous écrire » (achat utilisé sur trop d'ordinateurs) : la messagerie
+  // du système, adresse fixe construite ici
+  admin.post('/pro/contact', (_req, res) => {
+    license.contactSupport()
     res.json({ ok: true })
   })
 
@@ -2342,6 +2417,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     license,
     close: async () => {
       telemetry.stop()
+      license.stop()
       activity.close()
       clearInterval(clipTimer)
       clearInterval(clipPurgeTimer)

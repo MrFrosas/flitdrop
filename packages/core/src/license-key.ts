@@ -1,12 +1,13 @@
 // FICHIER GÉNÉRÉ : rempli par l'orchestrateur avant une version publiée.
 //
-// LICENSE_PUBLIC_KEY_B64 : clé PUBLIQUE Ed25519 brute (32 octets, base64) qui
-// vérifie les jetons Flitdrop Pro signés par le serveur (functions/api/license,
-// secret LICENSE_SIGNING_KEY). Publique par nature : sans la clé privée, elle
-// ne permet de fabriquer aucun jeton.
-// ATTENTION : la valeur ci-dessous est une clé DE TEST (sa clé privée traîne
-// dans les tests). À remplacer par la vraie clé avant toute publication.
-export const LICENSE_PUBLIC_KEY_B64 = '/DuOo3uFrsEk2LTrypdMWZtYQITS1nUXLp8QK3vLmrg='
+// LICENSE_PUBLIC_KEY_B64 : clé PUBLIQUE Ed25519 brute (32 octets, base64) de
+// PRODUCTION, qui vérifie les jetons Flitdrop Pro signés par le serveur
+// (functions/api/license, secret LICENSE_SIGNING_KEY de production). Publique
+// par nature : sans la clé privée, elle ne permet de fabriquer aucun jeton.
+// L'app empaquetée n'accepte QUE cette clé, et seulement des jetons
+// env: "production". La clé du bac à sable (sandbox) ne s'utilise qu'en
+// développement, par FLITDROP_LICENSE_PUBLIC_KEY (voir docs/licence.md).
+export const LICENSE_PUBLIC_KEY_B64 = 'TkGgVAzKlDgcwcU4bDpbeOE/mdjAe5260x+h4pOiXDc='
 
 // Mode payant par défaut quand flitdrop.com n'a JAMAIS répondu sur cette
 // installation. false tant que le mode payant n'est pas lancé (une
