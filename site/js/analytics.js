@@ -391,6 +391,11 @@
     });
     document.body.insertBefore(box, document.body.firstChild);
     window.addEventListener('fd-lang', fill);
+    // ce script est asynchrone : il peut construire la bannière avant que les
+    // traductions (i18n-data.js, différé) soient lues ; on la remplit encore
+    // une fois qu'elles le sont, sinon elle resterait en anglais
+    document.addEventListener('DOMContentLoaded', fill);
+    window.addEventListener('load', fill);
     window.addEventListener('resize', place);
     window.addEventListener('load', place); // la mise en page bouge encore au chargement
   }
