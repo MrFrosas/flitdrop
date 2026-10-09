@@ -1539,13 +1539,15 @@ describe('installations d’avant Flitdrop Pro (legacy)', () => {
     expect(r2.lic.dailyUsed()).toBe(FREE_DAILY_FILES)
   })
 
-  it('carte d’accueil pendant l’essai, une seule fois, sans statistique d’invitation', async () => {
+  it('carte d’accueil pendant l’essai, une seule fois, comptée une fois (pro_prompt_shown where welcome)', async () => {
     const r = await rig({ lastVersion: '0.6.7' })
     await r.lic.refreshConfig()
     expect(r.lic.card()).toBe('welcome')
     r.lic.promptSeen('welcome')
     expect(r.lic.card()).toBe('welcome')
-    expect(r.events.filter((e) => e.event === 'pro_prompt_shown')).toHaveLength(0)
+    // fenêtre rouverte le même jour : pas recomptée
+    r.lic.promptSeen('welcome')
+    expect(r.events.filter((e) => e.event === 'pro_prompt_shown')).toEqual([{ event: 'pro_prompt_shown', props: { where: 'welcome' } }])
     r.lic.closeCard()
     expect(r.lic.card()).toBeNull()
     clock += DAY

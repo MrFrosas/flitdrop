@@ -59,10 +59,11 @@ export const EVENTS: Record<string, { tier: Tier; props: readonly string[] }> = 
   // oui/non seulement, jamais de nom de réseau, de règle ni de chemin.
   firewall_check: { tier: 'basic', props: ['network', 'blocked', 'allowed'] },
   firewall_repair: { tier: 'basic', props: ['result'] },
-  // Flitdrop Pro : invitation montrée (limite du jour, fin d'essai), page
-  // d'achat ouverte (avec ou sans l'offre de lancement), Pro débloqué (achat
-  // ou restauration), limite du jour atteinte (une fois par jour au plus).
-  // Jamais d'adresse e-mail, de jeton ni d'identifiant d'achat.
+  // Flitdrop Pro : carte montrée (limite du jour, fin d'essai, accueil d'une
+  // installation d'avant Flitdrop Pro), page d'achat ouverte (avec ou sans
+  // l'offre de lancement), Pro débloqué (achat ou restauration), limite du
+  // jour atteinte (une fois par jour au plus). Jamais d'adresse e-mail, de
+  // jeton ni d'identifiant d'achat.
   pro_prompt_shown: { tier: 'basic', props: ['where'] },
   pro_checkout_opened: { tier: 'basic', props: ['where', 'early'] },
   pro_unlocked: { tier: 'basic', props: ['how'] },

@@ -1371,7 +1371,8 @@ export class License {
     return null
   }
 
-  /** La fenêtre (visible) a montré l'invitation : comptée une fois. */
+  /** La fenêtre (visible) a montré la carte (limite du jour, fin d'essai,
+   *  accueil d'une installation d'avant Flitdrop Pro) : comptée une fois. */
   promptSeen(where: PromptWhere): void {
     if (this.card() !== where) return
     const p = this.cfg.proPromptsShown
@@ -1386,8 +1387,7 @@ export class License {
       welcome: p.welcome + (where === 'welcome' ? 1 : 0),
     }
     this.save()
-    // la carte d'accueil n'est pas une invitation à acheter : pas de statistique
-    if (where !== 'welcome') this.deps.track('pro_prompt_shown', { where })
+    this.deps.track('pro_prompt_shown', { where })
   }
 
   /** « Plus tard », « Super » : la carte se range (pas l'attente du paiement). */

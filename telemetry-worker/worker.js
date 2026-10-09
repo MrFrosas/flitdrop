@@ -85,11 +85,12 @@ const BASIC_EVENTS = {
   // résultat de la réparation demandée par la personne
   firewall_check: { network: oneOf('private', 'public', 'domain', 'unknown'), blocked: BOOL, allowed: BOOL },
   firewall_repair: { result: oneOf('ok', 'cancelled', 'failed') },
-  // Flitdrop Pro : invitation montrée dans la fenêtre du PC (limite du jour,
-  // fin d'essai), page d'achat ouverte (early : offre de lancement), Pro
+  // Flitdrop Pro : carte montrée dans la fenêtre du PC (limite du jour, fin
+  // d'essai, accueil d'une installation d'avant Flitdrop Pro au début de son
+  // essai), page d'achat ouverte (early : offre de lancement), Pro
   // débloqué (achat ou restauration par e-mail), limite du jour atteinte (au
   // plus une fois par jour). Jamais d'e-mail, de jeton ni d'identifiant d'achat.
-  pro_prompt_shown: { where: oneOf('limit', 'trial') },
+  pro_prompt_shown: { where: oneOf('limit', 'trial', 'welcome') },
   pro_checkout_opened: { where: oneOf('limit', 'trial', 'settings'), early: BOOL },
   pro_unlocked: { how: oneOf('purchase', 'restore') },
   daily_limit_reached: {},
