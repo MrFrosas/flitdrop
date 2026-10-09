@@ -239,9 +239,9 @@ describe('petites fonctions', () => {
     expect(currencyFor(undefined)).toBe('USD')
   })
   it('moitié d’un prix affiché, même écriture', () => {
-    expect(halfPrice('5,99 €')).toBe('2,99 €')
-    expect(halfPrice('$5.99')).toBe('$2.99')
-    expect(halfPrice('£5.49')).toBe('£2.74')
+    expect(halfPrice('5,99 €')).toBe('3,00 €')
+    expect(halfPrice('$5.99')).toBe('$3.00')
+    expect(halfPrice('£5.49')).toBe('£2.75')
     expect(halfPrice('gratuit')).toBeNull()
   })
   it('code de restauration : 12 caractères Crockford, casse, tirets, O/I/L', () => {
@@ -725,8 +725,8 @@ describe('limite du jour', () => {
     expect(r.lic.canStartFile(0)).toBe(false)
     // installation d'avant le lancement, dans les 30 jours : le téléphone
     // annonce le même prix de lancement que le PC
-    expect(r.lic.limitBody()).toMatchObject({ error: 'daily_limit', limit: 30, left: 0, price: '2,99 €' })
-    expect(r.lic.state().earlyPrice).toBe('2,99 €')
+    expect(r.lic.limitBody()).toMatchObject({ error: 'daily_limit', limit: 30, left: 0, price: '3,00 €' })
+    expect(r.lic.state().earlyPrice).toBe('3,00 €')
     clock = Date.parse('2026-12-02T10:00:00.000Z')
     expect(r.lic.limitBody().price).toBe('5,99 €')
     clock = Date.parse('2026-11-25T10:00:00.000Z')
@@ -797,7 +797,7 @@ describe('achat', () => {
     })
     const r = await rig({ fetchImpl: net.f })
     await r.lic.refreshConfig()
-    expect(r.lic.state().earlyPrice).toBe('2,99 €')
+    expect(r.lic.state().earlyPrice).toBe('3,00 €')
     expect(r.lic.checkout('settings').ok).toBe(true)
     expect(r.opened[0]).toMatch(/^https:\/\/license\.test\/pro\?claim=[0-9a-f]{32}&lang=fr&early=1$/)
     expect(r.events.find((e) => e.event === 'pro_checkout_opened')?.props).toEqual({ where: 'settings', early: true })
@@ -1186,7 +1186,7 @@ describe('prix de lancement donnés par le serveur', () => {
     // aucun prix de lancement donné : moitié du prix affiché, comme avant
     const r3 = await rig()
     await r3.lic.refreshConfig()
-    expect(r3.lic.state().earlyPrice).toBe('2,99 €')
+    expect(r3.lic.state().earlyPrice).toBe('3,00 €')
   })
 })
 
@@ -1399,7 +1399,7 @@ describe('prix du pays de la personne', () => {
     // aucun prix de lancement du tout : moitié du prix local (calcul d'avant)
     const r3 = await rig({ routes: { 'GET /api/license/config': () => configOn({ price: { currency: 'CAD', display: 'CA$8.49' } }) } })
     await r3.lic.refreshConfig()
-    expect(r3.lic.effectivePrice()).toBe('CA$4.24')
+    expect(r3.lic.effectivePrice()).toBe('CA$4.25')
     // forme fausse : ignorée
     const r4 = await rig({ routes: { 'GET /api/license/config': () => configOn({ price: { currency: 'chf', display: '<b>x</b>' } }) } })
     await r4.lic.refreshConfig()

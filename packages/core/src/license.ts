@@ -294,13 +294,13 @@ export function currencyFor(locale: string | undefined): string {
   return 'USD'
 }
 
-/** Moitié d'un prix affiché, arrondie au centime inférieur, dans la même
- *  écriture (« 5,99 € » -> « 2,99 € », « $5.99 » -> « $2.99 »). */
+/** Moitié d'un prix affiché, arrondie comme Paddle (centime le plus proche,
+ *  moitié vers le haut), dans la même écriture (« 5,99 € » -> « 3,00 € »). */
 export function halfPrice(display: string): string | null {
   const m = display.match(/(\d+)([.,])(\d{2})/)
   if (!m) return null
   const cents = Number(m[1]) * 100 + Number(m[3])
-  const half = Math.floor(cents / 2)
+  const half = Math.round(cents / 2)
   return display.replace(m[0], `${Math.floor(half / 100)}${m[2]}${String(half % 100).padStart(2, '0')}`)
 }
 
