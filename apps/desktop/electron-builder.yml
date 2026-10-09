@@ -21,6 +21,9 @@ files:
   - build/icon.png
   - build/icon.ico
   - build/tray.png
+  # rien d'npm à l'exécution (coeur et updater sont bundlés) : on n'embarque
+  # aucun node_modules (appdmg et ses modules natifs s'y glissaient sur Mac)
+  - '!**/node_modules{,/**/*}'
 # serveur de mise a jour = les releases GitHub (electron-updater lit latest.yml).
 # La presence de ce bloc fait generer latest.yml / latest-mac.yml par le build.
 publish:
