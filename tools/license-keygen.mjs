@@ -1,13 +1,24 @@
 #!/usr/bin/env node
-// Génère la paire de clés Ed25519 des licences Flitdrop Pro.
+// Génère une paire de clés Ed25519 des licences Flitdrop Pro.
+//
+// UNE CLÉ PAR ENVIRONNEMENT : la Production (achats réels) et la Preview (sandbox
+// Paddle, carte de test gratuite) doivent avoir chacune la sienne. Avec la même clé,
+// un achat sandbox gratuit fabriquerait un jeton que l'app publiée accepterait.
+// On lance donc le script deux fois :
+//
+//   node tools/license-keygen.mjs ~/flitdrop-licence-production.txt
+//   node tools/license-keygen.mjs ~/flitdrop-licence-sandbox.txt
 //
 //   node tools/license-keygen.mjs <fichier>
 //     Écrit la clé PRIVÉE (PKCS8 DER en base64, une ligne) dans <fichier>, créé en
 //     lecture seule pour son propriétaire et jamais écrasé, puis affiche UNIQUEMENT la
-//     clé PUBLIQUE (32 octets bruts en base64) à embarquer dans l'app.
-//     Le contenu du fichier se colle tel quel dans le secret LICENSE_SIGNING_KEY de
-//     Cloudflare Pages, puis le fichier se range hors du dépôt (gestionnaire de mots
-//     de passe). Voir docs/licence.md.
+//     clé PUBLIQUE (32 octets bruts en base64).
+//     Production : le contenu du fichier va dans le secret LICENSE_SIGNING_KEY de
+//     l'environnement Production de Cloudflare Pages, et la clé publique est celle que
+//     l'app publiée embarque. Sandbox : le fichier va dans LICENSE_SIGNING_KEY de
+//     l'environnement Preview ; sa clé publique ne sert qu'aux versions de test de
+//     l'app. Ensuite, chaque fichier se range hors du dépôt (gestionnaire de mots de
+//     passe). Voir docs/licence.md.
 //
 //   node tools/license-keygen.mjs --public <fichier>
 //     Réaffiche la clé publique d'une clé privée existante (rien d'autre).
@@ -39,7 +50,16 @@ if (args[0] === '--public') {
   process.stdout.write(publicRawBase64(key) + '\n')
 } else {
   const out = args[0]
-  if (!out || out.startsWith('-')) fail('Usage : node tools/license-keygen.mjs <fichier-cle-privee>')
+  if (!out || out.startsWith('-')) {
+    fail(
+      [
+        'Usage : node tools/license-keygen.mjs <fichier-cle-privee>',
+        'Une clé par environnement, jamais la même :',
+        '  node tools/license-keygen.mjs ~/flitdrop-licence-production.txt   (secret LICENSE_SIGNING_KEY de Production)',
+        '  node tools/license-keygen.mjs ~/flitdrop-licence-sandbox.txt      (secret LICENSE_SIGNING_KEY de Preview)',
+      ].join('\n'),
+    )
+  }
   const { privateKey } = generateKeyPairSync('ed25519')
   const der = privateKey.export({ type: 'pkcs8', format: 'der' }).toString('base64')
   try {

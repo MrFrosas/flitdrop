@@ -2,7 +2,9 @@
 // identique dans Cloudflare Workers et dans Node pour les tests).
 //
 // Jeton : base64url(JSON du contenu) + "." + base64url(signature Ed25519 des octets
-// UTF-8 de ce JSON). Contenu : { v: 1, plan: "pro", dev, cus, iat, exp }.
+// UTF-8 de ce JSON). Contenu : { v: 1, env, plan: "pro", dev, cus, iat, exp }, où
+// env vaut "production" ou "sandbox" (PADDLE_ENV) : l'app publiée refuse tout jeton
+// qui n'est pas de production, et chaque environnement a sa propre clé de signature.
 // L'app embarque la clé PUBLIQUE ; la clé privée (LICENSE_SIGNING_KEY) ne quitte
 // jamais les secrets Cloudflare.
 import { decodeSigningKey } from './config.js'
@@ -47,9 +49,17 @@ export async function sha256Hex(text) {
   return toHex(await crypto.subtle.digest('SHA-256', enc.encode(text)))
 }
 
-// Empreintes stockées chez Paddle et dans le jeton : 32 premiers hexadécimaux du SHA-256.
+// Empreintes stockées dans la base D1 et dans le jeton : 32 premiers hexadécimaux du SHA-256.
 export const deviceHash = async (device) => (await sha256Hex(device)).slice(0, 32)
 export const customerHash = async (customerId) => (await sha256Hex(customerId)).slice(0, 32)
+// Adresse e-mail dans les compteurs anti-abus de la base : jamais en clair.
+export const emailHash = async (email) => (await sha256Hex('flitdrop-email-v1:' + email)).slice(0, 32)
+
+// Le claim de la page /pro n'est que l'empreinte du secret que l'app garde pour elle
+// (claimSecret, 64 hexadécimaux, envoyé seulement à POST /api/license/claim). Une
+// adresse /pro?claim=... qui fuiterait (historique, outil de mesure) ne permet donc
+// de rien débloquer.
+export const claimFromSecret = async (secret) => (await sha256Hex('flitdrop-claim-v1:' + secret)).slice(0, 32)
 
 // Comparaison à temps constant (longueurs égales exigées).
 export function constantTimeEqual(a, b) {
@@ -120,8 +130,10 @@ export async function publicKeyBase64(signingKey) {
 export async function signToken(cfg, { device, customerId }) {
   const { alg, priv } = await loadKeys(cfg.signingKey)
   const iat = nowSec()
+  if (cfg.paddleEnv !== 'production' && cfg.paddleEnv !== 'sandbox') throw new Error('env_invalid')
   const payload = {
     v: 1,
+    env: cfg.paddleEnv,
     plan: 'pro',
     dev: device,
     cus: await customerHash(customerId),
@@ -135,7 +147,8 @@ export async function signToken(cfg, { device, customerId }) {
 
 // Renvoie le contenu si la signature est bonne et la forme exacte, sinon null.
 // L'expiration n'est PAS vérifiée ici (le renouvellement accepte un jeton expiré,
-// puisqu'il revérifie l'achat et l'appareil chez Paddle).
+// puisqu'il revérifie l'achat chez Paddle et l'appareil dans la base). L'environnement
+// est lu, pas comparé : c'est à l'appelant de refuser un jeton d'un autre environnement.
 export async function verifyToken(cfg, token) {
   if (typeof token !== 'string' || token.length > 2048) return null
   const parts = token.split('.')
@@ -162,6 +175,7 @@ export async function verifyToken(cfg, token) {
   }
   if (!p || typeof p !== 'object') return null
   if (p.v !== 1 || p.plan !== 'pro') return null
+  if (p.env !== 'production' && p.env !== 'sandbox') return null
   if (typeof p.dev !== 'string' || !/^[0-9a-f]{32}$/.test(p.dev)) return null
   if (typeof p.cus !== 'string' || !/^[0-9a-f]{32}$/.test(p.cus)) return null
   if (!Number.isInteger(p.iat) || !Number.isInteger(p.exp) || p.exp <= p.iat) return null
@@ -197,45 +211,57 @@ export function normalizeCode(input) {
   return /^[0-9A-HJKMNP-TV-Z]{12}$/.test(c) ? c : null
 }
 
-// Défi sans état : base64url({ v, x: expiration, n: nonce }) + "." + base64url(HMAC).
-// Le HMAC lie l'adresse e-mail, l'empreinte du code, l'expiration et le nonce : sans
-// la clé serveur, impossible d'en fabriquer un ni de deviner le code hors ligne.
-async function challengeTag(hmacKey, email, code, x, n) {
-  const material = `flitdrop-restore|1|${email}|${await sha256Hex(code)}|${x}|${n}`
+// Défi sans état : base64url({ v: 2, x: expiration, n: nonce }) + "." + base64url(tag),
+// où tag (64 octets) = HMAC de l'en-tête (32 premiers octets) puis HMAC du code
+// (32 octets suivants), avec une clé dérivée de LICENSE_SIGNING_KEY.
+//   - le premier lie l'adresse e-mail, l'expiration et le nonce, sans le code : le
+//     serveur sait ainsi qu'il a bien émis ce défi avant de compter les essais sur son
+//     nonce (inventer des nonces ne donne aucun essai de plus) ;
+//   - le second lie en plus l'empreinte du code : sans la clé serveur, impossible de
+//     deviner le code hors ligne ni de fabriquer un défi.
+async function hmacTag(hmacKey, material) {
   return new Uint8Array(await crypto.subtle.sign('HMAC', hmacKey, enc.encode(material)))
 }
+const headMaterial = (email, x, n) => `flitdrop-restore|2|head|${email}|${x}|${n}`
+const codeMaterial = async (email, code, x, n) => `flitdrop-restore|2|code|${email}|${await sha256Hex(code)}|${x}|${n}`
 
 export async function makeChallenge(cfg, email, code) {
   const { hmac } = await loadKeys(cfg.signingKey)
   const x = nowSec() + CODE_TTL_SEC
   const n = randomHex(16)
-  const head = b64urlEncode(enc.encode(JSON.stringify({ v: 1, x, n })))
-  return head + '.' + b64urlEncode(await challengeTag(hmac, email, code, x, n))
+  const head = b64urlEncode(enc.encode(JSON.stringify({ v: 2, x, n })))
+  const tag = new Uint8Array(64)
+  tag.set(await hmacTag(hmac, headMaterial(email, x, n)), 0)
+  tag.set(await hmacTag(hmac, await codeMaterial(email, code, x, n)), 32)
+  return head + '.' + b64urlEncode(tag)
 }
 
-// Lit un défi sans le vérifier (pour l'expiration et le nonce). null si mal formé.
+// Lit un défi sans le vérifier. null si mal formé.
 export function readChallenge(challenge) {
   if (typeof challenge !== 'string' || challenge.length > 512) return null
   const parts = challenge.split('.')
   if (parts.length !== 2) return null
   const head = b64urlDecode(parts[0])
   const tag = b64urlDecode(parts[1])
-  if (!head || !tag || tag.length !== 32 || head.length > 256) return null
+  if (!head || !tag || tag.length !== 64 || head.length > 256) return null
   let p
   try {
     p = JSON.parse(dec.decode(head))
   } catch {
     return null
   }
-  if (!p || p.v !== 1 || !Number.isInteger(p.x) || typeof p.n !== 'string' || !/^[0-9a-f]{32}$/.test(p.n)) return null
-  return { x: p.x, n: p.n, tag }
+  if (!p || p.v !== 2 || !Number.isInteger(p.x) || typeof p.n !== 'string' || !/^[0-9a-f]{32}$/.test(p.n)) return null
+  return { x: p.x, n: p.n, headTag: tag.slice(0, 32), codeTag: tag.slice(32) }
 }
 
-// 'ok' | 'expired' | 'code'. L'expiration est lue avant le code : modifier « x »
-// pour prolonger un défi casse le HMAC, donc ce choix ne donne rien à un attaquant.
-export async function checkChallenge(cfg, parsed, email, code) {
-  if (parsed.x < nowSec()) return 'expired'
+// Le défi a-t-il été émis par ce serveur, pour cette adresse ? (sans le code)
+export async function challengeIssued(cfg, parsed, email) {
   const { hmac } = await loadKeys(cfg.signingKey)
-  const expected = await challengeTag(hmac, email, code, parsed.x, parsed.n)
-  return constantTimeEqual(expected, parsed.tag) ? 'ok' : 'code'
+  return constantTimeEqual(await hmacTag(hmac, headMaterial(email, parsed.x, parsed.n)), parsed.headTag)
+}
+
+// Le code saisi est-il celui du défi ? Comparaison à temps constant.
+export async function challengeCodeOk(cfg, parsed, email, code) {
+  const { hmac } = await loadKeys(cfg.signingKey)
+  return constantTimeEqual(await hmacTag(hmac, await codeMaterial(email, code, parsed.x, parsed.n)), parsed.codeTag)
 }

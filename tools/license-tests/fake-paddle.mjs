@@ -14,6 +14,8 @@ export function createWorld() {
     adjustments: [],
     emails: [],
     calls: [],
+    prices: { pri_pro: { EUR: 599, USD: 599, GBP: 549, JPY: 900 } }, // aperçus de prix
+    previews: [], // aperçus de prix demandés
     fail: null, // { status, code, headers, times, network } : prochains appels Paddle en échec
     patchIgnored: false, // true : PATCH répond 200 sans rien enregistrer
   }
@@ -97,6 +99,32 @@ function paddle(world, url, method, init) {
         (!since || Date.parse(t.created_at) >= Date.parse(since)),
     )
     return paginate(url, items, 30, 30)
+  }
+  if (method === 'POST' && path === '/pricing-preview') {
+    // aperçu de prix : devise selon le pays, remise de lancement de 50 % (arrondi bas)
+    const body = JSON.parse(init.body)
+    const country = body && body.address && body.address.country_code
+    const currency = { FR: 'EUR', DE: 'EUR', AT: 'EUR', GB: 'GBP', US: 'USD', JP: 'JPY' }[country] || 'USD'
+    const item = body && Array.isArray(body.items) ? body.items[0] : null
+    const base = item && world.prices[item.price_id] ? world.prices[item.price_id][currency] : null
+    if (base == null) return reply({ error: { type: 'request_error', code: 'invalid_field' } }, 400)
+    const total = body.discount_id ? Math.floor(base / 2) : base
+    const formatted = currency === 'JPY' ? `¥${total}` : `${currency} ${(total / 100).toFixed(2)}`
+    world.previews.push({ country, discount: body.discount_id || null })
+    return reply({
+      data: {
+        currency_code: currency,
+        address: { country_code: country },
+        details: { line_items: [{ price: { id: item.price_id }, quantity: 1, totals: { total: String(total) }, formatted_totals: { total: formatted } }] },
+      },
+      meta: { request_id: 'req_test' },
+    })
+  }
+  const t = path.match(/^\/transactions\/(txn_[a-z0-9]+)$/)
+  if (method === 'GET' && t) {
+    const txn = world.transactions.find((x) => x.id === t[1])
+    if (!txn) return reply({ error: { type: 'request_error', code: 'not_found', detail: 'not found' } }, 404)
+    return reply({ data: structuredClone(txn), meta: { request_id: 'req_test' } })
   }
   if (method === 'GET' && path === '/customers') {
     // filtre email : égalité exacte, casse comprise (hypothèse la plus stricte) ;

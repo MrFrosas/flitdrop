@@ -180,13 +180,14 @@ function localizeJsonLdFromDict(root, lang) {
   });
 }
 
-// Rewrite root-relative links to localized pages so users stay in-language.
+// Rewrite root-relative links to localized pages so users stay in-language
+// (an anchor such as /refund#withdraw keeps its #fragment).
 function rewriteInternalLinks(root, lang) {
   root.querySelectorAll('a[href]').forEach((a) => {
     const href = a.getAttribute('href');
     if (href === '/') { a.setAttribute('href', '/' + lang + '/'); return; }
-    const m = /^\/([a-z0-9-]+)$/.exec(href);
-    if (m && LOCALIZED_SLUGS.has(m[1])) a.setAttribute('href', '/' + lang + '/' + m[1]);
+    const m = /^\/([a-z0-9-]+)(#[A-Za-z0-9_-]+)?$/.exec(href);
+    if (m && LOCALIZED_SLUGS.has(m[1])) a.setAttribute('href', '/' + lang + '/' + m[1] + (m[2] || ''));
   });
 }
 

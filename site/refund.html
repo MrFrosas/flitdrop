@@ -41,6 +41,7 @@
   <script async src="/js/analytics.js"></script>
   <script defer src="/js/i18n-data.js"></script>
   <script defer src="/js/i18n.js"></script>
+  <script defer src="/js/withdraw.js"></script>
 </head>
 <body>
   <div class="bg" aria-hidden="true"><div class="bg-aurora"></div></div>
@@ -57,11 +58,31 @@
 
     <div class="doc-action">
       <p><strong>Changed your mind? Within 14 days of your purchase, you get all your money back, without giving a reason.</strong></p>
+      <!-- fonction de rétractation (directive 2023/2673, art. L221-21 du Code de la
+           consommation, § 356a BGB) : le bouton ouvre le formulaire en place, jamais de
+           fenêtre ; /refund#withdraw l'ouvre directement. Trois champs, aucun motif. -->
       <div class="pro-actions">
-        <a class="btn btn-primary btn-lg" id="refundMail" href="mailto:contact@flitdrop.com?subject=Refund%20request%2C%20Flitdrop%20Pro">Request a refund / withdraw</a>
-        <a class="btn btn-ghost btn-lg" href="https://paddle.net" target="_blank" rel="noopener">Withdraw from contract here, with Paddle</a>
+        <button type="button" class="btn btn-primary btn-lg" id="withdrawOpen" aria-expanded="false" aria-controls="withdraw" data-i18n="withdraw.open">Withdraw from contract here</button>
       </div>
-      <p>The first button opens an e-mail to <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a>, ready to send: just add the e-mail address you used for the purchase. The second leads to the buyer support of Paddle, which sold you the licence: look up your purchase, then choose to withdraw or to get a refund. Both stay available for the whole 14 days.</p>
+      <form class="withdraw-form" id="withdraw" hidden novalidate>
+        <label class="cf-field"><span data-i18n="withdraw.name">Name and first name</span><input type="text" name="name" autocomplete="name" maxlength="120" required></label>
+        <label class="cf-field"><span data-i18n="withdraw.email">E-mail address used for the purchase (the acknowledgement is sent there)</span><input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+        <label class="cf-field"><span data-i18n="withdraw.order">Order number or date of purchase (on the Paddle receipt)</span><input type="text" name="order" maxlength="100"></label>
+        <button class="btn btn-primary btn-lg" type="submit" data-i18n="withdraw.submit">Confirm withdrawal</button>
+        <p class="cf-status" id="withdrawStatus" role="status" aria-live="polite" hidden></p>
+        <span hidden data-msg="sending" data-i18n="withdraw.sending">Sending…</span>
+        <span hidden data-msg="error" data-i18n="withdraw.error">That did not go through. Try again in a moment, or use one of the options below.</span>
+        <span hidden data-msg="tooMany" data-i18n="withdraw.tooMany">Too many tries from this connection. Wait a little, or use one of the options below.</span>
+      </form>
+      <div class="pro-msg pro-msg--ok withdraw-done" id="withdrawDone" hidden tabindex="-1">
+        <p class="pro-done-title" data-i18n="withdraw.doneTitle">Withdrawal received.</p>
+        <p data-i18n="withdraw.done">An acknowledgement with the date and time is on its way to your e-mail address. We refund you through Paddle within 14 days, you have nothing else to do.</p>
+      </div>
+      <p class="doc-alt">
+        <a href="https://paddle.net" target="_blank" rel="noopener">Or withdraw with Paddle (paddle.net)</a>
+        <a id="refundMail" href="mailto:contact@flitdrop.com?subject=Refund%20request%2C%20Flitdrop%20Pro">Or write to us by e-mail</a>
+      </p>
+      <p>The form sends us your withdrawal right away, and you get an acknowledgement by e-mail with the date and time we received it. You can also withdraw with Paddle, which sold you the licence, or write to <a href="mailto:contact@flitdrop.com">contact@flitdrop.com</a> with the e-mail address you used for the purchase. All three stay available for the whole 14 days.</p>
       <!-- texte de l'e-mail prérempli (traduit avec la page, assemblé par le script plus bas) -->
       <span hidden data-mail="subject">Refund request, Flitdrop Pro</span>
       <span hidden data-mail="line">Hello,</span>

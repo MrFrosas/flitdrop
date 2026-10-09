@@ -39,7 +39,8 @@
   <script>
     // Page anglaise ouverte par un francophone ou un germanophone (lien de l'app
     // avec ?lang=, langue choisie sur le site, langue du navigateur) : on part tout
-    // de suite sur la vraie page traduite, en gardant ?claim= et ?early=.
+    // de suite sur la vraie page traduite, en gardant ?claim= et ?early= (js/pro.js,
+    // juste après, ne retire alors rien : c'est la page traduite qui le fera).
     (function () {
       var p = location.pathname || '/';
       if (/^\/(fr|de)\//.test(p)) return;
@@ -50,13 +51,15 @@
       if (l !== 'fr' && l !== 'de') return;
       q.delete('lang');
       var s = q.toString();
+      window.__fdLangRedirect = true;
       location.replace('/' + l + p.replace(/\.html$/, '').replace(/\/+$/, '') + (s ? '?' + s : '') + location.hash);
     })();
   </script>
+  <!-- avant js/analytics.js : lit ?claim= puis le retire de l'adresse, avant toute mesure -->
+  <script src="/js/pro.js"></script>
   <script async src="/js/analytics.js"></script>
   <script defer src="/js/i18n-data.js"></script>
   <script defer src="/js/i18n.js"></script>
-  <script defer src="/js/pro.js"></script>
 
   <script type="application/ld+json">
   {
@@ -184,7 +187,7 @@
       </div>
 
       <div class="pro-buy" id="buy">
-        <p class="pro-price"><span class="pro-price-amount" id="proPrice"><span data-i18n="pro.price">5,99 €</span></span> <s class="pro-price-was" id="proPriceWas" hidden></s></p>
+        <p class="pro-price"><span class="pro-price-amount" id="proPrice"><span data-i18n="pro.price">5,99 €</span></span></p>
         <p class="pro-price-note">Un seul paiement, à vie. Sans abonnement.</p>
         <ul class="pro-checks">
           <li>Toutes les futures mises à jour incluses</li>
@@ -197,7 +200,7 @@
           <p class="pro-msg" id="proFromApp" hidden>Après le paiement, retournez dans Flitdrop : il se débloque tout seul.</p>
           <p class="pro-msg pro-msg--soon" id="proSoon" hidden><strong>Bientôt disponible.</strong> Flitdrop Pro n'est pas encore en vente. D'ici là, tout Flitdrop reste gratuit.</p>
           <div class="pro-ready" id="proReady" hidden>
-            <p class="pro-early" id="proEarly" hidden>Prix des premiers utilisateurs, pour vous remercier d'être là depuis le début.</p>
+            <p class="pro-early" id="proEarly" hidden>Prix de lancement pour les premiers utilisateurs, jusqu'au {date}. Ensuite, Flitdrop Pro coûte {price}.</p>
             <button type="button" class="btn btn-primary btn-lg pro-cta" id="proBuy">Débloquer à vie</button>
             <p class="pro-after" id="proAfterWeb">Vous achetez ici ? Ensuite, dans Flitdrop, choisissez « J'ai déjà acheté » et entrez le même e-mail.</p>
           </div>
@@ -213,7 +216,7 @@
           <a class="btn btn-ghost btn-lg" href="https://github.com/MrFrosas/flitdrop/releases/latest" target="_blank" rel="noopener" data-dl="auto">Télécharger Flitdrop</a>
         </div>
 
-        <p class="pro-fine">Le paiement passe par Paddle, notre revendeur : c'est Paddle qui vous vend la licence, encaisse le paiement et envoie le reçu. Le prix final, taxes comprises, est affiché avant de payer. <a href="/fr/terms">Conditions de vente</a> · <a href="/fr/refund">Remboursement et rétractation</a></p>
+        <p class="pro-fine">Le paiement passe par Paddle, notre revendeur : c'est Paddle qui vous vend la licence, encaisse le paiement et envoie le reçu. Le prix final, taxes comprises, est affiché avant de payer. <a href="/fr/terms">Conditions de vente</a> · <a href="/fr/refund">Remboursement et rétractation</a> · <a href="/fr/refund#withdraw" data-i18n="withdraw.open">Renoncer au contrat ici</a></p>
       </div>
     </section>
 
