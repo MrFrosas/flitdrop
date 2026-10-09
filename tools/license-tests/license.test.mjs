@@ -83,9 +83,9 @@ test('config : réglages publics quand tout est là, aucun secret, prix de lance
     trialDays: 14,
     earlyDays: 30,
     displayPrice: { EUR: '5,99 €', USD: '$5.99', GBP: '£5.49' },
-    displayPriceEarly: { EUR: '2,99 €', USD: '$2.99', GBP: '£2.74' },
+    displayPriceEarly: { EUR: '3,00 €', USD: '$3.00', GBP: '£2.75' },
     // pays inconnu : prix de secours, sans appel à Paddle
-    price: { currency: 'EUR', display: '5,99 €', displayEarly: '2,99 €' },
+    price: { currency: 'EUR', display: '5,99 €', displayEarly: '3,00 €' },
     storeEnabled: false,
   })
   assert.equal(paddleCalls().length, 0)
@@ -149,11 +149,11 @@ test('schéma : docs/licence-schema.sql est la copie exacte de celui du code, et
 
 test('config : prix localisé par pays, demandé par le serveur à Paddle, en cache 6 heures', async () => {
   const fr = await call(configRoute, null, { method: 'GET', country: 'FR' })
-  assert.deepEqual(fr.body.price, { currency: 'EUR', display: '5,99 €', displayEarly: '2,99 €' })
+  assert.deepEqual(fr.body.price, { currency: 'EUR', display: '5,99 €', displayEarly: '3,00 €' })
   assert.deepEqual(T.world.previews, [{ country: 'FR', discount: null }, { country: 'FR', discount: 'dsc_early' }])
   assert.ok(paddleCalls().every((c) => c.url.endsWith('/pricing-preview') && c.method === 'POST'))
   assert.equal(fr.headers.get('cache-control'), 'private, max-age=60', 'le prix dépend du pays : jamais en cache partagé')
-  const cases = { GB: ['GBP', '£5.49', '£2.74'], US: ['USD', '$5.99', '$2.99'], JP: ['JPY', '¥900', '¥450'] }
+  const cases = { GB: ['GBP', '£5.49', '£2.75'], US: ['USD', '$5.99', '$3.00'], JP: ['JPY', '¥900', '¥450'] }
   for (const [country, [currency, display, displayEarly]] of Object.entries(cases)) {
     assert.deepEqual((await call(configRoute, null, { method: 'GET', country })).body.price, { currency, display, displayEarly }, country)
   }
@@ -171,7 +171,7 @@ test('config : prix de secours sur toute erreur, sans jamais faire attendre ni �
   T.world.fail = { status: 500 }
   const gb = await call(configRoute, null, { method: 'GET', country: 'GB' })
   assert.equal(gb.status, 200)
-  assert.deepEqual(gb.body.price, { currency: 'GBP', display: '£5.49', displayEarly: '£2.74' })
+  assert.deepEqual(gb.body.price, { currency: 'GBP', display: '£5.49', displayEarly: '£2.75' })
   // échec gardé 10 minutes : Paddle n'est pas rappelé à chaque visite
   const before = paddleCalls().length
   await call(configRoute, null, { method: 'GET', country: 'GB' })
@@ -186,7 +186,7 @@ test('config : prix de secours sur toute erreur, sans jamais faire attendre ni �
   assert.equal((await call(configRoute, null, { method: 'GET', country: 'DE' })).body.price.display, '5,99 €')
   const calls = paddleCalls().length
   const off = await call(configRoute, null, { method: 'GET', country: 'US', env: sandboxEnv({ LICENSE_ENABLED: '0' }) })
-  assert.deepEqual(off.body.price, { currency: 'USD', display: '$5.99', displayEarly: '$2.99' })
+  assert.deepEqual(off.body.price, { currency: 'USD', display: '$5.99', displayEarly: '$3.00' })
   assert.equal(paddleCalls().length, calls)
   for (const country of ['XX', 'T1', 'fr-FR', '']) {
     resetLicenseState()
@@ -197,7 +197,7 @@ test('config : prix de secours sur toute erreur, sans jamais faire attendre ni �
 
 test('config : sans remise de lancement configurée, prix de lancement calculé (50 %) ; aperçus plafonnés', async () => {
   const prod = await call(configRoute, null, { method: 'GET', country: 'FR', env: prodEnv({ PADDLE_EARLY_DISCOUNT_ID: '' }) })
-  assert.deepEqual(prod.body.price, { currency: 'EUR', display: '5,99 €', displayEarly: '2,99 €' })
+  assert.deepEqual(prod.body.price, { currency: 'EUR', display: '5,99 €', displayEarly: '3,00 €' })
   assert.equal(T.world.previews.length, 1, 'un seul aperçu sans remise')
   // 20 aperçus par minute pour tout le site
   const countries = ['AD', 'AE', 'AF', 'AG', 'AI', 'AL', 'AM', 'AO', 'AR', 'AS', 'AU', 'AW', 'AZ', 'BA', 'BB', 'BD', 'BF', 'BG', 'BH', 'BI', 'BJ', 'BM', 'BN', 'BO', 'BR']

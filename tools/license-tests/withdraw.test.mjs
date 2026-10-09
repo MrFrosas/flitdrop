@@ -32,7 +32,8 @@ test('withdraw : réponse immédiate, rétractation notée avec son heure, accus
   const [ack] = mailsTo('ana@example.com')
   assert.equal(ack.body.from, 'Flitdrop <contact@flitdrop.com>')
   assert.equal(ack.headers.Authorization, `Bearer ${RESEND_KEY}`)
-  assert.equal(ack.body.reply_to, undefined, 'contact@flitdrop.com ne reçoit pas encore : aucune réponse demandée')
+  assert.deepEqual(ack.body.reply_to, ['contact@flitdrop.com'], 'les réponses à l’accusé arrivent à contact@flitdrop.com')
+  assert.ok(ack.body.text.includes('contact@flitdrop.com'))
   assert.match(ack.body.subject, /rétractation/)
   for (const part of ['Ana Martin', 'ana@example.com', 'txn_01abc', 'heure de Paris', 'Paddle', '14 jours', formatReceived('fr', rows[0].received_at)]) {
     assert.ok(ack.body.text.includes(part), part)

@@ -101,14 +101,14 @@ function paddle(world, url, method, init) {
     return paginate(url, items, 30, 30)
   }
   if (method === 'POST' && path === '/pricing-preview') {
-    // aperçu de prix : devise selon le pays, remise de lancement de 50 % (arrondi bas)
+    // aperçu de prix : devise selon le pays, remise de lancement de 50 % (arrondie au plus proche, comme Paddle)
     const body = JSON.parse(init.body)
     const country = body && body.address && body.address.country_code
     const currency = { FR: 'EUR', DE: 'EUR', AT: 'EUR', GB: 'GBP', US: 'USD', JP: 'JPY' }[country] || 'USD'
     const item = body && Array.isArray(body.items) ? body.items[0] : null
     const base = item && world.prices[item.price_id] ? world.prices[item.price_id][currency] : null
     if (base == null) return reply({ error: { type: 'request_error', code: 'invalid_field' } }, 400)
-    const total = body.discount_id ? Math.floor(base / 2) : base
+    const total = body.discount_id ? Math.round(base / 2) : base
     const formatted = currency === 'JPY' ? `¥${total}` : `${currency} ${(total / 100).toFixed(2)}`
     world.previews.push({ country, discount: body.discount_id || null })
     return reply({

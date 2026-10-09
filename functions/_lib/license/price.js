@@ -49,7 +49,7 @@ async function fetchPrice(cfg, country) {
     if (e.currency === normal.currency) early = e.display
   }
   // sans remise configurée : même calcul que le tableau fixe (50 %)
-  if (!early) early = normal.minor !== null && normal.currency in DISPLAY_PRICE ? formatPrice(normal.currency, Math.floor((normal.minor * (100 - EARLY_PERCENT)) / 100)) : normal.display
+  if (!early) early = normal.minor !== null && normal.currency in DISPLAY_PRICE ? formatPrice(normal.currency, Math.round((normal.minor * (100 - EARLY_PERCENT)) / 100)) : normal.display
   return { currency: normal.currency, display: normal.display, displayEarly: early }
 }
 

@@ -20,7 +20,8 @@ export const EARLY_DAYS = 30
 export const EARLY_PERCENT = 50 // remise de lancement des premiers utilisateurs
 
 // Prix de secours affichés quand Paddle.js ne donne pas le prix localisé, en
-// centimes. Le prix réduit se calcule ici, d'un seul endroit (arrondi vers le bas).
+// centimes. Le prix réduit se calcule ici, d'un seul endroit, arrondi au centime le
+// plus proche comme le fait Paddle (50 % de 5,99 € = 3,00 €, vérifié en sandbox).
 const PRICE_CENTS = { EUR: 599, USD: 599, GBP: 549 }
 
 export function formatPrice(currency, cents) {
@@ -35,7 +36,7 @@ export function formatPrice(currency, cents) {
 function priceTable(percentOff) {
   const out = {}
   for (const [currency, cents] of Object.entries(PRICE_CENTS)) {
-    out[currency] = formatPrice(currency, Math.floor((cents * (100 - percentOff)) / 100))
+    out[currency] = formatPrice(currency, Math.round((cents * (100 - percentOff)) / 100))
   }
   return out
 }
