@@ -43,7 +43,7 @@
   "41": "Tout fichier, même volumineux",
   "42": "N'importe quel type de fichier, plusieurs à la fois, jusqu'à 16 Go par fichier.",
   "43": "Presse-papiers dans les deux sens",
-  "44": "Synchro bidirectionnelle du presse-papiers : copiez sur Linux, collez sur le téléphone, ou l'inverse (elle s'appuie sur wl-clipboard ou xclip, que le .deb installe pour vous).",
+  "44": "Copiez sur Linux, envoyez en un geste et collez sur le téléphone, ou l'inverse (l'envoi s'appuie sur wl-clipboard ou xclip, que le .deb installe pour vous).",
   "45": "Dans les deux sens",
   "46": "Fonctionne dans les deux sens, de votre téléphone vers Linux et de Linux vers votre téléphone.",
   "47": "Privé et gratuit",

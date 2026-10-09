@@ -41,7 +41,7 @@
   "39": "Ce que vous pouvez envoyer, et pourquoi ça reste privé",
   "40": "Plus que des photos, et jamais via un serveur. Tout transite par votre propre Wi-Fi, chiffré de bout en bout.",
   "41": "Photos et vidéos en pleine qualité, et tout fichier jusqu'à 16 Go, plusieurs d'un seul coup.",
-  "42": "Synchronisation du presse-papiers dans les deux sens : copiez un lien ou du texte sur l'iPhone et collez-le sur le PC, ou l'inverse.",
+  "42": "Le presse-papiers dans les deux sens, en un geste : copiez un lien ou du texte sur l'iPhone et collez-le sur le PC, ou l'inverse.",
   "43": "Chaque transfert est chiffré de bout en bout et de pair à pair, si bien que rien n'est jamais stocké sur un serveur.",
   "44": "Sans compte et sans inscription : appairez, envoyez, c'est fait.",
   "45": "C'est une véritable alternative multiplateforme à AirDrop, qui couvre aussi Android et Samsung, pas seulement l'iPhone.",
@@ -72,7 +72,7 @@
   "70": "Flitdrop est-il gratuit, et faut-il un compte ?",
   "71": "Oui. Flitdrop est gratuit sur votre propre réseau avec 30 fichiers par jour, sans compte, sans inscription ni abonnement. Flitdrop Pro, un seul paiement à vie, lève la limite quotidienne.",
   "72": "Puis-je aussi renvoyer des fichiers du PC vers l'iPhone, ou vers Android ?",
-  "73": "Oui. Flitdrop fonctionne dans les deux sens entre n'importe quel téléphone (iPhone, Android, Samsung) et n'importe quel ordinateur (PC, Mac, Linux), avec en plus la synchro du presse-papiers dans les deux sens.",
+  "73": "Oui. Flitdrop fonctionne dans les deux sens entre n'importe quel téléphone (iPhone, Android, Samsung) et n'importe quel ordinateur (PC, Mac, Linux), avec en plus le presse-papiers dans les deux sens, en un geste.",
   "74": "À lire aussi",
   "75": "Guides associés",
   "76": "L'alternative à AirDrop",
@@ -102,7 +102,7 @@
   "100": "Flitdrop est-il gratuit, et faut-il un compte ?",
   "101": "Oui. Flitdrop est gratuit sur votre propre réseau avec 30 fichiers par jour, sans compte, sans inscription ni abonnement. Flitdrop Pro, un seul paiement à vie, lève la limite quotidienne.",
   "102": "Puis-je aussi renvoyer des fichiers du PC vers l'iPhone, ou vers Android ?",
-  "103": "Oui. Flitdrop fonctionne dans les deux sens entre n'importe quel téléphone (iPhone, Android, Samsung) et n'importe quel ordinateur (PC, Mac, Linux), avec en plus la synchro du presse-papiers dans les deux sens.",
+  "103": "Oui. Flitdrop fonctionne dans les deux sens entre n'importe quel téléphone (iPhone, Android, Samsung) et n'importe quel ordinateur (PC, Mac, Linux), avec en plus le presse-papiers dans les deux sens, en un geste.",
   "104": "Accueil",
   "105": "Envoyer des fichiers de l'iPhone vers le PC"
 }

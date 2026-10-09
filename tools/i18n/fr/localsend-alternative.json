@@ -18,7 +18,7 @@
   "98": "Dois-je installer une appli sur mon téléphone ?",
   "99": "Non. LocalSend exige l'appli sur chaque appareil, iPhone compris. Flitdrop n'a besoin de rien d'installé sur le téléphone : il utilise le navigateur comme une appli web légère après un unique scan de QR code. Seul l'ordinateur fait tourner l'appli Flitdrop, sur Windows, Mac ou Linux, et elle se met à jour toute seule sous Windows.",
   "100": "Quelle est la différence entre Flitdrop et LocalSend ?",
-  "101": "LocalSend est un bon outil open source et multiplateforme, mais il repose sur la détection automatique du réseau et une appli sur chaque appareil. Flitdrop est à source disponible, appaire par QR code plutôt que par détection, n'installe rien sur le téléphone, et ajoute le presse-papiers bidirectionnel, un historique du presse-papiers et une appli de bureau persistante.",
+  "101": "LocalSend est un bon outil open source et multiplateforme, mais il repose sur la détection automatique du réseau et une appli sur chaque appareil. Flitdrop est à source disponible, appaire par QR code plutôt que par détection, n'installe rien sur le téléphone, envoie le presse-papiers dans les deux sens en un geste, et ajoute un historique du presse-papiers et une appli de bureau persistante.",
   "102": "Flitdrop est-il gratuit ?",
   "103": "Oui. Flitdrop est gratuit sur votre propre réseau avec 30 fichiers par jour, sans compte ni abonnement. Flitdrop Pro, un seul paiement à vie, lève la limite quotidienne. Vous pouvez le télécharger depuis la page officielle des versions GitHub.",
   "104": "Flitdrop est-il privé et chiffré ?",
