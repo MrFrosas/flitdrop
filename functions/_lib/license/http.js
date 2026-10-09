@@ -21,11 +21,15 @@ export const tooMany = (seconds) => json({ error: 'too_many' }, 429, { 'retry-af
 // Paddle injoignable, lent ou en refus : on ne donne jamais rien, et on le dit vite
 // avec un statut qu'on peut retenter. L'app garde alors son état actuel.
 export const unavailable = () => json({ error: 'unavailable' }, 503, { 'retry-after': '60' })
-// Mode payant coupé (LICENSE_ENABLED absent ou réglage manquant).
-export const disabled = () => json({ error: 'disabled' }, 503)
+// État d'une licence impossible à établir (client ou appareil absents de la base) :
+// ce n'est pas une preuve de remboursement ni de sortie, on ne retire donc rien.
+// L'app garde son jeton jusqu'à son expiration, puis « J'ai déjà acheté ».
+export const undetermined = () => json({ error: 'unavailable' }, 503, { 'retry-after': '3600' })
+// Mode payant coupé (LICENSE_ENABLED absent, réglage ou base D1 manquants).
+export const disabled = () => json({ error: 'disabled' }, 503, { 'retry-after': '300' })
 
-// Échec côté Paddle ou imprévu : journal minimal (jamais de clé, d'adresse ni de
-// jeton, seulement le type d'erreur), puis 503.
+// Échec côté Paddle, côté base D1 ou imprévu : journal minimal (jamais de clé,
+// d'adresse ni de jeton, seulement le type d'erreur), puis 503.
 export function failClosed(where, err) {
   const status = err && Number.isFinite(err.status) ? err.status : ''
   const code = err && typeof err.code === 'string' ? err.code : ''
@@ -87,8 +91,10 @@ export function clientIp(request) {
   return (request.headers.get('cf-connecting-ip') || 'unknown').slice(0, 64)
 }
 
-// Identifiants opaques envoyés par l'app (claim, appareil) : 32 hexadécimaux minuscules.
+// Identifiants opaques envoyés par l'app (claim, appareil) : 32 hexadécimaux minuscules ;
+// secret du claim : 64 hexadécimaux minuscules.
 export const isHex32 = (v) => typeof v === 'string' && /^[0-9a-f]{32}$/.test(v)
+export const isHex64 = (v) => typeof v === 'string' && /^[0-9a-f]{64}$/.test(v)
 
 // Adresse e-mail : bornée, sans espace ni virgule (la virgule sépare les valeurs
 // dans les filtres de l'API Paddle).

@@ -1,31 +1,30 @@
 // Cloudflare Pages Function : POST /api/license/restore/verify { email, code, challenge, device }
-//   200 { token }                     bon code : l'appareil est inscrit (5 au plus, le plus ancien sort)
-//   400 { error: "code" }             code faux ou défi falsifié
-//   400 { error: "expired" }          plus de 15 minutes, ou code déjà utilisé ici
+//   200 { token }                     bon code : l'appareil est inscrit (5 actifs au plus,
+//                                     le moins récemment vu sort)
+//   400 { error: "code" }             code faux, défi falsifié ou d'une autre adresse
+//   400 { error: "expired" }          plus de 15 minutes, ou code déjà utilisé (partout :
+//                                     la base D1 garde les codes utilisés)
 //   400 { error: "nopurchase" }       bon code, mais plus d'achat valable (remboursé entre-temps)
-//   400 / 429 / 503                   requête invalide / trop d'essais / Paddle indisponible
+//   403 { error: "too_many_devices" } plus de 10 nouveaux appareils en 30 jours pour cet achat
+//   400 / 429 / 503                   requête invalide / trop d'essais / Paddle ou base indisponibles
 // Code : casse, tirets et espaces ignorés. Comparaison à temps constant.
+// Ordre des contrôles : le défi doit d'abord avoir été émis par ce serveur pour cette
+// adresse (HMAC de l'en-tête) ; alors seulement on compte un essai sur son nonce
+// (5 par défi, dans la base), puis on compare le code. Inventer des nonces ne donne
+// donc aucun essai de plus.
 import { readLicenseEnv } from '../../../_lib/license/config.js'
-import { json, methodNotAllowed, badRequest, tooMany, disabled, failClosed, readJsonBody, clientIp, normalizeEmail, isHex32, hit, hitAll, nowMs } from '../../../_lib/license/http.js'
-import { createPaddle, purchaseForEmail, registerDevice, rememberCustomer } from '../../../_lib/license/paddle.js'
-import { signToken, deviceHash, customerHash, normalizeCode, readChallenge, checkChallenge } from '../../../_lib/license/crypto.js'
-import { state } from '../../../_lib/license/state.js'
+import { json, methodNotAllowed, badRequest, tooMany, disabled, failClosed, readJsonBody, clientIp, normalizeEmail, isHex32, hitAll, nowSec } from '../../../_lib/license/http.js'
+import { createPaddle, purchaseForEmail } from '../../../_lib/license/paddle.js'
+import { openDb, bumpKey, claimNonce, releaseNonce, rememberCustomer, registerDevice } from '../../../_lib/license/db.js'
+import { signToken, deviceHash, customerHash, normalizeCode, readChallenge, challengeIssued, challengeCodeOk } from '../../../_lib/license/crypto.js'
 
 const WINDOW = 15 * 60_000
+const TRIES_PER_CHALLENGE = 5
 const err400 = (error) => json({ error }, 400)
-
-// Un code qui a servi n'est plus accepté par cet isolat (au mieux : sans base de
-// données, un autre isolat l'accepterait encore jusqu'à son expiration).
-function markUsed(nonce, expiresSec) {
-  const t = nowMs()
-  if (state.usedNonces.size > 5000) for (const [n, exp] of state.usedNonces) if (exp <= t) state.usedNonces.delete(n)
-  if (state.usedNonces.size > 5000) state.usedNonces.clear()
-  state.usedNonces.set(nonce, expiresSec * 1000)
-}
 
 export async function onRequest({ request, env }) {
   if (request.method !== 'POST') return methodNotAllowed('POST')
-  const cfg = readLicenseEnv(env)
+  const cfg = readLicenseEnv(env, request)
   if (!cfg.enabled) return disabled()
 
   const body = await readJsonBody(request)
@@ -39,28 +38,41 @@ export async function onRequest({ request, env }) {
   ])
   if (wait) return tooMany(wait)
 
+  let parsed
   try {
-    const parsed = readChallenge(body.challenge)
-    if (!parsed) return err400('code')
-    const tries = hit(`rv:n:${parsed.n}`, 5, WINDOW)
-    if (tries) return tooMany(tries)
+    parsed = readChallenge(body.challenge)
+    if (!parsed || !(await challengeIssued(cfg, parsed, email))) return err400('code')
+  } catch (err) {
+    return failClosed('restore/verify', err)
+  }
+  if (parsed.x < nowSec()) return err400('expired')
+
+  let db
+  let nonceTaken = false
+  try {
+    db = await openDb(cfg.db)
+    // essais comptés sur le nonce d'un défi authentique, pour tous les isolats
+    if (!(await bumpKey(db, `rv:n:${parsed.n}`, TRIES_PER_CHALLENGE, parsed.x + 60))) return tooMany(Math.max(1, parsed.x - nowSec()))
 
     const code = normalizeCode(body.code)
-    if (parsed.x * 1000 < nowMs()) return err400('expired')
-    if (!code) return err400('code')
-    const verdict = await checkChallenge(cfg, parsed, email, code)
-    if (verdict !== 'ok') return err400(verdict)
-    if (state.usedNonces.has(parsed.n)) return err400('expired')
+    if (!code || !(await challengeCodeOk(cfg, parsed, email, code))) return err400('code')
 
-    const paddle = createPaddle(cfg)
-    const customer = await purchaseForEmail(paddle, cfg, body.email, email)
+    // usage unique, partout : la première requête qui prend le nonce gagne
+    if (!(await claimNonce(db, parsed.n, parsed.x + 60))) return err400('expired')
+    nonceTaken = true
+
+    const customer = await purchaseForEmail(createPaddle(cfg), cfg, body.email, email)
     if (!customer) return err400('nopurchase')
-    await registerDevice(paddle, customer, await deviceHash(device))
-    markUsed(parsed.n, parsed.x)
+    await rememberCustomer(db, await customerHash(customer.id), customer.id)
+    const verdict = await registerDevice(db, { customerId: customer.id, device: await deviceHash(device) })
+    if (verdict !== 'ok') return json({ error: verdict }, 403)
 
-    rememberCustomer(await customerHash(customer.id), customer.id)
-    return json({ token: await signToken(cfg, { device, customerId: customer.id }) })
+    const token = await signToken(cfg, { device, customerId: customer.id })
+    nonceTaken = false // délivré : le code reste consommé
+    return json({ token })
   } catch (err) {
+    // panne passagère après avoir pris le code : il redevient utilisable
+    if (nonceTaken && db) await releaseNonce(db, parsed.n)
     return failClosed('restore/verify', err)
   }
 }

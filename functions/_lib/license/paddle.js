@@ -6,24 +6,22 @@
 // en 503 « retente plus tard ». La clé d'API ne sort jamais : ni dans les journaux,
 // ni dans les réponses, et elle n'est envoyée qu'à l'hôte Paddle configuré.
 //
-// Où vivent les données (aucune base chez nous) :
-//   - transaction.custom_data.claim : le « claim » aléatoire de l'app, posé par la page /pro
-//   - customer.custom_data.flitdrop_devices : [{ d, t }] appareils autorisés (5 au plus),
-//       d = 32 premiers hexadécimaux du SHA-256 de l'identifiant d'appareil, t = date (s)
-//   - customer.custom_data.flitdrop_claims : { txn_id: [d, ...] } appareils débloqués par
-//       chaque achat via son claim (5 au plus par achat)
-// Les autres clés de custom_data sont toujours conservées.
+// Nombre d'appels borné : chaque requête de l'app a droit à MAX_CALLS appels Paddle
+// au plus (pages comprises), quoi que contienne la requête. Au-delà : PaddleError.
+//
+// Paddle reste la source de vérité des achats (transaction.custom_data.claim : le
+// claim de la page /pro), des clients, des remboursements et des rétrofacturations.
+// Les appareils et les index vivent dans la base D1 (db.js).
 import { state } from './state.js'
-import { nowMs, nowSec } from './http.js'
-import { customerHash } from './crypto.js'
+import { nowMs } from './http.js'
 
-export const MAX_DEVICES = 5
-export const MAX_CLAIM_DEVICES = 5
 export const CLAIM_WINDOW_MS = 48 * 3600 * 1000
+export const MAX_CALLS = 16
 
 const BUDGET_MS = 9000 // temps total accordé à Paddle pour une requête de l'app
 const CALL_MS = 4000 // temps maximal d'un appel
-const PAGES = { claimScan: 10, customerTxns: 5, adjustments: 4, customerScan: 40, emailLookup: 1 }
+const PAGES = { claimScan: 10, customerTxns: 2, adjustments: 2, emailLookup: 1 }
+const MAX_EMAIL_CUSTOMERS = 2 // clients d'une même adresse examinés au plus
 
 export class PaddleError extends Error {
   constructor(status, code) {
@@ -57,9 +55,10 @@ export function query(params) {
 // Date RFC 3339 sans millisecondes, en UTC.
 export const rfc3339 = (ms) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, 'Z')
 
-export function createPaddle(cfg, { budgetMs = BUDGET_MS } = {}) {
+export function createPaddle(cfg, { budgetMs = BUDGET_MS, maxCalls = MAX_CALLS } = {}) {
   const deadline = nowMs() + budgetMs
   const base = cfg.apiBase
+  let calls = 0
 
   async function call(method, pathOrUrl, body) {
     if (nowMs() < state.paddlePausedUntil) throw new PaddleError(429, 'paused')
@@ -70,6 +69,7 @@ export function createPaddle(cfg, { budgetMs = BUDGET_MS } = {}) {
     for (let attempt = 0; attempt < 2; attempt++) {
       const remaining = deadline - nowMs()
       if (remaining < 300) throw new PaddleError(0, 'timeout')
+      if (++calls > maxCalls) throw new PaddleError(0, 'too_many_calls')
       let res
       try {
         res = await fetch(url, {
@@ -137,8 +137,11 @@ export function createPaddle(cfg, { budgetMs = BUDGET_MS } = {}) {
 
   return {
     get: (path) => call('GET', path),
-    patch: (path, body) => call('PATCH', path, body),
+    post: (path, body) => call('POST', path, body),
     list,
+    get calls() {
+      return calls
+    },
   }
 }
 
@@ -146,9 +149,9 @@ export function createPaddle(cfg, { budgetMs = BUDGET_MS } = {}) {
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 // Ids Paddle : préfixe + minuscules et chiffres. Vérifiés avant de servir de chemin
-// d'URL ou de clé dans custom_data (un id inattendu ne doit rien contourner).
-const isCustomerId = (v) => typeof v === 'string' && /^ctm_[a-z0-9]+$/.test(v)
-const isTxnId = (v) => typeof v === 'string' && /^txn_[a-z0-9]+$/.test(v)
+// d'URL ou de clé en base (un id inattendu ne doit rien contourner).
+export const isCustomerId = (v) => typeof v === 'string' && v.length <= 64 && /^ctm_[a-z0-9]+$/.test(v)
+export const isTxnId = (v) => typeof v === 'string' && v.length <= 64 && /^txn_[a-z0-9]+$/.test(v)
 
 // La transaction contient-elle le prix Pro ? (items[].price.id d'après la doc,
 // details.line_items[].price_id en secours)
@@ -157,6 +160,12 @@ export function hasProPrice(txn, priceId) {
   if (items.some((it) => isObj(it) && ((isObj(it.price) && it.price.id === priceId) || it.price_id === priceId))) return true
   const lines = Array.isArray(txn?.details?.line_items) ? txn.details.line_items : []
   return lines.some((l) => isObj(l) && l.price_id === priceId)
+}
+
+// Claim posé par la page /pro dans customData (32 hexadécimaux).
+export function claimOf(txn) {
+  const c = isObj(txn) && isObj(txn.custom_data) ? txn.custom_data.claim : null
+  return typeof c === 'string' ? c.toLowerCase() : null
 }
 
 const toInt = (v) => {
@@ -188,7 +197,7 @@ export function transactionRevoked(txn, adjustments, priceId) {
 
 // Ajustements (remboursements, rétrofacturations) de ces transactions. Tous sont lus
 // puis filtrés ici : on ne dépend pas d'un filtre « action » côté Paddle.
-async function adjustmentsFor(paddle, txnIds) {
+export async function adjustmentsFor(paddle, txnIds) {
   const all = []
   for (let i = 0; i < txnIds.length; i += 20) {
     const ids = txnIds.slice(i, i + 20)
@@ -200,30 +209,32 @@ async function adjustmentsFor(paddle, txnIds) {
   return all
 }
 
-// Premier achat Pro valide parmi ces transactions, ou null.
-async function firstValid(paddle, cfg, txns) {
-  if (txns.length === 0) return null
-  const adjustments = await adjustmentsFor(
-    paddle,
-    txns.map((t) => t.id),
-  )
-  return txns.find((t) => !transactionRevoked(t, adjustments, cfg.priceId)) || null
+// Une transaction, lue par son id (un seul appel).
+export async function getTransaction(paddle, txnId) {
+  if (!isTxnId(txnId)) throw new PaddleError(0, 'bad_txn_id')
+  const data = await paddle.get(`/transactions/${txnId}`)
+  if (!isObj(data.data) || data.data.id !== txnId) throw new PaddleError(200, 'bad_shape')
+  return data.data
 }
+
+// Achat Pro de ce claim : bon prix, bon claim, client connu. (Le statut se juge à part.)
+export const isProForClaim = (t, cfg, claim) =>
+  isObj(t) && isTxnId(t.id) && isCustomerId(t.customer_id) && hasProPrice(t, cfg.priceId) && claimOf(t) === claim
 
 const isCompletedPro = (t, cfg) =>
   isObj(t) && t.status === 'completed' && isTxnId(t.id) && isCustomerId(t.customer_id) && hasProPrice(t, cfg.priceId)
 
-// Transactions terminées des 48 dernières heures. Le résultat est partagé 3 s dans
+// Transactions terminées des 48 dernières heures. Le résultat est partagé 5 s dans
 // l'isolat : l'app interroge toutes les 5 s pendant le paiement, inutile de
-// solliciter Paddle pour chaque appareil en attente.
-async function recentCompleted(paddle, cfg) {
+// solliciter Paddle pour chaque appareil en attente. allowScan() est consulté avant
+// tout nouveau balayage (plafond global partagé, voir claim.js).
+async function recentCompleted(paddle, cfg, allowScan) {
   const key = cfg.apiBase + '|' + cfg.priceId
   const s = state.recentScan
-  if (s && s.key === key && nowMs() - s.at < 3000) return s.promise
+  if (s && s.key === key && nowMs() - s.at < 5000) return s.promise
+  if (!(await allowScan())) return null
   const since = rfc3339(nowMs() - CLAIM_WINDOW_MS)
-  const promise = paddle
-    .list(`/transactions?${query({ status: 'completed', 'created_at[GTE]': since, per_page: 30 })}`, PAGES.claimScan)
-    .then((r) => r.items)
+  const promise = paddle.list(`/transactions?${query({ status: 'completed', 'created_at[GTE]': since, per_page: 30 })}`, PAGES.claimScan)
   state.recentScan = { key, at: nowMs(), promise }
   promise.catch(() => {
     if (state.recentScan && state.recentScan.promise === promise) state.recentScan = null
@@ -231,44 +242,58 @@ async function recentCompleted(paddle, cfg) {
   return promise
 }
 
-// Achat Pro terminé, de moins de 48 h, porteur de ce claim et non remboursé.
-export async function findClaimTransaction(paddle, cfg, claim) {
-  const items = await recentCompleted(paddle, cfg)
+// Secours quand la base ne connaît pas ce claim (page /pro fermée avant la fin) :
+// achat Pro terminé, de moins de 48 h, porteur de ce claim et non remboursé.
+// { txn } trouvé ; { txn: null, final: false } sinon : liste tronquée, balayage
+// refusé par le plafond ou pas encore payé, ce n'est jamais un échec définitif.
+export async function findClaimTransaction(paddle, cfg, claim, allowScan) {
+  const scan = await recentCompleted(paddle, cfg, allowScan)
+  if (!scan) return { txn: null }
   const limit = nowMs() - CLAIM_WINDOW_MS
-  const candidates = items.filter((t) => {
-    if (!isCompletedPro(t, cfg)) return false
-    const c = isObj(t.custom_data) ? t.custom_data.claim : null
-    if (typeof c !== 'string' || c.toLowerCase() !== claim) return false
+  const candidates = scan.items.filter((t) => {
+    if (!isCompletedPro(t, cfg) || claimOf(t) !== claim) return false
     const created = Date.parse(t.created_at || '')
     return Number.isFinite(created) && created >= limit
   })
-  return firstValid(paddle, cfg, candidates)
+  if (candidates.length === 0) return { txn: null }
+  const adjustments = await adjustmentsFor(
+    paddle,
+    candidates.slice(0, 20).map((t) => t.id),
+  )
+  return { txn: candidates.slice(0, 20).find((t) => !transactionRevoked(t, adjustments, cfg.priceId)) || null }
 }
 
-// Le client a-t-il au moins un achat Pro terminé et non remboursé ?
-export async function customerHasValidPurchase(paddle, cfg, customerId) {
+// État des achats Pro d'un client :
+//   'valid'   au moins un achat terminé, ni remboursé ni rétrofacturé ;
+//   'revoked' des achats terminés, tous remboursés ou rétrofacturés (preuve positive) ;
+//   'none'    aucun achat Pro terminé trouvé : ce n'est PAS une preuve (prix changé,
+//             réglage faux) ; l'appelant ne doit ni donner ni retirer.
+export async function customerPurchaseState(paddle, cfg, customerId) {
+  if (!isCustomerId(customerId)) throw new PaddleError(0, 'bad_customer_id')
   const { items, complete } = await paddle.list(
     `/transactions?${query({ customer_id: customerId, status: 'completed', per_page: 30 })}`,
     PAGES.customerTxns,
   )
-  const txns = items.filter((t) => isCompletedPro(t, cfg) && t.customer_id === customerId)
-  const valid = await firstValid(paddle, cfg, txns)
-  if (valid) return true
+  const txns = items.filter((t) => isCompletedPro(t, cfg) && t.customer_id === customerId).slice(0, 20)
+  if (txns.length === 0) {
+    if (!complete) throw new PaddleError(200, 'transactions_truncated')
+    return 'none'
+  }
+  const adjustments = await adjustmentsFor(
+    paddle,
+    txns.map((t) => t.id),
+  )
+  if (txns.some((t) => !transactionRevoked(t, adjustments, cfg.priceId))) return 'valid'
+  // liste tronquée : un achat valable pourrait être plus loin
   if (!complete) throw new PaddleError(200, 'transactions_truncated')
-  return false
+  return 'revoked'
 }
 
-export async function getCustomer(paddle, customerId) {
-  if (!isCustomerId(customerId)) throw new PaddleError(0, 'bad_customer_id')
-  const data = await paddle.get(`/customers/${customerId}`)
-  if (!isObj(data.data) || data.data.id !== customerId) throw new PaddleError(200, 'bad_shape')
-  return data.data
-}
-
-// Client(s) de cette adresse qui ont un achat Pro valide. La doc ne dit pas si le
-// filtre email de Paddle tient compte de la casse : on demande l'adresse telle que
-// tapée et en minuscules, puis, sans résultat, la recherche plein texte de Paddle
-// (id, nom, e-mail) ; dans tous les cas on ne garde ici que l'égalité exacte sans casse.
+// Client de cette adresse qui a un achat Pro valable, ou null. La doc ne dit pas si
+// le filtre email de Paddle tient compte de la casse : on demande l'adresse telle
+// que tapée et en minuscules, puis, sans résultat, la recherche plein texte de
+// Paddle (id, nom, e-mail) ; dans tous les cas on ne garde ici que l'égalité exacte
+// sans casse. Deux clients au plus sont examinés (appels bornés).
 export async function purchaseForEmail(paddle, cfg, emailTyped, emailNorm) {
   const same = (c) => isObj(c) && isCustomerId(c.id) && typeof c.email === 'string' && c.email.trim().toLowerCase() === emailNorm
   const variants = [...new Set([emailNorm, typeof emailTyped === 'string' ? emailTyped.trim() : ''].filter(Boolean))]
@@ -276,109 +301,8 @@ export async function purchaseForEmail(paddle, cfg, emailTyped, emailNorm) {
   if (customers.length === 0 && emailNorm.length <= 100) {
     customers = (await paddle.list(`/customers?${query({ search: emailNorm, per_page: 50 })}`, PAGES.emailLookup)).items.filter(same)
   }
-  for (const c of customers.slice(0, 3)) {
-    if (await customerHasValidPurchase(paddle, cfg, c.id)) return c
+  for (const c of customers.slice(0, MAX_EMAIL_CUSTOMERS)) {
+    if ((await customerPurchaseState(paddle, cfg, c.id)) === 'valid') return c
   }
   return null
-}
-
-const CUS_CACHE_MAX = 20000
-
-export function rememberCustomer(cus, customerId) {
-  if (state.customerByCus.size >= CUS_CACHE_MAX) state.customerByCus.clear()
-  state.customerByCus.set(cus, customerId)
-}
-
-// Retrouve le client Paddle à partir de l'empreinte « cus » du jeton. Une empreinte ne
-// se renverse pas et Paddle ne filtre pas sur custom_data : on parcourt les clients
-// (200 par page) en mémorisant les empreintes dans l'isolat. 40 pages = 8 000 clients ;
-// au-delà, voir docs/licence.md (passer à un stockage KV).
-export async function findCustomerByCus(paddle, cus) {
-  const known = state.customerByCus.get(cus)
-  if (known) {
-    const c = await getCustomer(paddle, known)
-    if ((await customerHash(c.id)) === cus) return c
-  }
-  const { found, complete } = await paddle.list(`/customers?${query({ per_page: 200 })}`, PAGES.customerScan, async (c) => {
-    if (!isObj(c) || !isCustomerId(c.id)) return false
-    const h = await customerHash(c.id)
-    rememberCustomer(h, c.id)
-    return h === cus
-  })
-  if (found) return found
-  if (!complete) throw new PaddleError(200, 'customers_truncated')
-  return null
-}
-
-// --- appareils -------------------------------------------------------------------
-
-export function readDevices(customData) {
-  const list = isObj(customData) && Array.isArray(customData.flitdrop_devices) ? customData.flitdrop_devices : []
-  return list
-    .filter((x) => isObj(x) && typeof x.d === 'string' && /^[0-9a-f]{32}$/.test(x.d) && Number.isFinite(x.t))
-    .map((x) => ({ d: x.d, t: Math.floor(x.t) }))
-}
-
-function readClaims(customData) {
-  const raw = isObj(customData) && isObj(customData.flitdrop_claims) ? customData.flitdrop_claims : {}
-  const out = {}
-  for (const [txn, list] of Object.entries(raw)) {
-    if (!isTxnId(txn) || !Array.isArray(list)) continue
-    out[txn] = [...new Set(list.filter((d) => typeof d === 'string' && /^[0-9a-f]{32}$/.test(d)))]
-  }
-  return out
-}
-
-// Ajoute ou rafraîchit un appareil ; au-delà de 5, le plus ancien (t le plus petit) sort.
-export function withDevice(devices, d, t) {
-  const next = devices.filter((x) => x.d !== d)
-  next.push({ d, t })
-  next.sort((a, b) => a.t - b.t)
-  while (next.length > MAX_DEVICES) next.shift()
-  return next
-}
-
-async function writeCustomData(paddle, customer, customData, mustContain) {
-  const data = await paddle.patch(`/customers/${customer.id}`, { custom_data: customData })
-  const saved = isObj(data.data) ? data.data.custom_data : null
-  // écriture non confirmée : on ne délivre rien
-  if (!readDevices(saved).some((x) => x.d === mustContain)) throw new PaddleError(200, 'write_unconfirmed')
-  return saved
-}
-
-// Inscrit l'appareil chez le client. Avec txnId (déblocage par claim), refuse un
-// 6e appareil distinct pour le même achat : { refused: true }.
-export async function registerDevice(paddle, customer, d, { txnId } = {}) {
-  const current = isObj(customer.custom_data) ? customer.custom_data : {}
-  const next = { ...current, flitdrop_devices: withDevice(readDevices(current), d, nowSec()) }
-  if (txnId) {
-    const claims = readClaims(current)
-    const used = claims[txnId] || []
-    if (!used.includes(d)) {
-      if (used.length >= MAX_CLAIM_DEVICES) return { refused: true }
-      used.push(d)
-    }
-    delete claims[txnId]
-    claims[txnId] = used // en dernier : les 10 achats les plus récents sont gardés
-    const keys = Object.keys(claims)
-    for (const k of keys.slice(0, Math.max(0, keys.length - 10))) delete claims[k]
-    next.flitdrop_claims = claims
-  }
-  customer.custom_data = await writeCustomData(paddle, customer, next, d)
-  return { refused: false }
-}
-
-// Renouvellement : l'appareil doit être inscrit. Sa date est rafraîchie au plus une
-// fois par jour, pour qu'un appareil actif ne soit pas « le plus ancien ».
-export function deviceRegistered(customer, d) {
-  return readDevices(customer.custom_data).some((x) => x.d === d)
-}
-
-export async function touchDevice(paddle, customer, d) {
-  const current = isObj(customer.custom_data) ? customer.custom_data : {}
-  const devices = readDevices(current)
-  const mine = devices.find((x) => x.d === d)
-  if (!mine || nowSec() - mine.t < 86400) return
-  const next = { ...current, flitdrop_devices: withDevice(devices, d, nowSec()) }
-  customer.custom_data = await writeCustomData(paddle, customer, next, d)
 }

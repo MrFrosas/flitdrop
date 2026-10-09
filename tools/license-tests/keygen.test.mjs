@@ -38,16 +38,21 @@ test('keygen : clé privée dans le fichier, seule la clé publique à l’écra
 
     // le contenu du fichier se colle tel quel dans LICENSE_SIGNING_KEY
     assert.equal(await publicKeyBase64(secret), out)
+    const fakeDb = { prepare() {}, batch() {} }
     assert.equal(
-      readLicenseEnv({
-        LICENSE_ENABLED: '1',
-        PADDLE_ENV: 'sandbox',
-        PADDLE_API_KEY: 'pdl_sdbx_apikey_xxxxxxxxxxxxxxxx',
-        PADDLE_CLIENT_TOKEN: 'test_abc',
-        PADDLE_PRICE_ID: 'pri_abc',
-        LICENSE_SIGNING_KEY: readFileSync(file, 'utf8'),
-        RESEND_API_KEY: 're_x',
-      }).enabled,
+      readLicenseEnv(
+        {
+          LICENSE_ENABLED: '1',
+          PADDLE_ENV: 'sandbox',
+          PADDLE_API_KEY: 'pdl_sdbx_apikey_xxxxxxxxxxxxxxxx',
+          PADDLE_CLIENT_TOKEN: 'test_abc',
+          PADDLE_PRICE_ID: 'pri_abc',
+          LICENSE_SIGNING_KEY: readFileSync(file, 'utf8'),
+          RESEND_API_KEY: 're_x',
+          LICENSE_DB: fakeDb,
+        },
+        new Request('https://preview.flitdrop.pages.dev/api/license/config'),
+      ).enabled,
       true,
     )
 
@@ -60,7 +65,17 @@ test('keygen : clé privée dans le fichier, seule la clé publique à l’écra
     assert.equal(overwrite.stdout, '')
     assert.equal(readFileSync(file, 'utf8').trim(), secret)
 
-    assert.notEqual(run().status, 0)
+    const usage = run()
+    assert.notEqual(usage.status, 0)
+    // l'aide rappelle qu'il faut une clé par environnement
+    assert.match(usage.stderr, /production/)
+    assert.match(usage.stderr, /sandbox/)
+
+    // deux clés tirées : deux paires différentes
+    const file2 = join(dir, 'cle-sandbox.txt')
+    const r2 = run(file2)
+    assert.equal(r2.status, 0)
+    assert.notEqual(r2.stdout.trim(), out)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
