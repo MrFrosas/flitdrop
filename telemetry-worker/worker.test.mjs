@@ -215,7 +215,10 @@ test('Flitdrop Pro : évènements du niveau de base, valeurs de la liste seuleme
   await call(env('basic', 'pro_prompt_shown', { where: 'popup' }))
   await call(env('basic', 'pro_checkout_opened', { where: 'limit', early: 'yes' }))
   await call(env('basic', 'pro_unlocked', { how: 'gift' }))
-  assert.equal(sent.length, 7)
+  // carte d'accueil d'une installation d'avant Flitdrop Pro
+  await call(env('basic', 'pro_prompt_shown', { ...COMMON, where: 'welcome' }))
+  await call(env('basic', 'pro_checkout_opened', { where: 'welcome' }))
+  assert.equal(sent.length, 9)
   assert.deepEqual(sent.map((x) => x.body.event), [
     'pro_prompt_shown',
     'pro_checkout_opened',
@@ -224,6 +227,8 @@ test('Flitdrop Pro : évènements du niveau de base, valeurs de la liste seuleme
     'pro_prompt_shown',
     'pro_checkout_opened',
     'pro_unlocked',
+    'pro_prompt_shown',
+    'pro_checkout_opened',
   ])
   for (const x of sent) {
     assert.equal(x.body.properties.tier, 'basic')
@@ -237,6 +242,9 @@ test('Flitdrop Pro : évènements du niveau de base, valeurs de la liste seuleme
   assert.equal(sent[4].body.properties.where, undefined)
   assert.equal(sent[5].body.properties.early, undefined)
   assert.equal(sent[6].body.properties.how, undefined)
+  assert.equal(sent[7].body.properties.where, 'welcome')
+  // « welcome » n'est pas un endroit d'où l'on ouvre la page d'achat
+  assert.equal(sent[8].body.properties.where, undefined)
   const raw = JSON.stringify(sent.map((x) => x.body))
   for (const leak of ['zoe@example.com', 'abc.def', '0123456789abcdef', 'should-be-ignored', '"count"']) assert.ok(!raw.includes(leak), leak)
 })

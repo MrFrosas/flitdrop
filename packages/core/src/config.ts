@@ -92,10 +92,12 @@ export interface Config {
   // ---------- Flitdrop Pro (license.ts) ----------
   // identifiant d'appareil de la licence : empreinte de l'identifiant de la
   // machine (jamais l'identifiant lui-même). Différent de celui calculé au
-  // lancement : config copiée d'un autre PC, son jeton est ignoré.
+  // lancement : config copiée d'un autre PC, son jeton est ignoré (sauf
+  // identité de secours gardée pour son jeton sur cette machine, license.ts).
   licenseDeviceId: string
-  // identifiant aléatoire de secours, seulement si celui de la machine est
-  // illisible ('' sinon)
+  // identifiant aléatoire de secours, seulement si celui de la machine était
+  // illisible au premier lancement ('' sinon, et effacé dès que l'état passe
+  // à l'identifiant de la machine)
   licenseFallbackId: string
   // état signé : essai, mode payant vu, compteur du jour, jeton (null : rien
   // encore). Retouché à la main : limites fermées (voir license.ts).
@@ -130,6 +132,10 @@ export interface LicenseStateStored {
   seenAt: string
   markSeen: boolean
   legacy: boolean
+  /** état créé sous une identité de secours : empreinte de la session */
+  fallbackHost: string
+  /** identité de secours gardée pour son jeton : empreinte de la machine */
+  machineDev: string
   /** empreinte liée à la machine */
   mac: string
   /** empreinte liée à l'identité gardée et à la session (lancement où
@@ -240,6 +246,8 @@ function licenseStateFrom(v: unknown): LicenseStateStored | null {
     seenAt: str(s.seenAt, 40),
     markSeen: s.markSeen === true,
     legacy: s.legacy === true,
+    fallbackHost: str(s.fallbackHost, 64),
+    machineDev: str(s.machineDev, 64),
     mac: str(s.mac, 64),
     mac2: str(s.mac2, 64),
   }

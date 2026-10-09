@@ -25,7 +25,17 @@
 // sur cette installation : un identifiant aléatoire gardé dans la config
 // (licenseFallbackId) le remplace ; il ne protège alors plus contre la copie
 // de la config sur un autre PC où l'identifiant serait aussi illisible (cas
-// rare, accepté).
+// rare, accepté). L'état créé sous cette identité de secours note, signée,
+// l'empreinte de la session qui l'a créée (fallbackHost). Le jour où
+// l'identifiant de la machine se lit enfin, sur cette même session : ce n'est
+// pas une copie, l'état passe à l'identifiant de la machine sans rien perdre
+// (dates de l'essai, compteur du jour, legacy ; deuxième emplacement
+// récrit). Un jeton Pro lié à l'identité de secours est gardé : cette
+// identité reste celle de la licence sur CETTE machine (le serveur des
+// licences la connaît sous ce nom), notée dans l'état signé avec l'empreinte
+// de la machine (machineDev), ce qui la rend inutilisable sur un autre PC.
+// Session différente, ou état sans cette note : traité comme une copie
+// (ci-dessous).
 //
 // Lecture ratée CE lancement (commande lente au démarrage, ordinateur
 // chargé) alors que la config est déjà liée à cette machine : ce n'est pas
@@ -357,6 +367,12 @@ export interface LicenseState {
   markSeen: boolean
   /** installation d'avant Flitdrop Pro (presse-papiers complet gratuit) */
   legacy: boolean
+  /** état créé sous une identité de secours (identifiant de la machine
+   *  illisible) : empreinte de la session qui l'a créé ; '' sinon */
+  fallbackHost: string
+  /** identité de secours gardée pour son jeton une fois l'identifiant de la
+   *  machine lu : empreinte de CETTE machine (deviceIdFrom) ; '' sinon */
+  machineDev: string
 }
 
 const blankState = (paidMode: boolean, legacy = false): LicenseState => ({
@@ -371,6 +387,8 @@ const blankState = (paidMode: boolean, legacy = false): LicenseState => ({
   seenAt: '',
   markSeen: false,
   legacy,
+  fallbackHost: '',
+  machineDev: '',
 })
 
 export function stateKey(machine: string): Buffer {
@@ -401,8 +419,16 @@ export function stateMac(key: Buffer, deviceId: string, s: LicenseState): string
     s.seenAt,
     s.markSeen,
     s.legacy,
+    // ajoutés ensuite : vides, l'empreinte d'un état plus ancien ne change pas
+    ...(s.fallbackHost || s.machineDev ? [s.fallbackHost, s.machineDev] : []),
   ])
   return crypto.createHmac('sha256', key).update(body).digest('hex')
+}
+
+/** Empreinte de la session qui a créé un état sous une identité de secours
+ *  (gardée dans l'état signé : fallbackHost). */
+export function fallbackHostTag(host: string): string {
+  return crypto.createHash('sha256').update(`flitdrop-fallback-v1|${STATE_SALT}|${host}`).digest('hex').slice(0, 32)
 }
 
 /** Contenu du deuxième emplacement. Dates en ms (0 : aucune), jour local
@@ -453,6 +479,20 @@ function laterDaily(a: { day: string; count: number }, b: { day: string; count: 
 const macEqual = (a: string, b: string): boolean => {
   if (typeof a !== 'string' || a.length !== b.length) return false
   return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
+}
+
+/** L'état gardé porte-t-il une empreinte valable pour cette identité (liée à
+ *  la machine, ou deuxième empreinte liée à la session) ? */
+function stateSigned(s: LicenseStateStored, dev: string, key: Buffer | null, key2: Buffer): boolean {
+  return (!!key && macEqual(s.mac, stateMac(key, dev, s))) || macEqual(s.mac2, stateMac(key2, dev, s))
+}
+
+/** Identité de secours qu'on quitte (première lecture de l'identifiant de la
+ *  machine) : ce qui signait l'état et le deuxième emplacement. */
+interface Migration {
+  dev: string
+  key: Buffer
+  key2: Buffer
 }
 
 const validTs = (v: string): number | null => {
@@ -577,6 +617,12 @@ export class License {
   private key: Buffer | null = null
   /** clé de la deuxième empreinte : identité gardée + session */
   private key2: Buffer = Buffer.alloc(32)
+  /** identité qui signe le deuxième emplacement : celle de la machine quand
+   *  elle est connue (même si la licence garde une identité de secours) */
+  private markDev = ''
+  /** identité de secours de cette session : empreinte de la session, notée
+   *  dans un état neuf (fallbackHost) ; '' sinon */
+  private fallbackTag = ''
   /** identifiant de la machine illisible ce lancement, config déjà liée à
    *  cette machine : l'identité gardée sert, la lecture est retentée */
   private unreadable = false
@@ -688,47 +734,73 @@ export class License {
     }
   }
 
-  /** Identité de l'appareil, clés, deuxième emplacement, puis l'état. */
+  /** Identité de l'appareil, clés, puis l'état et le deuxième emplacement. */
   private setup(machine: string | null, mark: { ok: boolean; v: string | null }): void {
     const stored = this.cfg.licenseDeviceId
     const fb = this.cfg.licenseFallbackId
-    const fbDev = /^[0-9a-f]{32}$/.test(fb) ? deviceIdFrom('fallback:' + fb) : ''
+    const fbSeed = /^[0-9a-f]{32}$/.test(fb) ? 'fallback:' + fb : ''
+    const fbDev = fbSeed ? deviceIdFrom(fbSeed) : ''
+    const host = (this.o.hostFingerprint ?? hostFingerprint)()
+    const s = this.cfg.licenseState
+    let from: Migration | null = null
+    let useFallback = false
     this.unreadable = false
     this.degraded = false
+    this.fallbackTag = ''
     if (machine) {
-      this.deviceIdValue = deviceIdFrom(machine)
+      const real = deviceIdFrom(machine)
+      this.deviceIdValue = real
+      this.markDev = real
       this.key = stateKey(machine)
+      if (s && stored !== '' && stored !== real) {
+        if (s.machineDev === real && stateSigned(s, stored, this.key, sessionKey(stored, host))) {
+          // identité de secours gardée pour son jeton sur CETTE machine (voir
+          // en tête du fichier) : le serveur des licences la connaît ainsi
+          this.deviceIdValue = stored
+        } else if (stored === fbDev && s.fallbackHost === fallbackHostTag(host) && stateSigned(s, fbDev, stateKey(fbSeed), sessionKey(fbDev, host))) {
+          // identité de secours créée par cette session, identifiant de la
+          // machine lu pour la première fois : ce n'est pas une copie
+          if (mark.ok) {
+            from = { dev: fbDev, key: stateKey(fbSeed), key2: sessionKey(fbDev, host) }
+            // jeton lié à l'identité de secours : elle reste celle de la licence
+            if (s.token && verifyToken(s.token, fbDev, this.pub(), this.tokenEnv).ok) this.deviceIdValue = fbDev
+          } else {
+            // deuxième emplacement illisible ce lancement : impossible de le
+            // récrire, le passage attend le prochain lancement
+            useFallback = true
+          }
+        }
+      }
     } else if (stored !== '' && stored !== fbDev) {
       // config déjà liée à CETTE machine (identifiant lu à un lancement
       // précédent), illisible cette fois : pas une copie, on garde l'identité
       this.unreadable = true
       this.deviceIdValue = stored
+      this.markDev = stored
       this.key = null
     } else {
+      useFallback = true
+    }
+    if (useFallback) {
       // jamais lu sur cette installation : identifiant aléatoire gardé
-      if (!fbDev) {
+      if (!fbSeed) {
         this.cfg.licenseFallbackId = crypto.randomBytes(16).toString('hex')
         this.save()
       }
       const m = 'fallback:' + this.cfg.licenseFallbackId
       this.deviceIdValue = deviceIdFrom(m)
+      this.markDev = this.deviceIdValue
       this.key = stateKey(m)
+      this.fallbackTag = fallbackHostTag(host)
     }
-    this.key2 = sessionKey(this.deviceIdValue, (this.o.hostFingerprint ?? hostFingerprint)())
-    this.mark = null
-    if (!mark.ok) this.markStatus = 'unknown'
-    else if (mark.v === null) this.markStatus = 'absent'
-    else {
-      this.mark = parseMark(this.deviceIdValue, mark.v)
-      this.markStatus = this.mark ? 'ok' : 'invalid'
-    }
+    this.key2 = sessionKey(this.deviceIdValue, host)
     this.tokenCache = null
-    this.loadState()
+    this.loadState(mark, from)
   }
 
   /** Lit et vérifie l'état signé, puis le confronte au deuxième emplacement
-   *  (voir en tête du fichier). */
-  private loadState(): void {
+   *  (voir en tête du fichier). `from` : identité de secours qu'on quitte. */
+  private loadState(mark: { ok: boolean; v: string | null }, from: Migration | null): void {
     const dev = this.deviceIdValue
     const s = this.cfg.licenseState
     const now = this.now()
@@ -738,14 +810,27 @@ export class License {
     // Microsoft Store : jamais payant par défaut, seulement sur storeEnabled
     const fallbackPaid = (this.o.buildDefault ?? PAID_MODE_BUILD_DEFAULT) && !this.storeChannel()
     const days = remote?.trialDays ?? DEFAULT_TRIAL_DAYS
-    const m = this.mark
-    const markStart = m && m.start > 0 ? m.start : null
     // empreinte liée à la machine, ou deuxième empreinte (écrite pendant un
-    // lancement où l'identifiant était illisible, sur cette même session)
-    const valid = !!s && ((!!this.key && macEqual(s.mac, stateMac(this.key, dev, s))) || macEqual(s.mac2, stateMac(this.key2, dev, s)))
+    // lancement où l'identifiant était illisible, sur cette même session) ;
+    // ou celles de l'identité de secours qu'on quitte
+    const valid = !!s && (stateSigned(s, dev, this.key, this.key2) || (!!from && stateSigned(s, from.dev, from.key, from.key2)))
     // illisible ce lancement et rien de vérifiable : comme une copie, en
     // mémoire seulement (rien n'est réécrit), jusqu'à la prochaine lecture
     this.degraded = this.unreadable && !!s && !valid
+    // identité de secours gardée pour son jeton, identifiant illisible ce
+    // lancement : le deuxième emplacement reste signé par celle de la machine
+    if (this.unreadable && s && valid && /^[0-9a-f]{32}$/.test(s.machineDev)) this.markDev = s.machineDev
+    // deuxième emplacement : signé par l'identité qu'on quitte, sinon (marque
+    // d'une installation précédente sur cette machine) par celle de la machine
+    this.mark = null
+    if (!mark.ok) this.markStatus = 'unknown'
+    else if (mark.v === null) this.markStatus = 'absent'
+    else {
+      this.mark = (from ? parseMark(from.dev, mark.v) : null) ?? parseMark(this.markDev, mark.v)
+      this.markStatus = this.mark ? 'ok' : 'invalid'
+    }
+    const m = this.mark
+    const markStart = m && m.start > 0 ? m.start : null
     let st: LicenseState
     let closeLimits = false
     if (s && valid) {
@@ -822,12 +907,28 @@ export class License {
     // jeton : seulement s'il est signé par nous, pour CETTE machine et le bon
     // environnement (en mode dégradé il est gardé, mais ne compte pas)
     if (st.token && !this.degraded && !verifyToken(st.token, dev, this.pub(), this.tokenEnv).ok) st.token = ''
+    // état neuf sous une identité de secours : la session qui l'a créé est
+    // notée ; identifiant de la machine enfin lu : l'état lui est lié
+    if (!s && this.fallbackTag) st.fallbackHost = this.fallbackTag
+    if (from) st.fallbackHost = ''
+    // identité de la licence différente de celle de la machine (secours
+    // gardée pour son jeton) : la machine est notée, signée
+    st.machineDev = this.markDev !== dev ? this.markDev : ''
     this.st = st
     if (this.degraded) return
     if (!this.unreadable && this.cfg.licenseDeviceId !== dev) this.cfg.licenseDeviceId = dev
+    // l'identité de secours est quittée pour de bon
+    if (from) this.cfg.licenseFallbackId = ''
     this.commit()
-    // deuxième emplacement à jour (mode payant seulement)
-    if (this.markOutdated()) this.writeMark()
+    if (from && this.markStatus === 'ok') {
+      // deuxième emplacement récrit avec l'identité de la machine, même en
+      // mode payant coupé (il ne serait plus reconnu au prochain lancement)
+      this.mark = null
+      this.writeMark(true)
+    } else if (this.markOutdated()) {
+      // deuxième emplacement à jour (mode payant seulement)
+      this.writeMark()
+    }
   }
 
   private pub(): string {
@@ -876,12 +977,13 @@ export class License {
    *  compteur plus haut). Écrit dès l'appel, sans file d'attente : le fichier
    *  (macOS, Linux) de façon synchrone, le registre (Windows) par reg.exe
    *  lancé tout de suite ; un arrêt brutal ne perd au pire que le dernier
-   *  fichier compté dans la marque (la config, elle, l'a). */
-  private writeMark(): void {
-    if (!this.st.paidMode || this.markStatus === 'unknown' || this.degraded || !this.deviceIdValue) return
+   *  fichier compté dans la marque (la config, elle, l'a). `rekey` : marque
+   *  existante récrite avec l'identité de la machine, même hors mode payant. */
+  private writeMark(rekey = false): void {
+    if ((!this.st.paidMode && !rekey) || this.markStatus === 'unknown' || this.degraded || !this.markDev) return
     const data = this.markData()
     this.mark = data
-    const v = markValue(this.deviceIdValue, data)
+    const v = markValue(this.markDev, data)
     if (this.store.writeSync) {
       let ok = false
       try {
@@ -1269,7 +1371,8 @@ export class License {
     return null
   }
 
-  /** La fenêtre (visible) a montré l'invitation : comptée une fois. */
+  /** La fenêtre (visible) a montré la carte (limite du jour, fin d'essai,
+   *  accueil d'une installation d'avant Flitdrop Pro) : comptée une fois. */
   promptSeen(where: PromptWhere): void {
     if (this.card() !== where) return
     const p = this.cfg.proPromptsShown
@@ -1284,8 +1387,7 @@ export class License {
       welcome: p.welcome + (where === 'welcome' ? 1 : 0),
     }
     this.save()
-    // la carte d'accueil n'est pas une invitation à acheter : pas de statistique
-    if (where !== 'welcome') this.deps.track('pro_prompt_shown', { where })
+    this.deps.track('pro_prompt_shown', { where })
   }
 
   /** « Plus tard », « Super » : la carte se range (pas l'attente du paiement). */

@@ -49,7 +49,7 @@
     <!-- Question « aider à améliorer », une seule fois (pas une fenêtre) -->
     <div class="card consent-card hidden" id="consentCard">
       <b class="consent-title" data-i18n="consent.title">Aider à améliorer Flitdrop ?</b>
-      <p class="cardhint" data-i18n="consent.body">Partager des statistiques d’utilisation détaillées (écrans et boutons utilisés) et les rapports d’erreur, avec un identifiant aléatoire de cette installation. Jamais tes fichiers, tes photos, tes textes ni ton presse-papiers.</p>
+      <p class="cardhint" data-i18n="consent.body">Partager des statistiques d’utilisation détaillées (écrans et boutons utilisés) et les rapports d’erreur, avec un identifiant aléatoire de cette installation. Jamais tes fichiers, tes photos, tes textes ni ton presse-papiers. Tu as moins de 15 ans ? Demande d’abord à un parent.</p>
       <div class="consent-actions">
         <button class="btn" id="btnConsentYes" data-i18n="consent.yes">Oui, partager</button>
         <button class="btn" id="btnConsentNo" data-i18n="consent.no">Non merci</button>
@@ -199,11 +199,11 @@
       <ul class="hist" id="clipList"></ul>
       <div class="empty hidden" id="clipEmpty">
         <p data-i18n="clip.empty">Historique vide</p>
-        <small data-i18n="clip.emptyHint">Tout ce que tu copies sur ce PC, et les textes reçus des téléphones, apparaîtront ici. Local, jamais envoyé sur internet.</small>
+        <small data-i18n="clip.emptyHint">Ce que tu copies sur ce PC apparaît ici.</small>
       </div>
       <div class="empty hidden" id="clipDisabled">
         <p data-i18n="clip.disabled">Historique désactivé</p>
-        <small data-i18n="clip.disabledHint">Active « Historique du presse-papiers » dans les réglages pour retrouver ici tout ce que tu copies.</small>
+        <small data-i18n="clip.disabledHint">Active « Historique du presse-papiers » dans les réglages pour garder ici ce que tu copies.</small>
       </div>
     </section>
 
@@ -218,7 +218,7 @@
           <li data-i18n="pro.feat.unlimited">Autant de fichiers que tu veux, tous les jours</li>
           <li data-i18n="pro.feat.months">Photos et vidéos rangées toutes seules par mois</li>
           <li data-i18n="pro.feat.clip">Ce que tu copies sur le PC part tout seul vers le téléphone, et tout l’historique du presse-papiers avec les images</li>
-          <li data-i18n="pro.feat.future">Les futures fonctions avancées, et toutes les mises à jour</li>
+          <li data-i18n="pro.feat.future">Les fonctions avancées que nous ajouterons ensuite</li>
         </ul>
         <div class="pro-offer" id="proOffer">
           <p class="cardhint" id="proFree"></p>
@@ -372,11 +372,11 @@
         </div>
         <label class="check stat-check">
           <input type="checkbox" id="setBasicStats">
-          <span><b data-i18n="set.basicStats">Statistiques anonymes de base</b><small data-i18n="set.basicStatsHint">Sans aucun identifiant : si l’app se lance, si l’appairage et les envois réussissent. Rien de ce que tu envoies.</small></span>
+          <span><b data-i18n="set.basicStats">Statistiques anonymes de base</b><small data-i18n="set.basicStatsHint">Sans aucun identifiant : si l’app se lance, si l’appairage et les envois réussissent, et l’usage des versions gratuite et Pro. Rien de ce que tu envoies.</small></span>
         </label>
         <label class="check stat-check">
           <input type="checkbox" id="setTelemetry">
-          <span><b data-i18n="set.detailedStats">Statistiques détaillées et rapports d’erreur</b><small data-i18n="set.detailedStatsHint">Avec un identifiant aléatoire de cette installation : écrans et boutons utilisés, rapports d’erreur. Aide à corriger les bugs plus vite. Jamais tes fichiers, tes photos, tes textes ni ton presse-papiers.</small></span>
+          <span><b data-i18n="set.detailedStats">Statistiques détaillées et rapports d’erreur</b><small data-i18n="set.detailedStatsHint">Avec un identifiant aléatoire de cette installation : écrans et boutons utilisés, rapports d’erreur. Aide à corriger les bugs plus vite. Jamais tes fichiers, tes photos, tes textes ni ton presse-papiers. Tu as moins de 15 ans ? Demande d’abord à un parent.</small></span>
         </label>
         <button class="consent-more" type="button" data-privacy-link data-i18n="consent.more">En savoir plus</button>
         <button class="btn primary" id="btnSavePrivacy" data-i18n="set.save">Enregistrer</button>
@@ -468,7 +468,7 @@
       </ol>
       <div class="consent-box" id="welcomeConsent">
         <b class="consent-title" data-i18n="consent.title">Aider à améliorer Flitdrop ?</b>
-        <p class="cardhint" data-i18n="consent.body">Partager des statistiques d’utilisation détaillées (écrans et boutons utilisés) et les rapports d’erreur, avec un identifiant aléatoire de cette installation. Jamais tes fichiers, tes photos, tes textes ni ton presse-papiers.</p>
+        <p class="cardhint" data-i18n="consent.body">Partager des statistiques d’utilisation détaillées (écrans et boutons utilisés) et les rapports d’erreur, avec un identifiant aléatoire de cette installation. Jamais tes fichiers, tes photos, tes textes ni ton presse-papiers. Tu as moins de 15 ans ? Demande d’abord à un parent.</p>
         <div class="consent-actions">
           <button class="btn" id="btnConsentYesW" data-i18n="consent.yes">Oui, partager</button>
           <button class="btn" id="btnConsentNoW" data-i18n="consent.no">Non merci</button>
