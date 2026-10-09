@@ -73,8 +73,8 @@
 // Réseau : configuration au lancement puis au plus une fois par jour (sur une
 // minuterie qui existe déjà, voir server.ts), vérification d'un achat
 // seulement pendant que la carte « en attente du paiement » est affichée,
-// renouvellement du jeton une fois par jour quand il expire dans moins de
-// 10 jours. Toujours avec un délai maximal, jamais bloquant, jamais d'erreur
+// renouvellement du jeton une fois par semaine (dès qu'il a 7 jours) : un
+// achat remboursé coupe Pro en une semaine au plus. Toujours avec un délai maximal, jamais bloquant, jamais d'erreur
 // remontée à l'interface.
 import crypto from 'node:crypto'
 import { saveConfig, type Config, type LicenseStateStored } from './config.js'
@@ -96,7 +96,8 @@ export const FREE_CLIP_TEXTS = 20
 const DAY_MS = 86_400_000
 const HOUR_MS = 3_600_000
 export const OFFLINE_GRACE_MS = 7 * DAY_MS
-export const RENEW_WITHIN_MS = 10 * DAY_MS
+// jeton de 30 jours renouvelé dès qu'il a 7 jours (il en reste moins de 23)
+export const RENEW_WITHIN_MS = 23 * DAY_MS
 export const CLAIM_POLL_MAX_MS = 30 * 60_000
 const CLAIM_MIN_GAP_MS = 4_000
 const CLAIM_KEEP_MS = 48 * HOUR_MS
@@ -1588,7 +1589,8 @@ export class License {
 
   // ---------- renouvellement ----------
 
-  /** Jeton qui expire dans moins de 10 jours : renouvelé, une fois par jour.
+  /** Jeton qui a plus de 7 jours (expire dans moins de 23) : renouvelé, au
+   *  plus une fois par jour.
    *  Seul un refus explicite (403 revoked) retire le jeton : hors ligne,
    *  429, 5xx ou réponse inattendue, il reste tel quel jusqu'à son échéance
    *  + 7 jours. Pas pendant une session où l'identifiant de la machine est

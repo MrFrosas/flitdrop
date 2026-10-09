@@ -21,8 +21,8 @@ App (PC)                                     flitdrop.com (Pages Functions + D1)
                                 ────────────▶ claim.js : empreinte du secret -> D1 -> transaction
                                               relue chez Paddle (completed, pas remboursée) ◀── 2 appels
      ◀── 200 { token }                        appareil inscrit dans D1 (5 actifs, 5 par claim)
-  4. tous les jours, si le jeton expire
-     dans moins de 10 jours :
+  4. une fois par semaine (jeton de plus
+     de 7 jours, en ligne) :
      POST /api/license/renew ──────────────▶ renew.js : « cus » -> client par D1, appareil actif ?
      ◀── 200 { token } | 403 revoked          achats du client toujours valables ? ◀─────────── 2 appels
   « J'ai déjà acheté » :
