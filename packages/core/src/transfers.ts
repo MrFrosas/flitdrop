@@ -76,6 +76,12 @@ export class ApiError extends Error {
 
 export class TransferManager {
   private active = new Map<string, Transfer>()
+  /** débuts de transfert acceptés mais pas encore inscrits (validation sur
+   *  le PC, ouverture du fichier temporaire), par appareil : comptés dès le
+   *  contrôle, avant toute attente. Sans eux, des débuts lancés en parallèle
+   *  passaient tous le plafond par appareil et la limite du jour (Flitdrop
+   *  Pro) avant que le premier ne soit inscrit. */
+  private pending = new Map<string, number>()
   private handles = new Map<string, fs.promises.FileHandle>()
   private lastProgressPush = new Map<string, number>()
   private lastProgressBytes = new Map<string, number>()
@@ -109,10 +115,24 @@ export class TransferManager {
     if (!Number.isInteger(chunkSize) || chunkSize <= 0 || chunkSize > CHUNK_SIZE) throw new ApiError('chunkSize invalide', 400, 'badChunkSize')
     if (!Number.isInteger(chunks) || chunks !== Math.ceil(size / chunkSize)) throw new ApiError('découpage incohérent', 400, 'badSplit')
 
-    let concurrent = 0
+    let concurrent = this.pending.get(device.id) ?? 0
     for (const t of this.active.values()) if (t.deviceId === device.id && t.status === 'active') concurrent++
     if (concurrent >= MAX_ACTIVE_TRANSFERS_PER_DEVICE) throw new ApiError('trop de transferts simultanés', 429, 'tooManyTransfers')
 
+    // place réservée tout de suite (même tour de boucle que les contrôles de
+    // l'appelant), rendue quoi qu'il arrive à la fin de ce début
+    this.pending.set(device.id, (this.pending.get(device.id) ?? 0) + 1)
+    try {
+      return await this.open(device, meta, size, chunkSize, chunks)
+    } finally {
+      const n = (this.pending.get(device.id) ?? 1) - 1
+      if (n > 0) this.pending.set(device.id, n)
+      else this.pending.delete(device.id)
+    }
+  }
+
+  private async open(device: Device, meta: TransferMeta, size: number, chunkSize: number, chunks: number): Promise<Transfer> {
+    const cfg = this.getCfg()
     const name = sanitizeFilename(meta?.name)
 
     if (cfg.requireApproval && this.approvalHook) {
@@ -170,9 +190,11 @@ export class TransferManager {
     return this.active.get(id)
   }
 
-  /** Transferts commencés et pas encore terminés (tous téléphones). */
+  /** Transferts commencés et pas encore terminés (tous téléphones), débuts
+   *  en cours compris. */
   activeCount(): number {
     let n = 0
+    for (const v of this.pending.values()) n += v
     for (const t of this.active.values()) if (t.status === 'active') n++
     return n
   }

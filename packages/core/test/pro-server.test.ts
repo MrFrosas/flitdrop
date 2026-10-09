@@ -21,9 +21,9 @@ const TEST_PRIV = crypto.createPrivateKey({
 const MACHINE = 'c0ffee00-1234-4abc-8def-0123456789ab'
 const DAY = 86_400_000
 
-function tokenFor(dev: string, iatMs: number): string {
-  const p = Buffer.from(JSON.stringify({ v: 1, plan: 'pro', dev, cus: 'c'.repeat(32), iat: Math.floor(iatMs / 1000), exp: Math.floor(iatMs / 1000) + 30 * 86400 }))
-  return p.toString('base64url') + '.' + crypto.sign(null, p, TEST_PRIV).toString('base64url')
+function tokenFor(dev: string, iatMs: number, env = 'production', key: crypto.KeyObject = TEST_PRIV): string {
+  const p = Buffer.from(JSON.stringify({ v: 1, env, plan: 'pro', dev, cus: 'c'.repeat(32), iat: Math.floor(iatMs / 1000), exp: Math.floor(iatMs / 1000) + 30 * 86400 }))
+  return p.toString('base64url') + '.' + crypto.sign(null, p, key).toString('base64url')
 }
 
 function memMark(): MarkStore {
@@ -381,6 +381,143 @@ describe('essai puis gratuit : limite du jour appliquée par le PC', () => {
     expect((await c.state()).clipHidden).toBe(0)
     expect(tracked).toContain('pro_unlocked')
     expect(tracked).toContain('pro_checkout_opened')
+  })
+})
+
+/** Envoi par le Raccourci iOS de `n` petits fichiers (jeton de l'appareil). */
+async function shortcutUpload(c: Ctx, phone: Phone, names: string[]) {
+  const s = await c.state()
+  const tok = s.devices.find((d: { id: string }) => d.id === phone.id).shortcutToken as string
+  const fd = new FormData()
+  for (const n of names) fd.append('file', new Blob([Buffer.from('abc')]), n)
+  return fetch(`${c.base}/api/shortcut/upload?t=${tok}`, { method: 'POST', body: fd, headers: { 'accept-language': 'fr' } })
+}
+
+describe('Raccourci iOS en gratuit : jamais plus que les places du jour', () => {
+  let c: Ctx
+  let phone: Phone
+  beforeAll(async () => {
+    c = await boot()
+    phone = await c.pair()
+    c.setClock(c.clock() + 15 * DAY)
+  })
+  afterAll(() => shutdown(c))
+
+  it('avec de la place : tout arrive, comme avant', async () => {
+    expect((await c.state()).pro.plan).toBe('free')
+    const r = await shortcutUpload(c, phone, ['a1.jpg', 'a2.jpg'])
+    expect(r.status).toBe(200)
+    expect(r.headers.get('x-flitdrop-refused')).toBeNull()
+    expect(await r.text()).toBe('2 fichiers sont arrivés sur ' + c.srv.cfg.deviceName + ' ✅')
+    expect(c.srv.license.dailyUsed()).toBe(2)
+  })
+
+  it('29e fichier puis un envoi de 5 : seulement la place restante, le reste retiré du disque', async () => {
+    c.srv.license.countFiles(25)
+    expect(c.srv.license.dailyLeft()).toBe(3)
+    const names = ['b1.jpg', 'b2.jpg', 'b3.jpg', 'b4.jpg', 'b5.jpg']
+    const r = await shortcutUpload(c, phone, names)
+    expect(r.status).toBe(200)
+    expect(r.headers.get('x-flitdrop-kept')).toBe('3')
+    expect(r.headers.get('x-flitdrop-refused')).toBe('2')
+    expect(r.headers.get('x-flitdrop-daily-limit')).toBe('30')
+    const text = await r.text()
+    expect(text).toContain('3 fichiers sont arrivés')
+    expect(text).toContain('Limite du jour atteinte : 2 fichiers n’ont pas été gardés')
+    expect(c.srv.license.dailyUsed()).toBe(30)
+    const onDisk = fs.readdirSync(c.dl).filter((f) => f.startsWith('b'))
+    expect(onDisk.sort()).toEqual(['b1.jpg', 'b2.jpg', 'b3.jpg'])
+    // plus de place : refusé avant de lire, réponse en clair
+    const again = await shortcutUpload(c, phone, ['c1.jpg'])
+    expect(again.status).toBe(402)
+    expect(again.headers.get('x-flitdrop-kept')).toBe('0')
+    expect(await again.text()).toContain('Limite du jour atteinte')
+    expect(fs.readdirSync(c.dl).some((f) => f.startsWith('c'))).toBe(false)
+  })
+})
+
+describe('débuts de transfert en parallèle : comptés avant toute attente', () => {
+  it('50 débuts en même temps : 4 au plus par appareil, exactement', async () => {
+    const c = await boot()
+    try {
+      const phone = await c.pair()
+      expect((await c.state()).pro.plan).toBe('trial')
+      const meta = () => ({ meta: { name: `p${randomToken(4)}.bin`, size: 16, chunkSize: 16, chunks: 1 } })
+      const statuses = await Promise.all(Array.from({ length: 50 }, () => phone.post('/api/phone/transfer/init', 'init', meta()).then((r) => r.status)))
+      expect(statuses.filter((x) => x === 200)).toHaveLength(4)
+      expect(statuses.filter((x) => x === 429)).toHaveLength(46)
+    } finally {
+      await shutdown(c)
+    }
+  })
+
+  it('gratuit, 2 places : 10 débuts en même temps, exactement 2 acceptés', async () => {
+    const c = await boot()
+    try {
+      const phone = await c.pair()
+      c.setClock(c.clock() + 15 * DAY)
+      c.srv.license.countFiles(28)
+      const meta = () => ({ meta: { name: `q${randomToken(4)}.bin`, size: 16, chunkSize: 16, chunks: 1 } })
+      const statuses = await Promise.all(Array.from({ length: 10 }, () => phone.post('/api/phone/transfer/init', 'init', meta()).then((r) => r.status)))
+      expect(statuses.filter((x) => x === 200)).toHaveLength(2)
+      expect(statuses.filter((x) => x === 402)).toHaveLength(8)
+    } finally {
+      await shutdown(c)
+    }
+  })
+})
+
+describe('variables FLITDROP_LICENSE_* : seulement hors app empaquetée', () => {
+  const pair = crypto.generateKeyPairSync('ed25519')
+  const sandboxPub = pair.publicKey.export({ format: 'der', type: 'spki' }).subarray(-32).toString('base64')
+  async function start(allowEnvOverride: boolean) {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-pro-env-'))
+    fs.writeFileSync(path.join(home, 'config.json'), JSON.stringify({ installId: 'i'.repeat(16), installedAt: '2026-03-01T00:00:00.000Z', downloadDir: path.join(home, 'dl') }))
+    const urls: string[] = []
+    const opened: string[] = []
+    const now = Date.parse('2026-11-05T10:00:00.000Z')
+    const fetchImpl = (async (url: string | URL) => {
+      urls.push(String(url))
+      const u = new URL(String(url))
+      if (u.pathname === '/api/license/config') return new Response(JSON.stringify({ enabled: true, launchedAt: '2026-11-01T00:00:00.000Z', trialDays: 14 }), { status: 200 })
+      if (u.pathname === '/api/license/claim') return new Response(JSON.stringify({ token: tokenFor(deviceIdFrom(MACHINE), now, 'sandbox', pair.privateKey) }), { status: 200 })
+      return new Response('{}', { status: 404 })
+    }) as unknown as typeof fetch
+    const srv = await startServer({
+      port: 0,
+      home,
+      quiet: true,
+      manualClipboardPoll: true,
+      clipboardText: { read: () => '', write: () => {} },
+      openExternal: (u) => void opened.push(u),
+      license: { allowEnvOverride, configUrl: 'https://license.test/api/license/config', fetchImpl, now: () => now, machineId: async () => MACHINE, markStore: memMark() },
+    })
+    await srv.license.refreshConfig()
+    srv.license.checkout('settings')
+    await srv.license.claim(true)
+    const plan = srv.license.plan()
+    await srv.close()
+    fs.rmSync(home, { recursive: true, force: true })
+    return { urls, opened, plan }
+  }
+
+  it('empaquetée : flitdrop.com et la clé de production, quoi que dise l’environnement ; développement : la racine et la clé du bac à sable', async () => {
+    process.env.FLITDROP_LICENSE_BASE = 'https://preview.flitdrop.test'
+    process.env.FLITDROP_LICENSE_PUBLIC_KEY = sandboxPub
+    try {
+      const packaged = await start(false)
+      expect(packaged.urls.every((u) => u.startsWith('https://license.test/'))).toBe(true)
+      expect(packaged.opened[0]).toMatch(/^https:\/\/license\.test\/pro\?claim=/)
+      expect(packaged.plan).toBe('trial')
+      const dev = await start(true)
+      expect(dev.urls.length).toBeGreaterThan(0)
+      expect(dev.urls.every((u) => u.startsWith('https://preview.flitdrop.test/api/license/'))).toBe(true)
+      expect(dev.opened[0]).toMatch(/^https:\/\/preview\.flitdrop\.test\/pro\?claim=[0-9a-f]{32}&lang=/)
+      expect(dev.plan).toBe('pro')
+    } finally {
+      delete process.env.FLITDROP_LICENSE_BASE
+      delete process.env.FLITDROP_LICENSE_PUBLIC_KEY
+    }
   })
 })
 

@@ -411,17 +411,21 @@ if (!gotLock) {
       // Flitdrop Pro : licence, essai, limite du jour (voir core/license.ts).
       // Dossier de données de l'app : deuxième emplacement du début de
       // l'essai (macOS, Linux ; Windows : le registre de l'utilisateur).
-      // Variables FLITDROP_LICENSE_* de développement : jamais dans l'app
-      // empaquetée.
+      // Variables FLITDROP_LICENSE_* de développement (racine des licences,
+      // clé publique du bac à sable, voir docs/licence.md) : jamais dans
+      // l'app empaquetée, qui ne connaît que flitdrop.com et la clé de
+      // production.
       license: {
         userDataDir: app.getPath('userData'),
         systemLocale: preferredLocale(),
         allowEnvOverride: !app.isPackaged,
       },
       // page d'achat de Flitdrop Pro : navigateur du système (adresse
-      // construite par le coeur, jamais venue de la page)
+      // construite par le coeur, jamais venue de la page) ; « Nous écrire » :
+      // la messagerie, vers l'adresse fixe du support seulement
       openExternal: (url) => {
         if (typeof url === 'string' && /^https:\/\//i.test(url)) void shell.openExternal(url).catch(() => {})
+        else if (typeof url === 'string' && /^mailto:contact@flitdrop\.com\?subject=[A-Za-z0-9%]+$/.test(url)) void shell.openExternal(url).catch(() => {})
         else if (!app.isPackaged && typeof url === 'string' && /^http:\/\/(127\.0\.0\.1|localhost)[:/]/i.test(url)) void shell.openExternal(url).catch(() => {})
       },
       // Windows : pare-feu vérifié une fois quand aucun téléphone n'arrive, et

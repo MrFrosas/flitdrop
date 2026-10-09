@@ -103,9 +103,6 @@ export interface Config {
   licenseConfigAt: string
   // dernier jour local où le renouvellement du jeton a été tenté
   licenseRenewDay: string
-  // achat commencé (page de paiement ouverte), vérifié une fois au lancement
-  // suivant pendant 48 h
-  licenseClaim: { claim: string; at: string } | null
   // dernier jour local où « limite du jour atteinte » a été compté
   dailyLimitReportedDay: string
   // Pro : photos et vidéos reçues rangées dans un dossier par mois (AAAA-MM).
@@ -125,7 +122,15 @@ export interface LicenseStateStored {
   trialEndsAt: string
   dailyFiles: { day: string; count: number }
   token: string
+  claimSecret: string
+  claimAt: string
+  seenAt: string
+  markSeen: boolean
+  /** empreinte liée à la machine */
   mac: string
+  /** empreinte liée à l'identité gardée et à la session (lancement où
+   *  l'identifiant de la machine est illisible) */
+  mac2: string
 }
 
 export function flitdropHome(override?: string): string {
@@ -198,10 +203,6 @@ export function loadConfig(home: string): Config {
     licenseConfig: stored.licenseConfig && typeof stored.licenseConfig === 'object' && !Array.isArray(stored.licenseConfig) ? stored.licenseConfig : null,
     licenseConfigAt: anyIso(stored.licenseConfigAt) ?? '',
     licenseRenewDay: typeof stored.licenseRenewDay === 'string' ? stored.licenseRenewDay.slice(0, 10) : '',
-    licenseClaim:
-      stored.licenseClaim && typeof stored.licenseClaim === 'object' && typeof stored.licenseClaim.claim === 'string' && /^[0-9a-f]{32}$/.test(stored.licenseClaim.claim) && anyIso(stored.licenseClaim.at)
-        ? { claim: stored.licenseClaim.claim, at: anyIso(stored.licenseClaim.at) as string }
-        : null,
     dailyLimitReportedDay: typeof stored.dailyLimitReportedDay === 'string' ? stored.dailyLimitReportedDay.slice(0, 10) : '',
     sortPhotosByMonth: stored.sortPhotosByMonth !== false,
     proPromptsShown: promptsFrom(stored.proPromptsShown),
@@ -229,7 +230,12 @@ function licenseStateFrom(v: unknown): LicenseStateStored | null {
     trialEndsAt: str(s.trialEndsAt, 40),
     dailyFiles: { day: str(d.day, 10), count: typeof d.count === 'number' && Number.isFinite(d.count) ? d.count : 0 },
     token: str(s.token, 4096),
+    claimSecret: str(s.claimSecret, 64),
+    claimAt: str(s.claimAt, 40),
+    seenAt: str(s.seenAt, 40),
+    markSeen: s.markSeen === true,
     mac: str(s.mac, 64),
+    mac2: str(s.mac2, 64),
   }
 }
 

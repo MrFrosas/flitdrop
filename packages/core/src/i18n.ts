@@ -275,6 +275,12 @@ const en: Dict = {
   'pro.card.used.title': 'This purchase is already used on 5 computers',
   'pro.card.used.body': 'A Flitdrop Pro purchase works on 5 computers at most. To use it on this PC, go through “I already bought it” with your email address.',
   'pro.card.used.ok': 'Got it',
+  'pro.card.devices.title': 'This purchase is used on too many computers',
+  'pro.card.devices.body': 'This purchase is already used on too many computers this month. Write to us at contact@flitdrop.com and we will sort it out.',
+  'pro.contact': 'Write to us',
+  'pro.restore.err.devices': 'This purchase is already used on too many computers this month. Write to us at contact@flitdrop.com and we will sort it out.',
+  'srv.scLimitRest.one': 'Daily limit reached: {n} file was not kept. Send it again tomorrow, or unlock Flitdrop Pro on {pc}.',
+  'srv.scLimitRest.other': 'Daily limit reached: {n} files were not kept. Send them again tomorrow, or unlock Flitdrop Pro on {pc}.',
 }
 
 const fr: Dict = {
@@ -522,6 +528,12 @@ const fr: Dict = {
   'pro.card.used.title': 'Cet achat sert déjà sur 5 ordinateurs',
   'pro.card.used.body': 'Un achat de Flitdrop Pro marche sur 5 ordinateurs au maximum. Pour l’utiliser sur ce PC, passe par « J’ai déjà acheté » avec ton adresse e-mail.',
   'pro.card.used.ok': 'Compris',
+  'pro.card.devices.title': 'Cet achat est utilisé sur trop d’ordinateurs',
+  'pro.card.devices.body': 'Cet achat est déjà utilisé sur trop d’ordinateurs ce mois-ci. Écris-nous à contact@flitdrop.com et on règle ça.',
+  'pro.contact': 'Nous écrire',
+  'pro.restore.err.devices': 'Cet achat est déjà utilisé sur trop d’ordinateurs ce mois-ci. Écris-nous à contact@flitdrop.com et on règle ça.',
+  'srv.scLimitRest.one': 'Limite du jour atteinte : {n} fichier n’a pas été gardé. Renvoie-le demain, ou débloque Flitdrop Pro sur {pc}.',
+  'srv.scLimitRest.other': 'Limite du jour atteinte : {n} fichiers n’ont pas été gardés. Renvoie-les demain, ou débloque Flitdrop Pro sur {pc}.',
 }
 
 const de: Dict = {
@@ -1046,6 +1058,12 @@ const de: Dict = {
   'pro.card.used.title': 'Dieser Kauf wird schon auf 5 Computern genutzt',
   'pro.card.used.body': 'Ein Kauf von Flitdrop Pro gilt für höchstens 5 Computer. Um ihn auf diesem PC zu nutzen, geh über „Ich habe schon gekauft“ mit deiner E-Mail-Adresse.',
   'pro.card.used.ok': 'Verstanden',
+  'pro.card.devices.title': 'Dieser Kauf wird auf zu vielen Computern genutzt',
+  'pro.card.devices.body': 'Dieser Kauf wird diesen Monat schon auf zu vielen Computern genutzt. Schreib uns an contact@flitdrop.com, dann klären wir das.',
+  'pro.contact': 'Schreib uns',
+  'pro.restore.err.devices': 'Dieser Kauf wird diesen Monat schon auf zu vielen Computern genutzt. Schreib uns an contact@flitdrop.com, dann klären wir das.',
+  'srv.scLimitRest.one': 'Tageslimit erreicht: {n} Datei wurde nicht behalten. Schick sie morgen nochmal, oder schalte Flitdrop Pro auf {pc} frei.',
+  'srv.scLimitRest.other': 'Tageslimit erreicht: {n} Dateien wurden nicht behalten. Schick sie morgen nochmal, oder schalte Flitdrop Pro auf {pc} frei.',
 }
 
 export const messages: Record<Lang, Dict> = { en, fr, de }

@@ -129,7 +129,7 @@ interface ProStateUI {
   price?: string
   earlyPrice?: string
   earlyUntil?: string
-  card?: 'limit' | 'trial' | 'waiting' | 'success' | 'used' | null
+  card?: 'limit' | 'trial' | 'waiting' | 'success' | 'used' | 'devices' | null
   waiting?: { since: string; polling: boolean } | null
   restoreEmail?: string | null
 }
@@ -1605,7 +1605,7 @@ const fmtDay = (iso?: string): string => {
 
 // « J'ai déjà acheté » ouvert, et dernier message sous la restauration
 let restoreOpen = false
-let restoreMsg: { text: string; err: boolean } | null = null
+let restoreMsg: { text: string; err: boolean; code?: string } | null = null
 // message sous la carte d'attente du paiement
 let claimStatus = ''
 // vérification du paiement : une à la fois, toutes les 5 s, seulement carte
@@ -1638,7 +1638,7 @@ function renderProSection() {
   renderRestore()
 }
 
-const RESTORE_ERRORS = new Set(['code', 'expired', 'nopurchase', 'email', 'busy', 'nochallenge'])
+const RESTORE_ERRORS = new Set(['code', 'expired', 'nopurchase', 'email', 'busy', 'nochallenge', 'devices'])
 const restoreErrText = (e: unknown): string =>
   e === 'offline' ? t('pro.err.offline') : t('pro.restore.err.' + (typeof e === 'string' && RESTORE_ERRORS.has(e) ? e : 'error'))
 
@@ -1653,7 +1653,12 @@ function renderRestore() {
   msg.classList.toggle('hidden', !restoreMsg)
   msg.classList.toggle('err', !!restoreMsg?.err)
   msg.textContent = restoreMsg?.text ?? ''
+  // achat utilisé sur trop d'ordinateurs : « Nous écrire » juste dessous
+  $('btnProRestoreContact').classList.toggle('hidden', restoreMsg?.code !== 'devices')
 }
+
+/** « Nous écrire » : le PC ouvre la messagerie vers l'adresse du support. */
+const proContact = () => void postJSON('/pro/contact', {}).catch(() => {})
 
 /** Carte en haut de la fenêtre : limite du jour, fin d'essai, attente du
  *  paiement, merci. Jamais par-dessus l'écran d'accueil (sauf l'attente). */
@@ -1719,6 +1724,12 @@ function renderProCard() {
       })
     })
     button(t('pro.card.used.ok'), false, () => void proClose())
+  } else if (kind === 'devices') {
+    // trop d'ordinateurs ce mois-ci : le support s'en occupe, le plan ne change pas
+    title = t('pro.card.devices.title')
+    body = t('pro.card.devices.body')
+    button(t('pro.contact'), true, proContact)
+    button(t('pro.card.used.ok'), false, () => void proClose())
   } else {
     title = t('pro.card.ok.title')
     body = t('pro.card.ok.body')
@@ -1753,7 +1764,7 @@ function pollClaim() {
     if (state?.pro?.card !== 'waiting' || !w?.polling) return
     if (document.hidden || $('proCard').classList.contains('hidden')) return
     const r = (await postJSON('/pro/claim', {}).catch(() => null)) as { status?: string } | null
-    if (r?.status === 'unlocked' || r?.status === 'used') return void refresh()
+    if (r?.status === 'unlocked' || r?.status === 'used' || r?.status === 'devices') return void refresh()
     if (r?.status === 'stopped') {
       claimStatus = t('pro.card.wait.stopped')
       if (state?.pro?.waiting) state.pro.waiting.polling = false
@@ -1776,7 +1787,7 @@ async function proCheckout(where: 'limit' | 'trial' | 'settings') {
 
 async function proClaim(manual: boolean) {
   const r = (await postJSON('/pro/claim', { manual }).catch(() => null)) as { status?: string } | null
-  if (r?.status === 'unlocked' || r?.status === 'used') return void refresh()
+  if (r?.status === 'unlocked' || r?.status === 'used' || r?.status === 'devices') return void refresh()
   claimStatus = !r || r.status === 'offline' ? t('pro.err.offline') : t('pro.card.wait.notYet')
   renderProCard()
 }
@@ -1824,10 +1835,11 @@ function initProUI() {
       restoreOpen = false
       restoreMsg = null
       ;($('proRestoreCode') as unknown as HTMLInputElement).value = ''
-    } else restoreMsg = { text: restoreErrText(r.error), err: true }
+    } else restoreMsg = { text: restoreErrText(r.error), err: true, code: r.error }
     await refresh()
   }
   $('btnProRestoreVerify').onclick = () => void verify()
+  $('btnProRestoreContact').onclick = proContact
   ;($('proRestoreCode') as unknown as HTMLInputElement).onkeydown = (e) => {
     if (e.key === 'Enter') void verify()
   }

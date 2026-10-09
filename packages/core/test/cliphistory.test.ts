@@ -46,7 +46,6 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     licenseConfig: null,
     licenseConfigAt: '',
     licenseRenewDay: '',
-    licenseClaim: null,
     dailyLimitReportedDay: '',
     sortPhotosByMonth: true,
     proPromptsShown: { day: '', kind: '', closed: false, limit: 0, trial: 0 },
