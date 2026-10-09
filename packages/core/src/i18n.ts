@@ -80,9 +80,11 @@ const en: Dict = {
   // aide / confidentialité
   'help.title': 'Help and privacy', 'help.hint': 'An idea, a bug? Say it in two clicks, it opens a pre-filled ticket on GitHub.', 'help.reportBug': 'Report a problem', 'help.suggest': 'Suggest an idea',
   'set.basicStats': 'Basic anonymous statistics', 'set.basicStatsHint': 'No identifier at all: whether the app starts and whether pairing and transfers work. Nothing you send.',
-  'set.detailedStats': 'Detailed statistics and error reports', 'set.detailedStatsHint': 'With a random ID for this install: screens and buttons used, error reports. Helps fix bugs faster. Never your files, photos, texts or clipboard.',
-  // question « aider à améliorer » (accueil, carte, une seule fois)
-  'consent.title': 'Help improve Flitdrop?', 'consent.body': 'Share detailed usage statistics (screens and buttons used) and error reports, with a random ID for this install. Never your files, photos, texts or clipboard.',
+  'set.detailedStats': 'Detailed statistics and error reports', 'set.detailedStatsHint': 'With a random ID for this install: screens and buttons used, error reports. Helps fix bugs faster. Never your files, photos, texts or clipboard. Under 16? Ask a parent first.',
+  // question « aider à améliorer » (accueil, carte, une seule fois). Mineurs :
+  // l'accord d'un parent en plus (France : moins de 15 ans, loi
+  // Informatique et Libertés art. 45 ; ailleurs, 16 ans, RGPD art. 8)
+  'consent.title': 'Help improve Flitdrop?', 'consent.body': 'Share detailed usage statistics (screens and buttons used) and error reports, with a random ID for this install. Never your files, photos, texts or clipboard. Under 16? Ask a parent first.',
   'consent.yes': 'Yes, share', 'consent.no': 'No thanks',
   'consent.basic': 'Basic anonymous statistics, with no identifier, stay on so we know the app works. You can turn them off in Settings.',
   'consent.saved': 'Choice saved. You can change it anytime in Settings.', 'consent.more': 'Learn more',
@@ -349,8 +351,8 @@ const fr: Dict = {
   'sc.pairFirst': 'Appaire d’abord un téléphone', 'sc.rowFiles': 'Envoyer des fichiers', 'sc.rowText': 'Coller sur le PC', 'sc.rowClip': 'Lire le presse-papiers du PC', 'sc.rowFallback': 'Secours si .local ne répond pas',
   'help.title': 'Aide et confidentialité', 'help.hint': 'Une idée, un bug ? Dis-le en deux clics, ça ouvre un ticket prérempli sur GitHub.', 'help.reportBug': 'Signaler un problème', 'help.suggest': 'Proposer une idée',
   'set.basicStats': 'Statistiques anonymes de base', 'set.basicStatsHint': 'Sans aucun identifiant : si l’app se lance, si l’appairage et les envois réussissent. Rien de ce que tu envoies.',
-  'set.detailedStats': 'Statistiques détaillées et rapports d’erreur', 'set.detailedStatsHint': 'Avec un identifiant aléatoire de cette installation : écrans et boutons utilisés, rapports d’erreur. Aide à corriger les bugs plus vite. Jamais tes fichiers, tes photos, tes textes ni ton presse-papiers.',
-  'consent.title': 'Aider à améliorer Flitdrop ?', 'consent.body': 'Partager des statistiques d’utilisation détaillées (écrans et boutons utilisés) et les rapports d’erreur, avec un identifiant aléatoire de cette installation. Jamais tes fichiers, tes photos, tes textes ni ton presse-papiers.',
+  'set.detailedStats': 'Statistiques détaillées et rapports d’erreur', 'set.detailedStatsHint': 'Avec un identifiant aléatoire de cette installation : écrans et boutons utilisés, rapports d’erreur. Aide à corriger les bugs plus vite. Jamais tes fichiers, tes photos, tes textes ni ton presse-papiers. Tu as moins de 15 ans ? Demande d’abord à un parent.',
+  'consent.title': 'Aider à améliorer Flitdrop ?', 'consent.body': 'Partager des statistiques d’utilisation détaillées (écrans et boutons utilisés) et les rapports d’erreur, avec un identifiant aléatoire de cette installation. Jamais tes fichiers, tes photos, tes textes ni ton presse-papiers. Tu as moins de 15 ans ? Demande d’abord à un parent.',
   'consent.yes': 'Oui, partager', 'consent.no': 'Non merci',
   'consent.basic': 'Des statistiques anonymes de base, sans identifiant, restent actives pour savoir si l’app fonctionne. Tu peux les couper dans les réglages.',
   'consent.saved': 'Choix enregistré. Tu peux le changer à tout moment dans les réglages.', 'consent.more': 'En savoir plus',
@@ -694,9 +696,9 @@ const de: Dict = {
   'set.basicStats': 'Anonyme Basisstatistiken',
   'set.basicStatsHint': 'Ganz ohne Kennung: ob die App startet und ob Kopplung und Übertragungen klappen. Nichts von dem, was du sendest.',
   'set.detailedStats': 'Ausführliche Statistiken und Fehlerberichte',
-  'set.detailedStatsHint': 'Mit einer zufälligen Kennung dieser Installation: genutzte Ansichten und Schaltflächen, Fehlerberichte. Hilft, Fehler schneller zu beheben. Niemals deine Dateien, Fotos, Texte oder deine Zwischenablage.',
+  'set.detailedStatsHint': 'Mit einer zufälligen Kennung dieser Installation: genutzte Ansichten und Schaltflächen, Fehlerberichte. Hilft, Fehler schneller zu beheben. Niemals deine Dateien, Fotos, Texte oder deine Zwischenablage. Unter 16? Frag zuerst deine Eltern.',
   'consent.title': 'Hilfst du mit, Flitdrop zu verbessern?',
-  'consent.body': 'Teile ausführliche Nutzungsstatistiken (genutzte Ansichten und Schaltflächen) und Fehlerberichte, mit einer zufälligen Kennung dieser Installation. Niemals deine Dateien, Fotos, Texte oder deine Zwischenablage.',
+  'consent.body': 'Teile ausführliche Nutzungsstatistiken (genutzte Ansichten und Schaltflächen) und Fehlerberichte, mit einer zufälligen Kennung dieser Installation. Niemals deine Dateien, Fotos, Texte oder deine Zwischenablage. Unter 16? Frag zuerst deine Eltern.',
   'consent.yes': 'Ja, teilen',
   'consent.no': 'Nein danke',
   'consent.basic': 'Anonyme Basisstatistiken ohne Kennung bleiben aktiv, damit wir wissen, ob die App funktioniert. Du kannst sie in den Einstellungen ausschalten.',
