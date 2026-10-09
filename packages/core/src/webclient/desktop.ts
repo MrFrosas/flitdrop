@@ -1636,7 +1636,7 @@ function renderProSection() {
         ? tp(lang, 'pro.status.trial', pro.trialDaysLeft ?? 0)
         : t('pro.status.free', { used: pro.used ?? 0, limit: pro.limit ?? 30 })
   $('proOffer').classList.toggle('hidden', plan === 'pro')
-  $('proFree').textContent = t('pro.freeForever', { n: pro.limit ?? 30 })
+  $('proFree').textContent = t('pro.free', { n: pro.limit ?? 30 })
   const early = $('proEarly')
   early.classList.toggle('hidden', !pro.earlyPrice || !pro.price)
   if (pro.earlyPrice && pro.price) early.textContent = t('pro.early', { early: pro.earlyPrice, price: pro.price, date: fmtDay(pro.earlyUntil) })
