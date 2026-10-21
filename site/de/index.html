@@ -232,11 +232,16 @@
             <img class="shot" src="/assets/app/de/desk-radar.webp" alt width="1760" height="1120" fetchpriority="high">
           </div>
           <div class="iphone">
-            <div class="iphone-screen"><img class="shot" src="/assets/app/de/phone-sent.webp" alt width="786" height="1704"></div>
-            <span class="iphone-island" aria-hidden="true"></span>
+            <div class="iphone-screen">
+              <div class="ip-status" aria-hidden="true"><span class="ip-time">9:41</span><span class="ip-icons"><svg viewBox="0 0 18 12" width="18" height="12"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg viewBox="0 0 16 12" width="16" height="12"><path d="M8 11.6l2.3-2.6a3.2 3.2 0 0 0-4.6 0z"></path><path d="M3.6 6.7a6.3 6.3 0 0 1 8.8 0l-1.3 1.4a4.4 4.4 0 0 0-6.2 0z"></path><path d="M1 3.9a10 10 0 0 1 14 0l-1.3 1.4a8.1 8.1 0 0 0-11.4 0z"></path></svg><span class="ip-batt"><i></i></span></span></div>
+              <img class="shot" src="/assets/app/de/phone-sent.webp" alt width="786" height="1596">
+              <span class="iphone-island" aria-hidden="true"></span>
+              <span class="iphone-home" aria-hidden="true"></span>
+            </div>
           </div>
-          <div class="flight" aria-hidden="true"><img src="/assets/grid/p7.jpg" alt="" width="120" height="120"></div>
-          <span class="landing" aria-hidden="true"></span>
+          <span class="ring ring-depart" aria-hidden="true"></span>
+          <div class="flight" aria-hidden="true"><img src="/assets/grid/p9.jpg" alt="" width="120" height="120"></div>
+          <span class="ring ring-land" aria-hidden="true"></span>
         </div>
       </div>
     </section>
@@ -250,15 +255,33 @@
       </div>
       <ol class="h-steps">
         <li class="h-step reveal">
-          <div class="h-step-vis vis-pair" aria-hidden="true"><img src="/assets/app/de/pair.webp" alt width="800" height="950" loading="lazy"></div>
+          <div class="h-step-vis vis-pair" aria-hidden="true">
+            <div class="qr-win">
+              <div class="mac-bar"><i></i><i></i><i></i></div>
+              <div class="qr-body">
+                <p class="qr-title" data-i18n="ui.pairTitle">Telefon koppeln</p>
+                <img src="/assets/qr.svg" alt="" width="150" height="150" loading="lazy">
+                <p class="qr-wait"><span class="spin"></span><span data-i18n="ui.pairWaiting">Warte auf den Scan…</span></p>
+              </div>
+            </div>
+          </div>
           <div class="h-step-copy"><span class="h-step-n">1</span><h3 data-i18n="steps.one.title">Einmal scannen</h3><p data-i18n="steps.one.body">Öffne die Kamera, ziele auf den QR-Code, das Handy ist gekoppelt. Keine App zu installieren.</p></div>
         </li>
         <li class="h-step reveal">
-          <div class="h-step-vis vis-pick" aria-hidden="true"><div class="half-phone"><img src="/assets/app/de/phone-pick.webp" alt width="786" height="1704" loading="lazy"></div></div>
+          <div class="h-step-vis vis-pick" aria-hidden="true">
+          <div class="iphone iphone--light iphone--solo">
+            <div class="iphone-screen">
+              <div class="ip-status" aria-hidden="true"><span class="ip-time">9:41</span><span class="ip-icons"><svg viewBox="0 0 18 12" width="18" height="12"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg viewBox="0 0 16 12" width="16" height="12"><path d="M8 11.6l2.3-2.6a3.2 3.2 0 0 0-4.6 0z"></path><path d="M3.6 6.7a6.3 6.3 0 0 1 8.8 0l-1.3 1.4a4.4 4.4 0 0 0-6.2 0z"></path><path d="M1 3.9a10 10 0 0 1 14 0l-1.3 1.4a8.1 8.1 0 0 0-11.4 0z"></path></svg><span class="ip-batt"><i></i></span></span></div>
+              <img class="shot" src="/assets/app/de/phone-pick.webp" alt width="786" height="1596" loading="lazy">
+              <span class="iphone-island" aria-hidden="true"></span>
+              <span class="iphone-home" aria-hidden="true"></span>
+            </div>
+          </div>
+          </div>
           <div class="h-step-copy"><span class="h-step-n">2</span><h3 data-i18n="steps.two.title">Hinziehen</h3><p data-i18n="steps.two.body">Wähle ein Foto, ein Video oder ein paar Dateien, oder kopiere etwas Text. Eine Geste genügt.</p></div>
         </li>
         <li class="h-step reveal">
-          <div class="h-step-vis vis-live" aria-hidden="true"><img src="/assets/app/de/live.webp" alt width="596" height="960" loading="lazy"></div>
+          <div class="h-step-vis vis-live" aria-hidden="true"><div class="live-card"><img src="/assets/app/de/live.webp" alt width="594" height="762" loading="lazy"></div></div>
           <div class="h-step-copy"><span class="h-step-n">3</span><h3 data-i18n="steps.three.title">Angekommen</h3><p data-i18n="steps.three.body">Die Übertragung erscheint innerhalb einer Sekunde auf dem anderen Gerät, bereit zum Öffnen oder Einfügen.</p></div>
         </li>
       </ol>

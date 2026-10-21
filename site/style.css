@@ -793,6 +793,31 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
   .bg-aurora { animation: none; }
 }
 
+/* ---------- iPhone (accueil et page Pro) ---------- */
+/* iPhone aux vraies proportions (393 x 852 points d'écran, bordure de 12 points) :
+   dans l'écran, 1 point = 100cqw / 393 */
+.iphone { position: absolute; left: 0; bottom: 0; width: 23.5%; aspect-ratio: 417 / 876; container-type: inline-size;
+  border-radius: 16.1% / 7.65%; background: #1c1c1e; box-shadow: var(--shadow-device, 0 18px 40px -12px rgba(16, 24, 40, 0.18), 0 50px 100px -30px rgba(16, 24, 40, 0.22)), inset 0 0 0 1.5px #48484a, inset 0 0 0 4px #0b0b0c; }
+.iphone::before, .iphone::after { content: ""; position: absolute; width: 1.1%; border-radius: 2px; background: #2c2c2e; }
+.iphone::before { left: -1%; top: 17%; height: 7%; box-shadow: 0 260% 0 #2c2c2e; }
+.iphone::after { right: -1%; top: 24%; height: 11%; }
+.iphone-screen { position: absolute; inset: 2.88cqw; border-radius: 13.6cqw; overflow: hidden; background: #000; display: flex; flex-direction: column; }
+.ip-status { flex: none; height: 13.74cqw; display: flex; align-items: center; justify-content: space-between; padding: 1.4cqw 8.5cqw 0 10.5cqw; color: #fff; }
+.ip-time { font: 600 4.33cqw/1 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; letter-spacing: -0.01em; }
+.ip-icons { display: flex; align-items: center; gap: 1.5cqw; }
+.ip-icons svg { width: 4.6cqw; height: auto; fill: currentColor; }
+.ip-batt { position: relative; width: 6.6cqw; height: 3.1cqw; border-radius: 0.95cqw; border: 0.3cqw solid rgba(255, 255, 255, 0.45); padding: 0.35cqw; }
+.ip-batt i { display: block; height: 100%; width: 78%; border-radius: 0.5cqw; background: currentColor; }
+.ip-batt::after { content: ""; position: absolute; right: -1.1cqw; top: 30%; width: 0.6cqw; height: 40%; border-radius: 0 1px 1px 0; background: rgba(255, 255, 255, 0.45); }
+.iphone-screen .shot { flex: 1; width: 100%; height: auto; min-height: 0; object-fit: cover; object-position: top; display: block; }
+.iphone-island { position: absolute; top: 2.8cqw; left: 50%; width: 32cqw; height: 9.4cqw; transform: translateX(-50%); border-radius: 999px; background: #000; }
+.iphone-home { position: absolute; bottom: 2.1cqw; left: 50%; width: 34cqw; height: 1.3cqw; transform: translateX(-50%); border-radius: 999px; background: rgba(255, 255, 255, 0.85); }
+.iphone--light .iphone-screen { background: #f2f2f7; }
+.iphone--light .ip-status { color: #000; }
+.iphone--light .ip-batt { border-color: rgba(0, 0, 0, 0.35); }
+.iphone--light .ip-batt::after { background: rgba(0, 0, 0, 0.35); }
+.iphone--light .iphone-home { background: rgba(0, 0, 0, 0.8); }
+
 /* ---------- page Pro : même langage que l'accueil ---------- */
 .page-pro .pro-top { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 480px); grid-template-rows: auto 1fr; column-gap: clamp(32px, 5vw, 72px); row-gap: 36px;
   align-items: start; max-width: 1160px; padding-top: clamp(112px, 15vh, 150px); }
@@ -800,6 +825,7 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
 .page-pro .pro-top .eyebrow { text-transform: none; letter-spacing: 0; font-size: 15px; color: var(--blue); }
 .page-pro .pro-top h1 { font-size: clamp(40px, 6vw, 68px); font-weight: 700; letter-spacing: -0.035em; line-height: 1.02; margin: 6px 0 18px; }
 .page-pro .pro-top .section-sub { font-size: clamp(17px, 1.8vw, 20px); line-height: 1.5; margin: 0; }
+.pro-visual .iphone { width: 25%; }
 .page-pro .pro-buy { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 84px; max-width: none; margin: 0; padding: 32px; border: 0; border-radius: 28px;
   background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(16, 24, 40, 0.04), 0 30px 70px -28px rgba(0, 72, 160, 0.32); }
 .page-pro .pro-buy::before { content: "Flitdrop Pro"; display: inline-block; margin-bottom: 14px; padding: 4px 11px; border-radius: 999px; background: var(--blue-soft); color: var(--blue); font-size: 13px; font-weight: 650; }
@@ -809,11 +835,9 @@ html.anim .dl-card.in .qr { opacity: 1; transform: scale(1); }
 .pro-visual { grid-column: 1; grid-row: 2; position: relative; aspect-ratio: 100 / 70; margin-top: 8px; }
 .pv-mac { position: absolute; right: 0; top: 0; width: 88%; border-radius: 12px; overflow: hidden; background: #f3f3f5;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 30px 60px -24px rgba(16, 24, 40, 0.32); }
-.pv-mac img, .pv-phone img { width: 100%; height: auto; display: block; }
+.pv-mac img { width: 100%; height: auto; display: block; }
 .pv-bar { display: flex; gap: 6px; align-items: center; height: 22px; padding: 0 10px; background: #ececef; border-bottom: 1px solid rgba(0, 0, 0, 0.06); }
 .pv-bar i { width: 9px; height: 9px; border-radius: 50%; background: #ff5f57; } .pv-bar i:nth-child(2) { background: #febc2e; } .pv-bar i:nth-child(3) { background: #28c840; }
-.pv-phone { position: absolute; left: 0; bottom: 0; width: 25%; padding: 5px; border-radius: 26px; background: #1d1d1f; box-shadow: 0 30px 60px -20px rgba(16, 24, 40, 0.45); }
-.pv-phone img { border-radius: 21px; aspect-ratio: 393 / 852; object-fit: cover; object-position: top; }
 .page-pro #compare.ground::before { background: var(--bg-2); }
 .page-pro .section-head h2 { font-size: clamp(30px, 4.6vw, 52px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.06; }
 .page-pro #compare .eyebrow { text-transform: none; letter-spacing: 0; font-size: 15px; color: var(--blue); }

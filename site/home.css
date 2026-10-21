@@ -30,27 +30,25 @@
 .mac-bar i:nth-child(2) { background: #febc2e; }
 .mac-bar i:nth-child(3) { background: #28c840; }
 .shot { width: 100%; height: auto; }
-.iphone { position: absolute; left: 0; bottom: 0; width: 23.5%; aspect-ratio: 393 / 852; padding: 1.05cqw; border-radius: 5.4cqw; background: #1d1d1f;
-  box-shadow: var(--shadow-device), inset 0 0 0 1.5px #3a3a3c; }
-.iphone-screen { width: 100%; height: 100%; border-radius: 4.4cqw; overflow: hidden; background: #000; }
-.iphone-screen .shot { height: 100%; object-fit: cover; object-position: top; }
-.iphone-island { position: absolute; top: 2.3cqw; left: 50%; width: 30%; height: 2.4cqw; transform: translateX(-50%); border-radius: 999px; background: #000; }
-
-/* une photo part du téléphone et atterrit dans « En direct » */
-.flight { position: absolute; left: 0; top: 0; width: 6.2cqw; aspect-ratio: 1; border-radius: 1.2cqw; overflow: hidden; opacity: 0;
-  box-shadow: 0 10px 30px rgba(0, 40, 120, 0.28), 0 0 0 2px #fff; animation: flight 5.2s cubic-bezier(0.45, 0, 0.25, 1) 1.6s infinite; will-change: translate, scale, opacity; }
+/* une photo quitte la ligne IMG_4158 du téléphone et se pose sur la même ligne
+   dans « En direct » ; home.js place les points de départ et d'arrivée */
+.flight { position: absolute; left: 0; top: 0; width: var(--fs, 52px); aspect-ratio: 1; border-radius: 22%; overflow: hidden; opacity: 0; pointer-events: none; z-index: 3;
+  box-shadow: 0 12px 28px rgba(0, 40, 120, 0.32), 0 0 0 2px #fff; will-change: translate, scale, opacity; }
 .flight img { width: 100%; height: 100%; object-fit: cover; }
+.stage.is-ready .flight { animation: flight 5.6s cubic-bezier(0.5, 0, 0.25, 1) 1.2s infinite; }
 @keyframes flight {
-  0%   { translate: 8.6cqw 34cqw; scale: 0.5; opacity: 0; }
-  8%   { translate: 8.6cqw 31cqw; scale: 1; opacity: 1; }
-  30%  { translate: 30cqw 12cqw; scale: 1.06; opacity: 1; }
-  52%  { translate: 62cqw 2.4cqw; scale: 0.9; opacity: 1; }
-  62%  { translate: 76cqw 4.2cqw; scale: 0.55; opacity: 1; }
-  68%, 100% { translate: 76cqw 4.2cqw; scale: 0.4; opacity: 0; }
+  0%   { translate: var(--x0) var(--y0); scale: 0.4; opacity: 0; }
+  10%  { translate: var(--x0) var(--y0); scale: 1; opacity: 1; }
+  16%  { translate: var(--x0) var(--y0); scale: 1; opacity: 1; }
+  38%  { translate: var(--xm) var(--ym); scale: 1.12; opacity: 1; }
+  60%  { translate: var(--x1) var(--y1); scale: 0.62; opacity: 1; }
+  66%, 100% { translate: var(--x1) var(--y1); scale: 0.4; opacity: 0; }
 }
-.landing { position: absolute; left: 66.6cqw; top: 2.8cqw; width: 33cqw; height: 7cqw; border-radius: 1cqw; pointer-events: none;
-  box-shadow: 0 0 0 2px rgba(31, 164, 99, 0.55); opacity: 0; animation: landing 5.2s ease-out 1.6s infinite; }
-@keyframes landing { 0%, 60% { opacity: 0; scale: 1; } 64% { opacity: 1; } 100% { opacity: 0; scale: 1.03; } }
+.ring { position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; z-index: 2; border-radius: 12px; box-shadow: 0 0 0 2px #34c759, 0 0 0 7px rgba(52, 199, 89, 0.22); }
+.stage.is-ready .ring-depart { animation: ring-depart 5.6s ease-out 1.2s infinite; }
+.stage.is-ready .ring-land { animation: ring-land 5.6s ease-out 1.2s infinite; }
+@keyframes ring-depart { 0% { opacity: 0; } 6%, 14% { opacity: 1; } 24%, 100% { opacity: 0; } }
+@keyframes ring-land { 0%, 58% { opacity: 0; scale: 1.04; } 63% { opacity: 1; scale: 1; } 82%, 100% { opacity: 0; scale: 1; } }
 
 /* défilement : la scène se redresse en entrant, sans JavaScript */
 @supports (animation-timeline: view()) {
@@ -61,16 +59,17 @@
 }
 
 @media (max-width: 760px) {
-  .stage-tilt { aspect-ratio: 100 / 92; }
+  .stage-tilt { aspect-ratio: 100 / 88; }
+  .h-hero { padding-bottom: 24px; }
+  .stage { margin-top: 40px; }
   .mac { width: 100%; }
-  .iphone { width: 36%; left: 3%; border-radius: 8cqw; padding: 1.6cqw; }
-  .iphone-screen { border-radius: 6.6cqw; }
-  .iphone-island { top: 3.4cqw; height: 3.4cqw; }
-  .flight, .landing { display: none; }
+  .iphone { width: 34%; left: 2%; }
+  .flight, .ring { display: none; }
 }
 
 /* ---------- sections ---------- */
 .h-section { max-width: var(--maxw); margin: 0 auto; padding: clamp(84px, 13vh, 140px) clamp(16px, 4vw, 40px); }
+.home #steps { padding-top: clamp(64px, 9vh, 110px); }
 .h-grey { max-width: none; background: var(--bg-2); }
 .h-grey > * { max-width: var(--maxw); margin-left: auto; margin-right: auto; }
 .h-head { max-width: 760px; margin: 0 auto clamp(40px, 6vh, 64px); text-align: center; }
@@ -81,24 +80,31 @@
 /* ---------- les trois gestes ---------- */
 .h-steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .h-step { display: flex; flex-direction: column; background: var(--bg-2); border-radius: 26px; overflow: hidden; }
-.h-step-vis { position: relative; height: 300px; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; padding-top: 34px; }
-.h-step-vis img { height: auto; border-radius: 14px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 16px 36px -14px rgba(16, 24, 40, 0.28); }
-.vis-pair img { width: 78%; height: auto; }
-.vis-live img { width: 76%; height: auto; }
-.half-phone { width: 56%; padding: 8px 8px 0; border-radius: 34px 34px 0 0; background: #1d1d1f; box-shadow: 0 16px 36px -14px rgba(16, 24, 40, 0.35); }
-.half-phone img { width: 100%; border-radius: 27px 27px 0 0; box-shadow: none; }
+.h-step-vis { position: relative; height: 320px; display: grid; place-items: center; padding: 26px; }
+.qr-win { width: min(232px, 86%); border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.07), 0 20px 40px -18px rgba(16, 24, 40, 0.3); }
+.qr-win .mac-bar { height: 22px; }
+.qr-win .mac-bar i { width: 9px; height: 9px; }
+.qr-body { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 14px 18px 16px; }
+.qr-title { align-self: flex-start; font-size: 14px; font-weight: 650; color: var(--ink); }
+.qr-body img { width: 148px; height: 148px; image-rendering: pixelated; }
+.qr-wait { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+.spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(0, 113, 227, 0.2); border-top-color: var(--blue); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { rotate: 360deg; } }
+.iphone--solo { position: relative; left: auto; bottom: auto; width: auto; height: 100%; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), 0 22px 40px -16px rgba(16, 24, 40, 0.4), inset 0 0 0 1.5px #48484a, inset 0 0 0 4px #0b0b0c; }
+.live-card { height: 100%; aspect-ratio: 594 / 762; border-radius: 16px; overflow: hidden; background: #fafafb; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.07), 0 20px 40px -18px rgba(16, 24, 40, 0.3); }
+.live-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .h-step-copy { padding: 22px 26px 28px; }
 .h-step-n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; font-weight: 700; margin-bottom: 12px; }
 .h-step h3 { font-size: 21px; font-weight: 650; margin-bottom: 6px; }
 .h-step p { color: var(--muted); font-size: 15.5px; line-height: 1.5; }
-/* le contenu glisse doucement en vue au survol */
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .h-step-vis img, .half-phone { transition: transform 0.6s var(--ease); }
-  .h-step:hover .h-step-vis img, .h-step:hover .half-phone { transform: translateY(-6px); }
+  .h-step-vis > * { transition: transform 0.6s var(--ease); }
+  .h-step:hover .h-step-vis > * { transform: translateY(-6px); }
 }
+
 @media (max-width: 900px) {
   .h-steps { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; }
-  .h-step-vis { height: 260px; }
+  .h-step-vis { height: 300px; }
 }
 
 /* ---------- fonctions ---------- */
@@ -212,8 +218,8 @@ html.anim .reveal { opacity: 0; transform: translateY(22px); }
 html.anim .reveal.in { opacity: 1; transform: none; transition: opacity 0.8s var(--ease), transform 0.8s var(--ease); transition-delay: var(--rd, 0ms); }
 
 @media (prefers-reduced-motion: reduce) {
-  .rise, .flight, .landing, .clip-wire span::after, .flow-packet { animation: none; }
-  .flight, .landing { display: none; }
+  .rise, .clip-wire span::after, .flow-packet { animation: none; }
+  .flight, .ring { display: none; }
   .flow-packet { left: 50%; }
 }
 
@@ -221,3 +227,8 @@ html.anim .reveal.in { opacity: 1; transform: none; transition: opacity 0.8s var
 .home #compare .eyebrow { text-transform: none; letter-spacing: 0; font-size: 14px; color: var(--blue); }
 .home #compare .section-head h2, .home .faq .section-head h2, .home .support h2 { font-size: clamp(32px, 5vw, 56px); font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; }
 .home .support .eyebrow { text-transform: none; letter-spacing: 0; font-size: 14px; }
+
+@media (max-width: 760px) {
+  .home .h-section, .home #steps { padding-top: 64px; padding-bottom: 64px; }
+  .home .h-head { margin-bottom: 32px; }
+}

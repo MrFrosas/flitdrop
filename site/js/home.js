@@ -39,6 +39,57 @@
     });
   }
 
+
+  /* animation du haut : départ sur la ligne IMG_4158 du téléphone, arrivée sur la même
+     ligne dans « En direct » du Mac. Positions relevées dans les captures (en points
+     de l'écran capturé), ramenées ici à la taille affichée. */
+  var GEO = {
+    phone: { vw: 393, vh: 798, row: { en: [18, 425.5, 357, 106], fr: [18, 441.5, 357, 106], de: [18, 425.5, 357, 106] } },
+    mac: { vw: 1100, vh: 700, card: [819, 53, 263, 102] }
+  };
+  function offsetIn(el, root) {
+    var x = 0, y = 0;
+    for (var e = el; e && e !== root; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop; }
+    return { x: x, y: y, w: el.offsetWidth, h: el.offsetHeight };
+  }
+  function setupFlight() {
+    var stage = document.querySelector('.stage');
+    var root = stage && stage.querySelector('.stage-tilt');
+    var pimg = root && root.querySelector('.iphone .shot');
+    var mimg = root && root.querySelector('.mac .shot');
+    var fl = root && root.querySelector('.flight');
+    var dep = root && root.querySelector('.ring-depart');
+    var land = root && root.querySelector('.ring-land');
+    if (!pimg || !mimg || !fl || !dep || !land) return;
+    var lang = (window.FDI18N && window.FDI18N.lang) || 'en';
+    function place() {
+      var P = offsetIn(pimg, root), M = offsetIn(mimg, root);
+      if (!P.w || !M.w) return;
+      var r = GEO.phone.row[lang] || GEO.phone.row.en, c = GEO.mac.card;
+      var px = P.w / GEO.phone.vw, py = px, mx = M.w / GEO.mac.vw, my = M.h / GEO.mac.vh;
+      var row = { x: P.x + r[0] * px, y: P.y + r[1] * py, w: r[2] * px, h: r[3] * py };
+      var card = { x: M.x + c[0] * mx, y: M.y + c[1] * my, w: c[2] * mx, h: c[3] * my };
+      var size = Math.max(30, Math.min(64, root.offsetWidth * 0.05));
+      var x0 = row.x + row.w * 0.1 - size / 2, y0 = row.y + row.h * 0.32 - size / 2;
+      var x1 = card.x + card.w * 0.5 - size / 2, y1 = card.y + card.h * 0.5 - size / 2;
+      var st = fl.style;
+      st.setProperty('--fs', size + 'px');
+      st.setProperty('--x0', x0 + 'px'); st.setProperty('--y0', y0 + 'px');
+      st.setProperty('--x1', x1 + 'px'); st.setProperty('--y1', y1 + 'px');
+      st.setProperty('--xm', (x0 + x1) / 2 + 'px'); st.setProperty('--ym', Math.min(y0, y1) - root.offsetWidth * 0.06 + 'px');
+      [[dep, row], [land, card]].forEach(function (pair) {
+        var s2 = pair[0].style, b = pair[1];
+        s2.left = b.x + 'px'; s2.top = b.y + 'px'; s2.width = b.w + 'px'; s2.height = b.h + 'px';
+        s2.borderRadius = Math.max(8, b.h * 0.16) + 'px';
+      });
+      stage.classList.add('is-ready');
+    }
+    function whenLoaded(img, cb) { if (img.complete && img.naturalWidth) cb(); else img.addEventListener('load', cb, { once: true }); }
+    whenLoaded(pimg, function () { whenLoaded(mimg, place); });
+    if ('ResizeObserver' in window) new ResizeObserver(place).observe(root);
+    else window.addEventListener('resize', place);
+  }
+
   function setupNav() {
     var nav = document.getElementById('nav');
     if (!nav) return;
@@ -198,6 +249,7 @@
 
   function start() {
     localizeShots();
+    setupFlight();
     setupReveals();
     setupNav();
     setupOS();

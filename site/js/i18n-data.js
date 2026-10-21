@@ -274,7 +274,9 @@
     "doc.toc": "On this page",
     "a11y.lang": "Language",
     "a11y.sections": "Sections",
-    "a11y.footer": "Footer"
+    "a11y.footer": "Footer",
+    "ui.pairTitle": "Pair a phone",
+    "ui.pairWaiting": "Waiting for the scan…"
   },
   "fr": {
     "meta.title": "Flitdrop, envoyez vos fichiers entre téléphone et ordinateur comme un AirDrop universel",
@@ -542,7 +544,9 @@
     "doc.toc": "Sur cette page",
     "a11y.lang": "Langue",
     "a11y.sections": "Sections",
-    "a11y.footer": "Pied de page"
+    "a11y.footer": "Pied de page",
+    "ui.pairTitle": "Appairer un téléphone",
+    "ui.pairWaiting": "En attente du scan…"
   },
   "de": {
     "meta.title": "Flitdrop, Dateien zwischen Handy und Computer senden wie AirDrop, überall",
@@ -810,7 +814,9 @@
     "doc.toc": "Auf dieser Seite",
     "a11y.lang": "Sprache",
     "a11y.sections": "Abschnitte",
-    "a11y.footer": "Fußzeile"
+    "a11y.footer": "Fußzeile",
+    "ui.pairTitle": "Telefon koppeln",
+    "ui.pairWaiting": "Warte auf den Scan…"
   }
 };
 });
