@@ -106,7 +106,7 @@ async function readWifi(): Promise<WifiFacts | null> {
   if (process.platform === 'darwin') return parseMacWifi(await run('/usr/sbin/system_profiler', ['SPAirPortDataType', '-json'], 15_000))
   // Windows 11 24H2 peut exiger l'autorisation « position » pour ces infos :
   // sans elle, netsh échoue et on donne des conseils généraux
-  if (process.platform === 'win32') return parseNetsh(await run('netsh', ['wlan', 'show', 'interfaces'], 8_000))
+  if (process.platform === 'win32') return parseNetsh(await run('C:\\Windows\\System32\\netsh.exe', ['wlan', 'show', 'interfaces'], 8_000))
   return null
 }
 

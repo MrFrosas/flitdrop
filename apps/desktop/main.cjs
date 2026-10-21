@@ -289,8 +289,16 @@ function extractFiles(argv) {
   })
 }
 
+// fichiers donnés avant que le coeur soit prêt (« Ouvrir avec », dépôt sur
+// l'icône du Dock au démarrage) : gardés, puis partagés une fois prêt
+const pendingShare = []
+
 async function shareFiles(paths) {
-  if (!core || paths.length === 0) return
+  if (paths.length === 0) return
+  if (!core) {
+    pendingShare.push(...paths)
+    return
+  }
   const n = await core.addLocalFiles(paths)
   // Flitdrop Pro, version gratuite : limite du jour atteinte, le reste n'a
   // pas été ajouté. La fenêtre montre la carte ; une notification le dit.
@@ -316,7 +324,18 @@ async function shareFiles(paths) {
 function buildTrayMenu() {
   return Menu.buildFromTemplate([
     { label: tr('tray.open'), click: () => showWindow() },
-    { label: tr('tray.openFolder'), click: () => shell.openPath(core.cfg.downloadDir) },
+    {
+      label: tr('tray.openFolder'),
+      click: () => {
+        // dossier effacé ou clé USB retirée : recréé plutôt qu'un clic sans effet
+        try {
+          fs.mkdirSync(core.cfg.downloadDir, { recursive: true })
+        } catch {
+          // disque absent : openPath dira ce qu'il peut
+        }
+        void shell.openPath(core.cfg.downloadDir)
+      },
+    },
     { type: 'separator' },
     {
       label: tr('tray.autostart'),
@@ -358,6 +377,12 @@ if (!gotLock) {
   })
 
   app.whenReady().then(async () => {
+    // app installée : menu sans outils de développement (ils montraient le
+    // jeton de la page). Le Mac garde ses menus d'app, d'édition (copier,
+    // coller) et de fenêtre ; Windows et Linux n'en ont pas besoin.
+    if (app.isPackaged) {
+      Menu.setApplicationMenu(process.platform === 'darwin' ? Menu.buildFromTemplate([{ role: 'appMenu' }, { role: 'editMenu' }, { role: 'windowMenu' }]) : null)
+    }
     // macOS : lancé à l'ouverture de session (les arguments comme --hidden n'y
     // passent pas) ? On démarre discret : ni fenêtre ni icône dans le Dock
     // tant que la personne n'ouvre pas Flitdrop.
@@ -433,6 +458,19 @@ if (!gotLock) {
         if (typeof url === 'string' && /^https:\/\//i.test(url)) void shell.openExternal(url).catch(() => {})
         else if (typeof url === 'string' && /^mailto:contact@flitdrop\.com\?subject=[A-Za-z0-9%]+$/.test(url)) void shell.openExternal(url).catch(() => {})
         else if (!app.isPackaged && typeof url === 'string' && /^http:\/\/(127\.0\.0\.1|localhost)[:/]/i.test(url)) void shell.openExternal(url).catch(() => {})
+      },
+      // lien copié (historique du presse-papiers) : http(s) seulement, relu par
+      // l'analyseur d'adresses, ouvert par le navigateur du système
+      openLink: (url) => {
+        try {
+          const u = new URL(String(url))
+          if (u.protocol === 'http:' || u.protocol === 'https:') void shell.openExternal(u.href).catch(() => {})
+        } catch {
+          // adresse illisible : rien n'est ouvert
+        }
+      },
+      openPath: (dir) => {
+        if (typeof dir === 'string') void shell.openPath(dir).catch(() => {})
       },
       // Windows : pare-feu vérifié une fois quand aucun téléphone n'arrive, et
       // réparé seulement sur « Réparer » (règles de cet exécutable, pour le
@@ -523,6 +561,26 @@ if (!gotLock) {
       winOpts.backgroundColor = '#1b1b1b'
     }
     win = new BrowserWindow(winOpts)
+    // la fenêtre ne montre que la page de Flitdrop : ni nouvelle fenêtre, ni
+    // navigation ailleurs, ni demande d'autorisation hors presse-papiers
+    const home = new URL(url).origin + '/app/'
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    win.webContents.on('will-navigate', (e, to) => {
+      if (!String(to).startsWith(home)) e.preventDefault()
+    })
+    win.webContents.session.setPermissionRequestHandler((_wc, permission, done) => {
+      done(permission === 'clipboard-sanitized-write' || permission === 'clipboard-read')
+    })
+    // page plantée : rechargée (au plus 3 fois par lancement) au lieu d'une
+    // fenêtre vide jusqu'au redémarrage
+    let reloads = 0
+    win.webContents.on('render-process-gone', (_e, details) => {
+      if (quitting || !details || details.reason === 'clean-exit' || reloads >= 3) return
+      reloads++
+      setTimeout(() => {
+        if (win && !win.isDestroyed()) win.loadURL(url)
+      }, 500)
+    })
     win.loadURL(url)
     // apparition sans flash blanc : on montre la fenêtre une fois prête
     win.once('ready-to-show', () => {
@@ -556,7 +614,7 @@ if (!gotLock) {
     }
 
     // fichiers passés au tout premier lancement (Envoyer vers, Ouvrir avec)
-    await shareFiles(extractFiles(process.argv))
+    await shareFiles([...extractFiles(process.argv), ...pendingShare.splice(0)])
 
     app.on('activate', () => { if (win) showWindow() })
   }).catch((err) => {

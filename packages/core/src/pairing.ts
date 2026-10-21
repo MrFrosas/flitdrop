@@ -1,6 +1,17 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { newKey, randomToken } from './crypto.js'
+
+const TWIN_SILENT_MS = 10 * 60 * 1000
+
+/** Nom d'appareil donné par le téléphone (ou tapé sur le PC) : sans
+ *  caractères de contrôle, invisibles ni de sens d'écriture, espaces
+ *  resserrés, 40 caractères au plus. « PC » est réservé à ce PC. */
+export function cleanDeviceName(raw: string): string {
+  const clean = [...String(raw ?? '').replace(/[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff]/g, '').replace(/\s+/g, ' ').trim()]
+  const name = clean.slice(0, 40).join('').trim()
+  return /^pc$/i.test(name) ? '' : name
+}
 import { b64u, timingSafeEqualStr } from './util.js'
 
 export interface Device {
@@ -138,7 +149,7 @@ export class DeviceStore {
     const d = this.devices.get(id)
     if (!d) return false
     const wasPending = d.status === 'pending'
-    if (wasPending && info.name) d.name = info.name.slice(0, 40)
+    if (wasPending && info.name) d.name = cleanDeviceName(info.name) || d.name
     if (info.platform) d.platform = info.platform.slice(0, 24)
     // premier téléphone de ce PC : il voit le presse-papiers du PC, comme
     // avant. Un téléphone de plus (celui d'un proche, par exemple) part sans.
@@ -164,9 +175,16 @@ export class DeviceStore {
   private twinsOf(id: string): Device[] {
     const d = this.devices.get(id)
     if (!d || !d.platform) return []
-    return [...this.devices.values()].filter(
-      (o) => o.id !== id && o.status === 'active' && o.platform === d.platform && o.name === d.name
-    )
+    // Un iPhone se nomme toujours « iPhone » : le téléphone d'un proche aurait
+    // hérité du presse-papiers et des fichiers en attente du premier. On ne
+    // reconnaît le même téléphone que si l'ancien appairage s'est tu depuis
+    // au moins 10 minutes (données du navigateur effacées, plus de contact).
+    const now = Date.now()
+    return [...this.devices.values()].filter((o) => {
+      if (o.id === id || o.status !== 'active' || o.platform !== d.platform || o.name !== d.name) return false
+      const seen = o.lastSeenAt ? Date.parse(o.lastSeenAt) : 0
+      return !(now - seen < TWIN_SILENT_MS)
+    })
   }
 
   /** Identifiants des anciens appairages du même téléphone (voir twinsOf). */
@@ -185,7 +203,7 @@ export class DeviceStore {
   rename(id: string, name: string): boolean {
     const d = this.devices.get(id)
     if (!d) return false
-    d.name = name.slice(0, 40) || d.name
+    d.name = cleanDeviceName(name) || d.name
     this.save()
     return true
   }

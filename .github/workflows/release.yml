@@ -6,8 +6,10 @@ on:
     tags:
       - 'v*'
 
+# construction en lecture seule ; seul le job « publish » peut ecrire la
+# release (un paquet npm compromis pendant le build ne peut rien publier)
 permissions:
-  contents: write
+  contents: read
 
 # Le CI construit et TESTE Windows (.exe signe) et Linux (AppImage + .deb), puis
 # une seule etape publie la release quand les deux ont reussi : une release ne
@@ -19,6 +21,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -45,6 +49,15 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      # La mise a jour automatique doit exiger la signature CC's Global :
+      # sans publisherName dans app-update.yml, elle ne la verifie pas.
+      - name: Verifier que la mise a jour exige la signature
+        shell: pwsh
+        run: |
+          $f = 'apps/desktop/release/win-unpacked/resources/app-update.yml'
+          Get-Content $f | Write-Host
+          if (-not (Select-String -Path $f -Pattern "publisherName" -Quiet)) { throw "app-update.yml sans publisherName : la signature des mises a jour ne serait pas verifiee" }
 
       # Installation silencieuse reelle (comme le Microsoft Store et winget : /S),
       # dans un profil neuf, puis verification du dossier et de la cle de
@@ -133,6 +146,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -232,6 +247,8 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build-windows, build-linux]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:

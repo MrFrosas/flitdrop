@@ -35,6 +35,7 @@ import { TransferActivity } from './activity.js'
 import { HOST_ACTIONS, type HostAction, type HostPatch, type HostState } from './host.js'
 import { repairProfiles, type FirewallStatus, type RepairResult } from './firewall.js'
 import { saveMultipartFiles } from './uploads.js'
+import { markFromOutside } from './quarantine.js'
 import { pcLink, type PcLink } from './wifi.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
 import { answerRating, countTransfer, ratingDue } from './rating.js'
@@ -48,6 +49,7 @@ import {
   moduleDir,
   parseCookies,
   reserveUniquePath,
+  systemOpener,
   sanitizeFilename,
   timingSafeEqualStr,
 } from './util.js'
@@ -144,6 +146,39 @@ export function phoneManifest(raw: string, pcName: string): string {
   return JSON.stringify(m, null, 2)
 }
 
+/** Code HTTP d'une erreur : celui d'une ApiError, sinon 500. Une erreur du
+ *  disque porte un code texte (ENAMETOOLONG, EACCES…) que res.status refuse
+ *  en levant une exception : la requête restait pendue, et le serveur en
+ *  ligne de commande s'arrêtait. */
+function httpStatus(code: unknown): number {
+  return typeof code === 'number' && code >= 400 && code <= 599 ? code : 500
+}
+
+/** Requête de la page du PC : hôte de bouclage, et ni le navigateur ni
+ *  l'origine ne disent qu'elle vient d'un autre site. */
+export function looksLikeFlitdropSecret(text: string): boolean {
+  const t = text.trim()
+  return /\/s\/#[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{40,}/.test(t) || /\/api\/shortcut\/[a-z]+\?(?:[^ ]*&)?t=[A-Za-z0-9_-]{16,}/.test(t) || /[?&]t=[A-Za-z0-9_-]{20,}/.test(t) && /:\d{2,5}\//.test(t)
+}
+
+export function sameSiteOk(h: import('node:http').IncomingHttpHeaders): boolean {
+  const host = String(h.host ?? '').toLowerCase()
+  if (!/^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(host)) return false
+  const site = String(h['sec-fetch-site'] ?? '')
+  if (site && site !== 'same-origin' && site !== 'none') return false
+  const origin = h.origin
+  if (typeof origin === 'string' && origin !== 'null') {
+    try {
+      if (new URL(origin).host.toLowerCase() !== host) return false
+    } catch {
+      return false
+    }
+  }
+  return true
+}
+
+const MAX_CONNECTIONS_PER_IP = 48
+
 const PUBLIC_DIR = path.join(moduleDir(import.meta.url), '..', 'public')
 const ADMIN_COOKIE = 'wd_admin'
 
@@ -160,9 +195,13 @@ const CSP = [
   "form-action 'self'",
 ].join('; ')
 
-// Variante pour la page du PC (loopback + jeton) : autorise les miniatures https
-// des aperçus de liens dans l'historique du presse-papiers.
-const CSP_ADMIN = CSP.replace("img-src 'self' data: blob:", "img-src 'self' data: blob: https:")
+// Variante pour la page du PC (loopback + jeton) : seules les vignettes YouTube
+// des liens copiés sont chargées de l'extérieur (une adresse d'image quelconque
+// dans le presse-papiers ne l'est jamais) ; WebSocket vers ce PC seulement.
+const CSP_ADMIN = CSP.replace("img-src 'self' data: blob:", "img-src 'self' data: blob: https://i.ytimg.com").replace(
+  "connect-src 'self' ws: wss:",
+  "connect-src 'self' ws://127.0.0.1:* ws://localhost:*"
+)
 
 // Le Worker de chiffrement du téléphone (cw.js) compile son module
 // WebAssembly : lui seul reçoit 'wasm-unsafe-eval' (compiler du WebAssembly,
@@ -252,6 +291,11 @@ export interface StartOptions {
   // fourni par l'app de bureau : ouvre une adresse dans le navigateur du
   // système (shell.openExternal). Sans lui : open, explorer ou xdg-open.
   openExternal?: (url: string) => void
+  /** App de bureau : ouvre un lien http(s) copié (historique du presse-papiers)
+   *  avec l'ouvreur d'Electron. Sans lui : programme du système, chemin absolu. */
+  openLink?: (url: string) => void
+  /** App de bureau : ouvre un dossier (shell.openPath). */
+  openPath?: (dir: string) => void
 }
 
 export interface RunningServer {
@@ -382,8 +426,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       opts.openExternal(url)
       return
     }
-    const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open'
-    const child = spawn(cmd, [url], { detached: true, stdio: 'ignore' })
+    const child = spawn(systemOpener(), [url], { detached: true, stdio: 'ignore' })
     child.on('error', () => {})
     child.unref()
   }
@@ -583,6 +626,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
     if (!text || text === lastClip || Buffer.byteLength(text, 'utf8') > MAX_TEXT_BYTES) return false
     lastClip = text
+    // lien d'appairage ou adresse du Raccourci copiés depuis Flitdrop : ils
+    // portent une clé, jamais gardés dans l'historique ni envoyés aux téléphones
+    if (looksLikeFlitdropSecret(text)) return false
     if (cfg.clipHistoryEnabled && clipHistory.add(text, 'pc', cfg)) {
       hub.broadcast('cliphistory-changed', {})
     }
@@ -1052,8 +1098,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     } catch (e) {
       const err = e as ApiError
       const meta = payload.meta as { mime?: unknown } | undefined
-      telemetry.transferFail('phone_to_pc', kindOf(typeof meta?.mime === 'string' ? meta.mime : undefined), err.code ?? 400, err.key ?? 'internal')
-      res.status(err.code ?? 400).json({ code: err.key ?? 'internal' })
+      telemetry.transferFail('phone_to_pc', kindOf(typeof meta?.mime === 'string' ? meta.mime : undefined), httpStatus(err.code), err.key ?? 'internal')
+      res.status(httpStatus(err.code)).json({ code: err.key ?? 'internal' })
     }
   })
 
@@ -1138,8 +1184,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         release()
         const err = e as ApiError
         t.lastErrorKey = err.key ?? 'internal'
-        t.lastErrorStatus = err.code ?? 400
-        res.status(err.code ?? 400).json({ error: err.message })
+        t.lastErrorStatus = httpStatus(err.code)
+        res.status(httpStatus(err.code)).json({ error: err.message })
       }
     }
   )
@@ -1171,8 +1217,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       res.json({ p: sealJSON(key, { ok: true, name: path.basename(finalPath) }, aad(dev.id, 'finish:res')) })
     } catch (e) {
       const err = e as ApiError
-      transfers.reportFailure(t, err.code ?? 400, err.key ?? 'internal')
-      res.status(err.code ?? 400).json({ code: err.key ?? 'internal' })
+      transfers.reportFailure(t, httpStatus(err.code), err.key ?? 'internal')
+      res.status(httpStatus(err.code)).json({ code: err.key ?? 'internal' })
     }
   })
 
@@ -1552,6 +1598,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     // limite du jour (gratuit) : rien de possible, refusé avant de lire le
     // moindre octet
     if (shortcutRoom() <= 0) return shortcutLimited(req, res)
+    // « Valider chaque fichier » allumé : le Raccourci ne peut pas attendre
+    // une validation, il ne contourne donc pas ce réglage
+    if (cfg.requireApproval) return res.status(403).type('text/plain; charset=utf-8').send(st(req, 'srv.scApproval', { pc: cfg.deviceName }))
     fs.mkdirSync(cfg.downloadDir, { recursive: true })
     try {
       const all = await saveMultipartFiles(req, cfg.downloadDir, cfg.maxFileMB * 1024 * 1024)
@@ -1568,6 +1617,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       for (const f of all.slice(kept.length)) fs.unlink(f.path, () => {})
       if (kept.length === 0) return shortcutLimited(req, res)
       const saved = kept.map(placeByMonth)
+      await Promise.all(saved.map((f) => markFromOutside(f.path)))
       const refused = all.length - kept.length
       for (const f of saved) {
         transferOk('phone_to_pc', kindOf(f.mime), f.size)
@@ -1608,7 +1658,13 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     }
   })
 
-  app.post('/api/shortcut/text', rlShortcut, trackBody('sctxt', LARGE_TEXT_BYTES, (req) => !!shortcutDevice(req)), express.text({ limit: '1mb', type: () => true }), async (req, res) => {
+  // jeton vérifié AVANT de lire le corps : sans lui, n'importe qui sur le
+  // réseau faisait garder 1 Mo en mémoire par requête
+  const shortcutAuthFirst = (req: Request, res: Response, next: NextFunction) => {
+    if (!shortcutDevice(req)) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
+    next()
+  }
+  app.post('/api/shortcut/text', rlShortcut, shortcutAuthFirst, trackBody('sctxt', LARGE_TEXT_BYTES, (req) => !!shortcutDevice(req)), express.text({ limit: '1mb', type: () => true }), async (req, res) => {
     const dev = shortcutDevice(req)
     if (!dev) return res.status(401).type('text/plain; charset=utf-8').send(st(req, 'srv.scBadToken'))
     const text = typeof req.body === 'string' ? req.body : ''
@@ -1617,6 +1673,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       () => true,
       () => false
     )
+    // comme depuis la page du téléphone : pas renvoyé aux téléphones comme une
+    // copie faite sur le PC, et noté au nom de l'iPhone
+    if (copied) lastClip = text
+    if (cfg.clipHistoryEnabled && clipHistory.add(text, dev.name, cfg)) hub.broadcast('cliphistory-changed', {})
     history.add({ dir: 'in', kind: 'clip', preview: text.slice(0, 160), deviceId: dev.id, deviceName: dev.name, status: 'ok' })
     hub.broadcast('text-received', { deviceName: dev.name, mode: 'clip', copied, text: text.slice(0, 32_000) })
     devices.touch(dev.id)
@@ -1644,6 +1704,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   const admin = express.Router()
   admin.use((req, res, next) => {
     if (!isLoopback(req.socket.remoteAddress)) return res.status(403).json({ code: 'localOnly' })
+    // une page d'un autre site local (127.0.0.1 sur un autre port, ou un nom
+    // qui pointe ici) ne peut rien demander : seule la page de Flitdrop
+    if (!sameSiteOk(req.headers)) return res.status(403).json({ code: 'localOnly' })
     if (!adminOk(req)) return res.status(401).json({ code: 'unauthorized' })
     next()
   })
@@ -2047,18 +2110,34 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   admin.post('/open-folder', (_req, res) => {
     fs.mkdirSync(cfg.downloadDir, { recursive: true })
-    const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open'
-    spawn(cmd, [cfg.downloadDir], { detached: true, stdio: 'ignore' }).unref()
+    if (opts.openPath) opts.openPath(cfg.downloadDir)
+    else {
+      const child = spawn(systemOpener(), [cfg.downloadDir], { detached: true, stdio: 'ignore' })
+      child.on('error', () => {})
+      child.unref()
+    }
     res.json({ ok: true })
   })
 
   admin.post('/open-url', jsonSmall, (req, res) => {
     const url = typeof (req.body as { url?: unknown })?.url === 'string' ? (req.body as { url: string }).url.trim() : ''
     // uniquement http(s) : on n'ouvre pas file:, javascript:, etc.
-    if (!/^https?:\/\/[^\s]+$/i.test(url) || url.length > 2048) return res.status(400).json({ code: 'badLink' })
-    const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open'
-    // le lien est passé en argument unique, jamais interprété par un shell
-    spawn(cmd, [url], { detached: true, stdio: 'ignore' }).unref()
+    // ni virgule, guillemet, barre oblique inverse ou accent circonflexe :
+    // explorer.exe (Windows) a sa propre syntaxe d'arguments
+    if (!/^https?:\/\/[^\s,"\\^<>|]+$/i.test(url) || url.length > 2048) return res.status(400).json({ code: 'badLink' })
+    let href = url
+    try {
+      href = new URL(url).href
+    } catch {
+      return res.status(400).json({ code: 'badLink' })
+    }
+    if (opts.openLink) opts.openLink(href)
+    else {
+      // le lien est passé en argument unique, jamais interprété par un shell
+      const child = spawn(systemOpener(), [href], { detached: true, stdio: 'ignore' })
+      child.on('error', () => {})
+      child.unref()
+    }
     res.json({ ok: true })
   })
 
@@ -2279,6 +2358,26 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   // quand le lien lâche, et le corps a 10 min, pour les anciennes pages aussi
   // (les en-têtes restent bornés à 66 s ci-dessus).
   server.requestTimeout = 10 * 60_000
+  // au plus 48 connexions ouvertes par adresse : un téléphone en utilise une
+  // dizaine (envois en parallèle, suivi) ; sans plafond, quelqu'un sur le wifi
+  // gardait des centaines de requêtes lentes ouvertes, chacune avec sa mémoire.
+  // La boucle locale (la page du PC) n'est pas limitée.
+  const perIp = new Map<string, number>()
+  server.on('connection', (socket) => {
+    const ip = socket.remoteAddress ?? ''
+    if (isLoopback(ip)) return
+    const n = (perIp.get(ip) ?? 0) + 1
+    if (n > MAX_CONNECTIONS_PER_IP) {
+      socket.destroy()
+      return
+    }
+    perIp.set(ip, n)
+    socket.once('close', () => {
+      const left = (perIp.get(ip) ?? 1) - 1
+      if (left <= 0) perIp.delete(ip)
+      else perIp.set(ip, left)
+    })
+  })
   const wss = new WebSocketServer({ noServer: true })
   server.on('upgrade', (req, socket, head) => {
     let ok = false
@@ -2288,6 +2387,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       const qTok = url.searchParams.get('k') ?? ''
       ok =
         isLoopback((socket as import('node:net').Socket).remoteAddress) &&
+        sameSiteOk(req.headers) &&
         url.pathname === '/ws/ui' &&
         [qTok, cookieTok].some((t) => t.length > 0 && timingSafeEqualStr(t, cfg.adminToken))
     } catch {

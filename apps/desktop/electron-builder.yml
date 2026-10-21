@@ -80,6 +80,13 @@ win:
     certificateProfileName: flitdrop
     TimestampRfc3161: http://timestamp.acs.microsoft.com
     TimestampDigest: SHA256
+  # Nom de l'éditeur que la mise à jour automatique exige sur l'installeur
+  # téléchargé (vérification Authenticode d'electron-updater). Sans lui, la
+  # signature Azure ne protégeait que le premier téléchargement : une release
+  # modifiée aurait été installée en silence. CN exact du certificat.
+  signtoolOptions:
+    publisherName:
+      - "CC's Global"
 linux:
   # AppImage : lance sans installation sur toutes les distributions, et
   # electron-updater sait le mettre a jour (latest-linux.yml). .deb : installation

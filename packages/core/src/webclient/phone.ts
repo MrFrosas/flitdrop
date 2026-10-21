@@ -276,11 +276,29 @@ function loadPairing(): Pairing | null {
   // (?k=, quand le raccourci PWA relance l'app depuis l'écran d'accueil).
   const incoming = parseToken(location.hash.slice(1)) || parseToken(new URLSearchParams(location.search).get('k') || '')
   if (incoming) {
+    // Ancien lien du même appairage (historique du navigateur, capture du QR
+    // rescannée) : chaque QR crée un appareil neuf, donc pour le même id, la
+    // clé gardée ici est la plus récente (clé de session reçue après le 1er
+    // contact). La remplacer par celle du QR, déjà retirée par le PC, casserait
+    // un appairage qui marche.
+    const kept = storedPairing()
+    if (kept && kept.id === incoming.id) {
+      if (!kept.instanceId && incoming.instanceId) {
+        kept.instanceId = incoming.instanceId
+        localStorage.setItem(PAIR_KEY, JSON.stringify(kept))
+      }
+      history.replaceState(null, '', location.pathname)
+      return kept
+    }
     notePairingSource(incoming)
     localStorage.setItem(PAIR_KEY, JSON.stringify(incoming))
     history.replaceState(null, '', location.pathname)
     return incoming
   }
+  return storedPairing()
+}
+
+function storedPairing(): Pairing | null {
   try {
     const stored = JSON.parse(localStorage.getItem(PAIR_KEY) || 'null') as Pairing | null
     if (stored?.id && stored?.keyB64) return stored
@@ -1286,6 +1304,11 @@ function initUI() {
   $('btnSendText').onclick = async () => {
     const value = txt.value.trim()
     if (!value) return
+    // au-delà d'1 Mo, le PC refuse : on le dit tout de suite, avec la sortie
+    if (new TextEncoder().encode(value).length > 1024 * 1024) {
+      toast(t('ph.text.tooLong'))
+      return
+    }
     const btn = $('btnSendText') as unknown as HTMLButtonElement
     btn.disabled = true
     btn.textContent = t('ph.text.sending')

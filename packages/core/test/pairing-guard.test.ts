@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it, onTestFinished, vi } from 'vitest'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -149,13 +149,29 @@ describe('QR scanné, pas encore de hello', () => {
   })
 })
 
+describe('un deuxième iPhone (celui d’un proche)', () => {
+  it('ne prend ni le presse-papiers du PC ni les fichiers du premier, même nom « iPhone » que lui', async () => {
+    const h = await open()
+    const owner = await h.pair('iPhone', 'iphone')
+    await h.admin('/outbox/text', { text: 'pour le premier', to: [owner.id] })
+    const guest = await h.pair('iPhone', 'iphone')
+    const s = await state(h)
+    expect(s.devices.find((d) => d.id === guest.id)?.clipShare).toBe(false)
+    expect(await texts(guest)).not.toContain('pour le premier')
+  })
+})
+
 describe('le même téléphone rescanné', () => {
   it('garde le presse-papiers du PC et ce qui attendait son ancien appairage', async () => {
     const h = await open()
     const old = await h.pair('iPhone', 'iphone')
     expect((await state(h)).devices.find((d) => d.id === old.id)?.clipShare).toBe(true)
     await h.admin('/outbox/text', { text: 'en attente' })
-    // données du navigateur effacées : il rescanne, même nom, même système
+    // données du navigateur effacées : l'ancien appairage se tait, puis il
+    // rescanne, même nom, même système
+    const real = Date.now.bind(Date)
+    const later = vi.spyOn(Date, 'now').mockImplementation(() => real() + 11 * 60 * 1000)
+    onTestFinished(() => later.mockRestore())
     const again = await h.pair('iPhone', 'iphone')
     expect(again.id).not.toBe(old.id)
     const s = await state(h)

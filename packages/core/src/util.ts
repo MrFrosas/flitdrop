@@ -12,12 +12,20 @@ export function sanitizeFilename(input: unknown): string {
   let name = String(input ?? '')
   name = name.split(/[\\/]/).pop() ?? ''
   name = name.replace(/[\u0000-\u001f\u007f<>:"|?*]/g, '')
+  // caractères invisibles et de sens d'écriture : « photo<U+202E>gpj.exe »
+  // s'afficherait « photoexe.jpg » dans l'Explorateur et le Finder
+  name = name.replace(/[­؜᠎​-‏‪-‮⁠-⁩﻿]/g, '')
   name = name.replace(/^\.+/, '').replace(/[. ]+$/g, '')
   if (WINDOWS_RESERVED.test(name)) name = '_' + name
-  if (name.length > 150) {
+  // 150 caractères et 200 octets au plus (macOS et Linux refusent au-delà de
+  // 255 octets : un nom en émojis passait sous 150 caractères), coupé entre
+  // deux caractères, jamais au milieu d'un émoji
+  if (name.length > 150 || Buffer.byteLength(name) > 200) {
     const dot = name.lastIndexOf('.')
     const ext = dot > 0 && dot > name.length - 12 ? name.slice(dot) : ''
-    name = name.slice(0, 150 - ext.length) + ext
+    const chars = Array.from(name.slice(0, name.length - ext.length))
+    while (chars.length > 0 && (chars.length + ext.length > 150 || Buffer.byteLength(chars.join('') + ext) > 200)) chars.pop()
+    name = chars.join('').replace(/[. ]+$/g, '') + ext
   }
   return name || 'fichier'
 }
@@ -208,4 +216,13 @@ export function moduleDir(metaUrl: string): string {
 
 export function isLoopback(remoteAddress: string | undefined): boolean {
   return remoteAddress === '127.0.0.1' || remoteAddress === '::1' || remoteAddress === '::ffff:127.0.0.1'
+}
+
+/** Programme du système qui ouvre une adresse ou un dossier, par chemin
+ *  absolu : sous Windows, un nom nu est d'abord cherché dans le dossier
+ *  courant, où un « explorer.exe » reçu aurait pu être lancé à sa place. */
+export function systemOpener(platform: NodeJS.Platform = process.platform): string {
+  if (platform === 'darwin') return '/usr/bin/open'
+  if (platform === 'win32') return 'C:\\Windows\\explorer.exe'
+  return 'xdg-open'
 }

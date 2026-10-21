@@ -329,3 +329,13 @@ html[data-os='android'] .install-banner { backdrop-filter: none; -webkit-backdro
 .speed-result:empty { display: none; }
 .speed-result p { margin: 0; }
 .speed-result p.verdict { font-weight: 600; }
+
+/* Sans flou derrière les panneaux (réglage iOS « Réduire la transparence »,
+   navigateur qui ne sait pas flouter) : fonds opaques, sinon le texte de la
+   page passait à travers la feuille du menu et la rendait illisible. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .modal-card, .install-banner { background: light-dark(#ffffff, #2c2c2e); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .modal-card, .install-banner { background: light-dark(#ffffff, #2c2c2e); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}

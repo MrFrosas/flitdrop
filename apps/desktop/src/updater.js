@@ -27,6 +27,11 @@ function setupAutoUpdate(opts) {
   // disponible » (packages/core/src/host.ts). Garde-fou si on l'appelait quand
   // meme : rien ne tourne. A retirer le jour ou l'app Mac sera notarisee.
   if (process.platform === 'darwin') return { checkNow: () => {} }
+  // Linux : seule l'AppImage se met a jour seule. Le .deb passerait par
+  // pkexec/sudo dpkg (mot de passe administrateur inexplique, code de la
+  // release lance en root) : il suit les mises a jour comme un paquet,
+  // a la main ou par son gestionnaire.
+  if (process.platform === 'linux' && !process.env.APPIMAGE) return { checkNow: () => {} }
 
   autoUpdater.autoDownload = true
   autoUpdater.autoInstallOnAppQuit = true

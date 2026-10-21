@@ -7,6 +7,7 @@ import { Hub } from './events.js'
 import { randomToken } from './crypto.js'
 import type { TransferActivity } from './activity.js'
 import { sanitizeFilename, reserveUniquePath } from './util.js'
+import { markFromOutside } from './quarantine.js'
 import {
   CHUNK_SIZE,
   MAX_ACTIVE_TRANSFERS_PER_DEVICE,
@@ -103,6 +104,22 @@ export class TransferManager {
   ) {
     const timer = setInterval(() => this.sweep(), 60_000)
     timer.unref?.()
+    // morceaux laissés par une app quittée ou plantée en plein transfert : au
+    // démarrage, aucun transfert n'est en cours, et la reprise ne survit pas
+    // à un redémarrage ; ils ne serviraient plus qu'à remplir le disque
+    void this.purgeLeftovers()
+  }
+
+  private async purgeLeftovers(): Promise<void> {
+    try {
+      const tmpDir = path.join(this.getCfg().downloadDir, '.tmp')
+      const names = await fs.promises.readdir(tmpDir)
+      for (const n of names) {
+        if (n.endsWith('.part') && !this.active.has(n.slice(0, -5))) await fs.promises.unlink(path.join(tmpDir, n)).catch(() => {})
+      }
+    } catch {
+      // pas encore de dossier temporaire : rien à nettoyer
+    }
   }
 
   async init(device: Device, meta: TransferMeta): Promise<Transfer> {
@@ -290,6 +307,7 @@ export class TransferManager {
     fs.closeSync(reserved.fd)
     const finalPath = reserved.path
     await fs.promises.rename(t.tmpPath, finalPath)
+    await markFromOutside(finalPath)
     t.status = 'done'
     this.active.delete(t.id)
     this.lastProgressPush.delete(t.id)

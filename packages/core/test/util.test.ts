@@ -36,6 +36,21 @@ describe('sanitizeFilename', () => {
   })
 })
 
+describe('sanitizeFilename : noms piégés', () => {
+  it('retire les caractères invisibles et de sens d’écriture (faux .jpg qui est un .exe)', () => {
+    expect(sanitizeFilename('photo\u202Egpj.exe')).toBe('photogpj.exe')
+    expect(sanitizeFilename('fac\u200Bture\u2066.pdf')).toBe('facture.pdf')
+    expect(sanitizeFilename('\uFEFF\u200E')).toBe('fichier')
+  })
+  it('reste sous 200 octets sans couper un émoji, et garde l’extension', () => {
+    const n = sanitizeFilename('😀'.repeat(140) + '.jpg')
+    expect(Buffer.byteLength(n)).toBeLessThanOrEqual(200)
+    expect(n.endsWith('.jpg')).toBe(true)
+    expect(n).not.toMatch(/[\uD800-\uDFFF](?![\uDC00-\uDFFF])/u)
+    expect(Array.from(n.slice(0, -4)).every((c) => c === '😀')).toBe(true)
+  })
+})
+
 describe('uniquePath', () => {
   it('suffixe (2) si le fichier existe', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-up-'))

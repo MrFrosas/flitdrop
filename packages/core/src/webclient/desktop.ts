@@ -492,7 +492,20 @@ interface ClipKind {
   domain?: string
   thumb?: string
 }
+const clipKinds = new Map<string, ClipKind>()
 function classifyClip(text: string): ClipKind {
+  // texte long : du texte, sans passer par les expressions (un texte piégé
+  // de 100 000 caractères gelait la fenêtre de longues secondes) ; mémorisé,
+  // chaque élément n'est classé qu'une fois
+  if (text.length > 2048) return { kind: 'text', label: tr(lang, 'clip.kind.text'), icon: '≡' }
+  const hit = clipKinds.get(text)
+  if (hit) return hit
+  const k = classifyShort(text)
+  if (clipKinds.size > 500) clipKinds.clear()
+  clipKinds.set(text, k)
+  return k
+}
+function classifyShort(text: string): ClipKind {
   const t = text.trim()
   const yt = t.match(/^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?[^ ]*v=|youtu\.be\/)([\w-]{11})/i)
   if (yt) return { kind: 'youtube', label: tr(lang, 'clip.kind.youtube'), icon: '▶', domain: 'youtube.com', thumb: `https://i.ytimg.com/vi/${yt[1]}/mqdefault.jpg` }
@@ -503,10 +516,12 @@ function classifyClip(text: string): ClipKind {
     } catch {
       // garde le texte brut comme domaine
     }
-    if (/\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?\S*)?$/i.test(t)) return { kind: 'image', label: tr(lang, 'clip.kind.image'), icon: '▦', domain, thumb: t }
+    // adresse d'image : jamais chargée (une image distante dirait à son site
+    // que ce PC regarde, et quand) ; seule la vignette YouTube est montrée
+    if (/\.(png|jpe?g|gif|webp|avif|bmp|svg)(\?\S*)?$/i.test(t)) return { kind: 'image', label: tr(lang, 'clip.kind.image'), icon: '▦', domain }
     return { kind: 'link', label: tr(lang, 'clip.kind.link'), icon: '🔗', domain }
   }
-  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) return { kind: 'email', label: tr(lang, 'clip.kind.email'), icon: '✉' }
+  if (/^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(t)) return { kind: 'email', label: tr(lang, 'clip.kind.email'), icon: '✉' }
   if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(t) || /^rgba?\([\d.,\s%/]+\)$/i.test(t)) return { kind: 'color', label: tr(lang, 'clip.kind.color'), icon: '●' }
   if (/[{};=()<>]/.test(t) && /\n/.test(t)) return { kind: 'code', label: tr(lang, 'clip.kind.code'), icon: '⟨⟩' }
   return { kind: 'text', label: tr(lang, 'clip.kind.text'), icon: '≡' }
@@ -1083,15 +1098,19 @@ function connectWS() {
         void refresh()
         break
       case 'approval-request': {
-        const d = data as { id: string; deviceName: string; name: string; size: number }
-        currentApprovalId = d.id
-        $('apprText').textContent = t('appr.body', { name: d.deviceName, file: d.name, size: fmtSize(d.size) })
-        $('apprModal').classList.remove('hidden')
+        // une demande à la fois, dans l'ordre : une deuxième ne remplace plus
+        // la première sous le clic (photo.jpg validé... devenu evil.exe)
+        approvals.push(data as Approval)
+        if (approvals.length === 1) showApproval()
         break
       }
-      case 'approval-expired':
-        if (currentApprovalId === (data as { id?: string }).id) $('apprModal').classList.add('hidden')
+      case 'approval-expired': {
+        const id = (data as { id?: string }).id
+        const i = approvals.findIndex((a) => a.id === id)
+        if (i === 0) nextApproval()
+        else if (i > 0) approvals.splice(i, 1)
         break
+      }
       case 'outbox-progress': {
         const d = data as { itemId: string; bytes: number; size: number; deviceName?: string; ended?: boolean }
         clearTimeout(outboxProgressEnd.get(d.itemId))
@@ -1149,7 +1168,36 @@ function connectWS() {
   ws.onclose = () => setTimeout(connectWS, 2500)
 }
 
+interface Approval {
+  id: string
+  deviceName: string
+  name: string
+  size: number
+}
+const approvals: Approval[] = []
 let currentApprovalId: string | null = null
+function showApproval() {
+  const d = approvals[0]
+  if (!d) {
+    currentApprovalId = null
+    $('apprModal').classList.add('hidden')
+    return
+  }
+  currentApprovalId = d.id
+  $('apprText').textContent = t('appr.body', { name: d.deviceName, file: d.name, size: fmtSize(d.size) })
+  $('apprModal').classList.remove('hidden')
+  // boutons inactifs un court instant à chaque nouvelle demande : un clic
+  // parti pour la précédente ne valide pas celle-ci
+  const btns = [$('btnAccept'), $('btnRefuse')] as unknown as HTMLButtonElement[]
+  for (const b of btns) b.disabled = true
+  setTimeout(() => {
+    if (currentApprovalId === d.id) for (const b of btns) b.disabled = false
+  }, 700)
+}
+function nextApproval() {
+  approvals.shift()
+  showApproval()
+}
 
 // ---------- modales ----------
 
@@ -1357,11 +1405,11 @@ function initUI() {
 
   $('btnAccept').onclick = () => {
     if (currentApprovalId) void postJSON('/approve', { id: currentApprovalId, accept: true })
-    $('apprModal').classList.add('hidden')
+    nextApproval()
   }
   $('btnRefuse').onclick = () => {
     if (currentApprovalId) void postJSON('/approve', { id: currentApprovalId, accept: false })
-    $('apprModal').classList.add('hidden')
+    nextApproval()
   }
 
   // envoi vers téléphone

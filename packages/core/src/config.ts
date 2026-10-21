@@ -147,6 +147,20 @@ export function flitdropHome(override?: string): string {
   const h = override || process.env.FLITDROP_HOME || path.join(os.homedir(), '.flitdrop')
   // 0700 : dossier privé (clés, presse-papiers, jetons). Sans effet sur Windows.
   fs.mkdirSync(h, { recursive: true, mode: 0o700 })
+  // dossier créé par une version d'avant ce durcissement (0755, fichiers
+  // 0644) : resserré à chaque démarrage, sinon un autre compte de
+  // l'ordinateur pouvait lire le jeton de la page et les clés des téléphones
+  if (process.platform !== 'win32') {
+    try {
+      fs.chmodSync(h, 0o700)
+      for (const f of fs.readdirSync(h, { withFileTypes: true })) {
+        if (f.isFile()) fs.chmodSync(path.join(h, f.name), 0o600)
+        else if (f.isDirectory()) fs.chmodSync(path.join(h, f.name), 0o700)
+      }
+    } catch {
+      // dossier d'un autre propriétaire (lancement avec sudo) : laissé tel quel
+    }
+  }
   return h
 }
 
