@@ -1515,6 +1515,29 @@ describe('installations d’avant Flitdrop Pro (legacy)', () => {
     expect(later.lic.fullFeatures()).toBe(true)
   })
 
+  it('0.7.0 installée avant l’ouverture de la vente : legacy noté quand même, l’essai ne part qu’à l’ouverture', async () => {
+    const home = newHome()
+    const mark = memMark()
+    const off = { 'GET /api/license/config': () => ({ status: 200, body: { enabled: false, trialDays: 14, earlyDays: 30 } }) }
+    // premier lancement de la 0.7.0, vente encore fermée : tout reste ouvert, comme avant
+    const first = await rig({ home, mark, lastVersion: '0.6.7', routes: off })
+    await first.lic.refreshConfig()
+    expect(first.lic.plan()).toBe('off')
+    expect(first.cfg.licenseState?.legacy).toBe(true)
+    // trois semaines plus tard, la config a noté la 0.7.0 et la vente ouvre
+    clock += 21 * DAY
+    const opened = await rig({ home, mark, lastVersion: '0.7.0' })
+    await opened.lic.refreshConfig()
+    expect(opened.lic.plan()).toBe('trial')
+    expect(opened.lic.state().legacy).toBe(true)
+    // l'essai part de l'ouverture, pas du premier lancement de la 0.7.0
+    clock += 13 * DAY
+    expect(opened.lic.plan()).toBe('trial')
+    clock += 2 * DAY
+    expect(opened.lic.plan()).toBe('free')
+    expect(opened.lic.fullFeatures()).toBe(true)
+  })
+
   it('installation neuve ou config de 0.7.0 : le partage Pro d’aujourd’hui ; « unknown » (config très ancienne) : legacy', async () => {
     for (const [v, legacy] of [['', false], ['0.7.0', false], ['1.0.0', false], ['0.6.9', true], ['0.5.12', true], ['unknown', true]] as const) {
       const r = await rig({ lastVersion: v })
