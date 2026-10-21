@@ -54,6 +54,8 @@ export const EVENTS: Record<string, { tier: Tier; props: readonly string[] }> = 
   qr_shown: { tier: 'basic', props: ['renewed'] },
   pairing_view_closed: { tier: 'basic', props: ['scanned'] },
   qr_expired_scan: { tier: 'basic', props: [] },
+  // port habituel occupé au démarrage ; `fallback` : un port voisin a servi
+  port_busy: { tier: 'basic', props: ['fallback'] },
   // pare-feu de Windows : vérification automatique (QR visible 45 s sans
   // téléphone) et réparation demandée par la personne. Type de réseau et
   // oui/non seulement, jamais de nom de réseau, de règle ni de chemin.

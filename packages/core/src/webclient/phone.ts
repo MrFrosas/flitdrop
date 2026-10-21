@@ -378,6 +378,34 @@ function renderAltHosts() {
   }
 }
 
+// PC introuvable (éteint, Flitdrop quitté ou relancé, téléphone pas encore sur
+// le wifi) : on réessaie tout seul, de plus en plus espacé, et tout de suite
+// quand la page revient au premier plan ou que le réseau revient. Plus besoin
+// de rescanner le QR code ni de recréer l'icône de l'écran d'accueil.
+let autoRetryTimer = 0
+let autoRetryDelay = 2000
+function scheduleAutoRetry() {
+  clearTimeout(autoRetryTimer)
+  if (document.hidden) return
+  autoRetryTimer = window.setTimeout(() => void connect(), autoRetryDelay)
+  autoRetryDelay = Math.min(autoRetryDelay * 1.6, 15000)
+}
+function stopAutoRetry() {
+  clearTimeout(autoRetryTimer)
+  autoRetryTimer = 0
+  autoRetryDelay = 2000
+  $('errAuto').classList.add('hidden')
+}
+const retryNow = () => {
+  if (autoRetryTimer && !document.hidden) {
+    autoRetryDelay = 2000
+    void connect()
+  }
+}
+document.addEventListener('visibilitychange', retryNow)
+window.addEventListener('online', retryNow)
+window.addEventListener('pageshow', retryNow)
+
 async function connect() {
   const { platform, label } = platformLabel()
   try {
@@ -414,6 +442,7 @@ async function connect() {
       localStorage.setItem(HOSTS_KEY, JSON.stringify(merged.slice(0, 6)))
     }
     updateManifestForPairing()
+    stopAutoRetry()
     show('main')
     // test de vitesse : seulement si ce PC sait y répondre
     $('btnSpeed').classList.toggle('hidden', !hello.features?.includes('speedtest'))
@@ -463,6 +492,10 @@ async function connect() {
       $('errMsg').textContent = t('ph.err.notFoundMsg')
       renderAltHosts()
     }
+    if (kind === 'notFound' && pair && key) {
+      $('errAuto').classList.remove('hidden')
+      scheduleAutoRetry()
+    } else stopAutoRetry()
     show('error')
   }
 }

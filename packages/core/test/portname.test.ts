@@ -27,7 +27,7 @@ describe('port mémorisé', () => {
     expect(portCandidates(0)).toEqual([0])
   })
 
-  it('port occupé : un autre port, écrit dans config.json, repris au lancement suivant', async () => {
+  it('port occupé par un autre programme : un port voisin pour ce lancement, le port habituel gardé et repris dès qu’il est libre', async () => {
     const home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-port-'))
     const blocker = await occupy()
     const busy = (blocker.address() as net.AddressInfo).port
@@ -38,17 +38,34 @@ describe('port mémorisé', () => {
     try {
       srv = await startServer({ home, quiet: true, disableClipboard: true })
       expect(srv.port).not.toBe(busy)
-      expect(readCfg(home).port).toBe(srv.port)
-      expect(srv.cfg.port).toBe(srv.port)
-      const first = srv.port
+      // jamais mémorisé : les téléphones visent toujours le port habituel
+      expect(readCfg(home).port).toBe(busy)
       await srv.close()
+      blocker.close()
+      await new Promise((r) => blocker.once('close', r))
       srv = await startServer({ home, quiet: true, disableClipboard: true })
-      // même adresse qu'au lancement précédent : l'icône du téléphone marche encore
-      expect(srv.port).toBe(first)
-      expect(readCfg(home).port).toBe(first)
+      expect(srv.port).toBe(busy)
     } finally {
       await srv?.close()
       blocker.close()
+      fs.rmSync(home, { recursive: true, force: true })
+    }
+  })
+
+  it('relancé juste après avoir été quitté : attend que l’ancien libère le port au lieu d’en changer', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'wd-port-'))
+    const blocker = await occupy()
+    const busy = (blocker.address() as net.AddressInfo).port
+    loadConfig(home)
+    const cfg = JSON.parse(fs.readFileSync(path.join(home, 'config.json'), 'utf8'))
+    fs.writeFileSync(path.join(home, 'config.json'), JSON.stringify({ ...cfg, port: busy }))
+    // l'ancien Flitdrop rend le port une seconde plus tard
+    setTimeout(() => blocker.close(), 1000)
+    const srv = await startServer({ home, quiet: true, disableClipboard: true })
+    try {
+      expect(srv.port).toBe(busy)
+    } finally {
+      await srv.close()
       fs.rmSync(home, { recursive: true, force: true })
     }
   })

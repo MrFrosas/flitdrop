@@ -178,6 +178,7 @@ export function sameSiteOk(h: import('node:http').IncomingHttpHeaders): boolean 
 }
 
 const MAX_CONNECTIONS_PER_IP = 48
+const PORT_WAIT_MS = 3000
 
 const PUBLIC_DIR = path.join(moduleDir(import.meta.url), '..', 'public')
 const ADMIN_COOKIE = 'wd_admin'
@@ -2421,8 +2422,15 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       server.listen(port, '0.0.0.0')
     })
 
+  // Le port de toujours d'abord, et on l'attend : relancé juste après avoir
+  // été quitté, l'ancien Flitdrop le tient encore un instant. Basculer tout
+  // de suite (et mémoriser l'autre port) cassait l'appairage des téléphones
+  // et leur icône d'écran d'accueil, qui visent l'adresse et le port d'avant.
   const candidates = portCandidates(wantedPort)
-  for (let i = 0; ; i++) {
+  const waitWanted = opts.port === undefined ? PORT_WAIT_MS : 0
+  const firstTry = Date.now()
+  let portWasBusy = false
+  for (let i = 0; ; ) {
     const port = candidates[i] ?? 0
     try {
       await listenOn(port)
@@ -2430,19 +2438,21 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     } catch (e) {
       const code = (e as NodeJS.ErrnoException).code
       if (port === 0 || (code !== 'EADDRINUSE' && code !== 'EACCES')) throw e
-      if (i === 0 && !opts.quiet) console.warn(`Port ${port} occupé, bascule sur un autre port.`)
+      portWasBusy = true
+      if (i === 0 && code === 'EADDRINUSE' && Date.now() - firstTry < waitWanted) {
+        await new Promise((r) => setTimeout(r, 400))
+        continue
+      }
+      if (i === 0 && !opts.quiet) console.warn(`Port ${port} occupé, bascule sur un autre port pour ce lancement.`)
+      i++
     }
   }
   actualPort = (server.address() as AddressInfo).port
-  // port imposé (tests, ligne de commande) : rien n'est mémorisé
-  if (opts.port === undefined && actualPort !== cfg.port) {
-    cfg.port = actualPort
-    try {
-      saveConfig(home, cfg)
-    } catch {
-      // non critique : on retentera au prochain lancement
-    }
-  }
+  // compté sans rien d'identifiant : savoir si des PC changent de port (les
+  // téléphones ne le retrouvent alors plus) aide à régler ce cas
+  if (portWasBusy && opts.port === undefined) telemetry.track('port_busy', { fallback: actualPort !== wantedPort })
+  // un port de secours ne sert que pour ce lancement : la config garde le
+  // port habituel, retenté au prochain démarrage
 
   const adminUrl = `http://127.0.0.1:${actualPort}/app/?k=${encodeURIComponent(cfg.adminToken)}`
   // Flitdrop Pro : identité de la machine lue (une commande du système, d'ordinaire

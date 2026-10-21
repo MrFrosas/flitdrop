@@ -80,6 +80,9 @@ const BASIC_EVENTS = {
   qr_shown: { renewed: BOOL },
   pairing_view_closed: { scanned: BOOL },
   qr_expired_scan: {},
+  // port habituel occupé au démarrage : attendu puis repris (fallback faux),
+  // ou port voisin pour ce lancement (fallback vrai : téléphones à rescanner)
+  port_busy: { fallback: BOOL },
   // pare-feu de Windows : vérification automatique quand aucun téléphone
   // n'arrive (type de réseau, règle de blocage, règle d'autorisation) et
   // résultat de la réparation demandée par la personne
