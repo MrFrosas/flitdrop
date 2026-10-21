@@ -204,8 +204,19 @@ describe('ClipHistory : images en double', () => {
     expect(h.list()[0]?.image?.thumb).toBe('data:image/png;base64,AAAA')
     // PNG différent : c'est une autre image
     expect(h.addImage(Buffer.from('nouveau-png'), 'x', 20, 10, 'pc', cfg, 'raw:y')).not.toBeNull()
-    await pause(600)
-    const saved = JSON.parse(fs.readFileSync(path.join(home, 'cliphistory.json'), 'utf8')) as { image?: { fp?: string } }[]
+    // enregistrement différé : on l'attend (jusqu'à 5 s, la machine Windows
+    // du CI est lente) plutôt qu'un délai fixe trop court
+    const file = path.join(home, 'cliphistory.json')
+    let saved: { image?: { fp?: string } }[] = []
+    for (let i = 0; i < 50; i++) {
+      await pause(100)
+      try {
+        saved = JSON.parse(fs.readFileSync(file, 'utf8'))
+        if (saved.length === 2) break
+      } catch {
+        // pas encore écrit
+      }
+    }
     expect(saved.map((e) => e.image?.fp)).toEqual(['raw:y', 'raw:z'])
   })
 
