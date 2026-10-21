@@ -276,7 +276,7 @@ function renderRadar() {
     nm.textContent = d.name
     const seen = document.createElement('span')
     seen.className = 'seen'
-    seen.textContent = online ? 'en ligne' : rel(d.lastSeenAt)
+    seen.textContent = online ? t('radar.online') : rel(d.lastSeenAt)
     chip.append(ava, nm, seen)
     chip.onclick = () => openDeviceModal(d.id)
     layer.appendChild(chip)

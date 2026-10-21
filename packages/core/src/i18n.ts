@@ -50,6 +50,7 @@ const en: Dict = {
   // historique
   'hist.empty': 'Nothing yet', 'hist.emptyHint': 'Files and texts you exchange appear here.',
   'hist.file': 'file', 'hist.text': 'text', 'hist.clip': 'clipboard', 'hist.from': 'from {name}', 'hist.to': 'to {name}', 'hist.open': 'Open folder',
+  'radar.online': 'online',
   // envoi (PC -> tel)
   'send.title': 'Send to a phone', 'send.drop': 'Drop files here', 'send.dropHint': 'or <u>click to browse</u>. The phone picks them up in its « Received » tab.',
   'send.textTitle': 'Send a text', 'send.textPlaceholder': 'Type or paste text to send to the phone…', 'send.textBtn': 'Make available',
@@ -326,6 +327,7 @@ const fr: Dict = {
   'feed.receiving': 'Réception depuis {name}…', 'feed.openFolder': 'Ouvrir le dossier', 'feed.textCopied': 'Texte copié dans ton presse-papiers', 'feed.copyAgain': 'Copier à nouveau',
   'hist.empty': 'Rien pour l’instant', 'hist.emptyHint': 'Les fichiers et textes échangés apparaissent ici.',
   'hist.file': 'fichier', 'hist.text': 'texte', 'hist.clip': 'presse-papiers', 'hist.from': 'depuis {name}', 'hist.to': 'vers {name}', 'hist.open': 'Ouvrir le dossier',
+  'radar.online': 'en ligne',
   'send.title': 'Envoyer à un téléphone', 'send.drop': 'Dépose des fichiers ici', 'send.dropHint': 'ou <u>clique pour parcourir</u>. Le téléphone les récupère dans son onglet « Recevoir ».',
   'send.textTitle': 'Envoyer un texte', 'send.textPlaceholder': 'Écris ou colle le texte à envoyer au téléphone…', 'send.textBtn': 'Rendre disponible',
   'send.queueTitle': 'Prêt pour le téléphone', 'send.outboxEmpty': 'Rien en attente', 'send.outboxEmptyHint': 'Dépose un fichier au-dessus et il apparaît sur le téléphone appairé.',
@@ -611,6 +613,7 @@ const de: Dict = {
   'hist.from': 'von {name}',
   'hist.to': 'an {name}',
   'hist.open': 'Ordner öffnen',
+  'radar.online': 'online',
   'send.title': 'An ein Telefon senden',
   'send.drop': 'Dateien hier ablegen',
   'send.dropHint': 'oder <u>klicken zum Durchsuchen</u>. Das Telefon holt sie im Tab « Empfangen » ab.',
