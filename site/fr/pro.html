@@ -58,6 +58,7 @@
   <!-- avant js/analytics.js : lit ?claim= puis le retire de l'adresse, avant toute mesure -->
   <script src="/js/pro.js"></script>
   <script async src="/js/analytics.js"></script>
+  <script defer src="/js/doc.js"></script>
   <script defer src="/js/i18n-data.js"></script>
   <script defer src="/js/i18n.js"></script>
 
@@ -155,35 +156,43 @@
   }
   </script>
 </head>
-<body>
-  <div class="bg" aria-hidden="true">
-    <div class="bg-aurora"></div>
-    <div class="bg-grain"></div>
-  </div>
+<body class="page-pro">
+
+  <a class="skip" href="#main" data-i18n="common.skip">Aller au contenu</a>
 
   <header class="nav" id="nav">
     <a class="brand" href="/fr/" aria-label="Flitdrop">
-      <img src="/assets/icon.svg" alt="" width="30" height="30">
-      <span>Flitdrop</span>
+      <img src="/assets/icon.svg" alt="" width="28" height="28">
+      <span translate="no">Flitdrop</span>
     </a>
     <nav class="nav-links" aria-label="Sections">
       <a href="/#steps" data-i18n="nav.how">Comment ça marche</a>
-      <a href="/#compare" data-i18n="nav.compare">Comparatif</a>
+      <a href="/#features" data-i18n="footer.features">Fonctionnalités</a>
       <a href="/#security" data-i18n="nav.security">Sécurité</a>
+      <a href="/fr/pro" data-i18n="nav.pro">Pro</a>
     </nav>
     <div class="nav-right">
-      <button class="lang-toggle" id="langToggle" type="button">DE</button>
+      <div class="lang-seg" role="group" aria-label="Langue">
+        <button type="button" data-lang-set="en" translate="no">EN</button>
+        <button type="button" data-lang-set="fr" translate="no">FR</button>
+        <button type="button" data-lang-set="de" translate="no">DE</button>
+      </div>
       <a class="btn btn-primary btn-sm" href="/#download" data-i18n="nav.download">Télécharger</a>
     </div>
   </header>
 
-  <main>
+  <main id="main">
     <!-- OFFRE ET ACHAT -->
     <section class="section pro-top" id="top">
       <div class="section-head">
         <p class="eyebrow">Flitdrop Pro</p>
         <h1 class="display">Envoyez autant que vous voulez, à vie</h1>
         <p class="section-sub">Flitdrop reste gratuit, tous les jours. Pro lève la limite quotidienne et ajoute quelques conforts, pour un seul paiement.</p>
+      </div>
+
+      <div class="pro-visual" aria-hidden="true">
+        <div class="pv-mac"><div class="pv-bar"><i></i><i></i><i></i></div><img src="/assets/app/fr/desk-history.webp" alt width="1760" height="1120"></div>
+        <div class="pv-phone"><img src="/assets/app/fr/phone-sent.webp" alt width="786" height="1704"></div>
       </div>
 
       <div class="pro-buy" id="buy">
@@ -317,7 +326,7 @@
   <footer class="footer">
     <div class="footer-top">
       <div class="footer-brand">
-        <a class="brand" href="/fr/"><img src="/assets/icon.svg" alt="" width="26" height="26"><span>Flitdrop</span></a>
+        <a class="brand" href="/fr/"><img src="/assets/icon.svg" alt="" width="26" height="26"><span translate="no">Flitdrop</span></a>
         <p class="footer-tag" data-i18n="footer.tagline">Le partage direct entre tous vos appareils, sur votre Wi-Fi.</p>
       </div>
       <nav class="footer-cols" aria-label="Pied de page">
@@ -332,12 +341,13 @@
         <div class="footer-col">
           <h4 data-i18n="footer.resources">Ressources</h4>
           <a href="/#support" data-i18n="support.eyebrow">Support</a>
-          <a href="https://github.com/MrFrosas/flitdrop" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/MrFrosas/flitdrop" target="_blank" rel="noopener" translate="no">GitHub</a>
           <a href="/brand" data-i18n="footer.brand">Marque</a>
           <a href="/privacy" data-i18n="footer.privacy">Confidentialité</a>
           <a href="/legal" data-i18n="footer.legal">Mentions légales</a>
           <a href="/fr/terms" data-i18n="footer.terms">Conditions de vente</a>
           <a href="/fr/refund" data-i18n="footer.refund">Remboursement</a>
+          <a href="#cookies" role="button" data-consent-open data-consent-link data-i18n="consent.link">Cookies</a>
         </div>
         <div class="footer-col">
           <h4 data-i18n="guides.title">Guides</h4>
@@ -373,7 +383,11 @@
     </div>
     <div class="footer-bottom">
       <p class="footer-rights" data-i18n="footer.rights">© 2026 CC's Global (Thomas Bidault EI). Tous droits réservés.</p>
-      <button class="lang-toggle" data-lang-toggle type="button">DE</button>
+      <div class="lang-seg" role="group" aria-label="Langue">
+        <button type="button" data-lang-set="en" translate="no">EN</button>
+        <button type="button" data-lang-set="fr" translate="no">FR</button>
+        <button type="button" data-lang-set="de" translate="no">DE</button>
+      </div>
     </div>
   </footer>
 </body>

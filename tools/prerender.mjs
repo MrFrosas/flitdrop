@@ -250,6 +250,10 @@ for (const page of PAGES) {
       rewriteInternalLinks(root, lang);
     }
 
+    // captures de l'app dans la langue de la page
+    root.querySelectorAll('img[src^="/assets/app/en/"]').forEach((img) => img.setAttribute('src', img.getAttribute('src').replace('/assets/app/en/', '/assets/app/' + lang + '/')));
+    root.querySelectorAll('link[rel="preload"][href^="/assets/app/en/"]').forEach((l) => l.setAttribute('href', l.getAttribute('href').replace('/assets/app/en/', '/assets/app/' + lang + '/')));
+
     const out = outPath(lang, page.slug);
     mkdirSync(dirname(out), { recursive: true });
     writeFileSync(out, finalize(root.toString()));

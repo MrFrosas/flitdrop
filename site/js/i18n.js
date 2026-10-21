@@ -65,6 +65,10 @@
       b.textContent = NAMES[nextLang] || nextLang.toUpperCase();
       b.setAttribute('aria-label', 'Change language, next: ' + (NAMES[nextLang] || nextLang));
     });
+    // sélecteur EN / FR / DE : la langue affichée est marquée
+    document.querySelectorAll('[data-lang-set]').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-lang-set') === lang ? 'true' : 'false');
+    });
   }
 
   // slugs that have a prerendered counterpart under /<lang>/ ('' = home)
@@ -113,6 +117,14 @@
     document.querySelectorAll('[data-lang-toggle], #langToggle').forEach(function (b) {
       if (b.__fdWired) return; b.__fdWired = true;
       b.addEventListener('click', function (e) { e.preventDefault(); toggle(); });
+    });
+    document.querySelectorAll('[data-lang-set]').forEach(function (b) {
+      if (b.__fdWired) return; b.__fdWired = true;
+      b.addEventListener('click', function (e) {
+        e.preventDefault();
+        var next = b.getAttribute('data-lang-set');
+        if (next !== lang) set(next);
+      });
     });
     apply(document);
   }

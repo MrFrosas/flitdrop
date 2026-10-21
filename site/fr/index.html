@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#ffffff">
   <meta name="author" content="Flitdrop">
   <meta name="robots" content="index, follow, max-image-preview:large">
-  <link rel="preload" as="image" href="/assets/hero-bg.jpg" fetchpriority="high">
+  <link rel="preload" as="image" href="/assets/app/fr/desk-radar.webp" fetchpriority="high">
   <link rel="manifest" href="/site.webmanifest">
 
   <link rel="canonical" href="https://flitdrop.com/fr/">
@@ -36,27 +36,13 @@
   <meta name="twitter:description" content="Flitdrop fait passer photos, fichiers et presse-papiers entre iPhone, Android, Windows, Mac et Linux en un geste. Chiffré de bout en bout, gratuit sur votre Wi-Fi, rien à installer sur le téléphone.">
   <meta name="twitter:image" content="https://flitdrop.com/assets/og.jpg">
 
-  <link rel="stylesheet" href="/vendor/lenis/lenis.css">
   <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/home.css">
 
-  <script defer src="/vendor/gsap/gsap.min.js"></script>
-  <script defer src="/vendor/gsap/ScrollTrigger.min.js"></script>
-  <script defer src="/vendor/lenis/lenis.min.js"></script>
   <script async src="/js/analytics.js"></script>
   <script defer src="/js/i18n-data.js"></script>
   <script defer src="/js/i18n.js"></script>
-
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "/vendor/three/build/three.module.min.js",
-      "three/addons/": "/vendor/three/addons/",
-      "postprocessing": "/vendor/postprocessing/postprocessing.esm.js"
-    }
-  }
-  </script>
-  <script type="module" src="/js/scene.js"></script>
-  <script defer src="/js/app.js"></script>
+  <script defer src="/js/home.js"></script>
 
   <script type="application/ld+json">
   {
@@ -198,103 +184,142 @@
   }
   </script>
 </head>
-<body>
-  <div class="bg" aria-hidden="true">
-    <div class="bg-aurora"></div>
-    <div class="bg-grain"></div>
-  </div>
+<body class="home">
+  <a class="skip" href="#main" data-i18n="common.skip">Aller au contenu</a>
 
   <header class="nav" id="nav">
     <a class="brand" href="/fr/" aria-label="Flitdrop">
-      <img src="/assets/icon.svg" alt="" width="30" height="30">
-      <span>Flitdrop</span>
+      <img src="/assets/icon.svg" alt="" width="28" height="28">
+      <span translate="no">Flitdrop</span>
     </a>
-    <nav class="nav-links" aria-label="Sections">
+    <nav class="nav-links" aria-label="Sections" data-i18n-aria="a11y.sections">
       <a href="#steps" data-i18n="nav.how">Comment ça marche</a>
-      <a href="#compare" data-i18n="nav.compare">Comparatif</a>
+      <a href="#features" data-i18n="footer.features">Fonctionnalités</a>
       <a href="#security" data-i18n="nav.security">Sécurité</a>
+      <a href="/fr/pro" data-i18n="nav.pro">Pro</a>
     </nav>
     <div class="nav-right">
-      <button class="lang-toggle" id="langToggle" type="button">FR</button>
+      <div class="lang-seg" role="group" aria-label="Langue" data-i18n-aria="a11y.lang">
+        <button type="button" data-lang-set="en" translate="no">EN</button>
+        <button type="button" data-lang-set="fr" translate="no">FR</button>
+        <button type="button" data-lang-set="de" translate="no">DE</button>
+      </div>
       <a class="btn btn-primary btn-sm" href="#download" data-i18n="nav.download">Télécharger</a>
     </div>
   </header>
 
-  <main>
+  <main id="main">
     <!-- HERO -->
-    <section class="hero" id="top">
-      <div class="hero-inner">
-        <h1 class="display reveal" data-i18n="hero.headline">L'AirDrop qui marche entre tous vos appareils</h1>
-        <p class="lead reveal" data-i18n="hero.subhead">Envoyez photos, fichiers et presse-papiers entre votre téléphone et votre ordinateur, dans les deux sens, en un geste.</p>
-        <div class="hero-cta reveal">
-          <a class="btn btn-primary btn-lg" id="ctaDownload" href="#download">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v9.5"></path><path d="M8.5 9.5 12 13l3.5-3.5"></path><path d="M5 15.5v2.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-2.5"></path></svg>
+    <section class="h-hero" id="top">
+      <div class="h-hero-copy">
+        <p class="h-pill rise" style="--d:0"><span class="h-dot" aria-hidden="true"></span><span data-i18n="hero.platforms">Disponible sur macOS, Windows et Linux</span></p>
+        <h1 class="h-title rise" style="--d:1" data-i18n="hero.headline">L'AirDrop qui marche entre tous vos appareils</h1>
+        <p class="h-lead rise" style="--d:2" data-i18n="hero.subhead">Envoyez photos, fichiers et presse-papiers entre votre téléphone et votre ordinateur, dans les deux sens, en un geste.</p>
+        <div class="h-cta rise" style="--d:3">
+          <a class="btn btn-primary btn-lg" id="ctaDownload" href="https://github.com/MrFrosas/flitdrop/releases/latest" data-dl="auto">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5v9.5"></path><path d="M8.5 9.5 12 13l3.5-3.5"></path><path d="M5 15.5v2.5a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-2.5"></path></svg>
             <span data-i18n="hero.ctaPrimary">Télécharger Flitdrop</span>
           </a>
-          <a class="btn btn-ghost btn-lg" href="#film" data-i18n="hero.ctaSecondary">Voir comment ça marche</a>
+          <a class="btn btn-ghost btn-lg" href="#steps" data-i18n="hero.ctaSecondary">Voir comment ça marche</a>
         </div>
-        <p class="hero-callout reveal" data-i18n="hero.trust">Gratuit sur votre réseau. Chiffré de bout en bout. Aucun compte requis.</p>
+        <p class="h-trust rise" style="--d:4" data-i18n="hero.trust">Gratuit sur votre réseau. Chiffré de bout en bout. Aucun compte requis.</p>
       </div>
-      <a class="scroll-cue" href="#film" aria-hidden="true" tabindex="-1">
-        <span data-i18n="common.scroll">Défilez pour lancer</span>
-        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 16l-6-6 1.4-1.4L12 13.2l4.6-4.6L18 10z"></path></svg>
-      </a>
-    </section>
 
-    <!-- FILM (pinned, scroll-scrubbed 3D) -->
-    <section class="film" id="film">
-      <div class="film-stage" id="film-stage">
-        <div class="film-loading" id="filmLoading" aria-hidden="true"></div>
-        <canvas class="film-canvas" id="film-canvas"></canvas>
-
-        <div class="film-caption-wrap" id="filmCaptionWrap">
-          <p class="film-eyebrow" data-i18n="film.eyebrow">Regardez-le voyager</p>
-          <p class="film-caption" id="filmCaption" data-i18n="film.a1">Choisissez une photo sur votre téléphone.</p>
-          <div class="film-progress" aria-hidden="true"><span id="filmProgressBar"></span></div>
-        </div>
-
-        <!-- Fallback for reduced motion / no WebGL: a static three panel storyboard -->
-        <div class="film-fallback" id="filmFallback">
-          <div class="fb-panel">
-            <div class="fb-device fb-phone"><span class="fb-lock">🔒</span></div>
-            <p data-i18n="film.a2">Elle est chiffrée avant de quitter l'appareil.</p>
+      <div class="stage rise" style="--d:3" role="img" data-i18n-aria="hero.alt" aria-label="Flitdrop sur un Mac qui reçoit des photos envoyées depuis un iPhone">
+        <div class="stage-tilt">
+          <div class="mac">
+            <div class="mac-bar" aria-hidden="true"><i></i><i></i><i></i></div>
+            <img class="shot" src="/assets/app/fr/desk-radar.webp" alt width="1760" height="1120" fetchpriority="high">
           </div>
-          <div class="fb-panel">
-            <div class="fb-arc"></div>
-            <p data-i18n="film.a3">Elle traverse votre Wi-Fi, directement, sans passer par un serveur.</p>
+          <div class="iphone">
+            <div class="iphone-screen"><img class="shot" src="/assets/app/fr/phone-sent.webp" alt width="786" height="1704"></div>
+            <span class="iphone-island" aria-hidden="true"></span>
           </div>
-          <div class="fb-panel">
-            <div class="fb-device fb-mac"><span class="fb-check">✓</span></div>
-            <p data-i18n="film.a4">Et atterrit dans la liste de réception de l'ordinateur.</p>
-          </div>
+          <div class="flight" aria-hidden="true"><img src="/assets/grid/p7.jpg" alt="" width="120" height="120"></div>
+          <span class="landing" aria-hidden="true"></span>
         </div>
       </div>
     </section>
 
     <!-- STEPS -->
-    <section class="section" id="steps">
-      <div class="section-head reveal">
-        <p class="eyebrow" data-i18n="steps.eyebrow">Prise en main</p>
+    <section class="h-section" id="steps">
+      <div class="h-head reveal">
+        <p class="h-eyebrow" data-i18n="steps.eyebrow">Prise en main</p>
         <h2 data-i18n="steps.title">Trois gestes, rien de plus</h2>
-        <p class="section-sub" data-i18n="steps.blurb">Scannez le QR code une fois pour lier le téléphone. Ensuite, glissez un fichier, il part. C'est aussi simple qu'un geste sur un même appareil.</p>
+        <p class="h-sub" data-i18n="steps.blurb">Scannez le QR code une fois pour lier le téléphone. Ensuite, glissez un fichier, il part. C'est aussi simple qu'un geste sur un même appareil.</p>
       </div>
-      <ol class="steps-grid">
-        <li class="step-card reveal">
-          <span class="step-num">1</span>
-          <h3 data-i18n="steps.one.title">Scannez une fois</h3>
-          <p data-i18n="steps.one.body">Ouvrez l'appareil photo, visez le QR code, le téléphone est lié. Aucune application à installer.</p>
+      <ol class="h-steps">
+        <li class="h-step reveal">
+          <div class="h-step-vis vis-pair" aria-hidden="true"><img src="/assets/app/fr/pair.webp" alt width="800" height="950" loading="lazy"></div>
+          <div class="h-step-copy"><span class="h-step-n">1</span><h3 data-i18n="steps.one.title">Scannez une fois</h3><p data-i18n="steps.one.body">Ouvrez l'appareil photo, visez le QR code, le téléphone est lié. Aucune application à installer.</p></div>
         </li>
-        <li class="step-card reveal">
-          <span class="step-num">2</span>
-          <h3 data-i18n="steps.two.title">Glissez</h3>
-          <p data-i18n="steps.two.body">Choisissez une photo, une vidéo ou quelques fichiers, ou copiez un texte. Un geste suffit.</p>
+        <li class="h-step reveal">
+          <div class="h-step-vis vis-pick" aria-hidden="true"><div class="half-phone"><img src="/assets/app/fr/phone-pick.webp" alt width="786" height="1704" loading="lazy"></div></div>
+          <div class="h-step-copy"><span class="h-step-n">2</span><h3 data-i18n="steps.two.title">Glissez</h3><p data-i18n="steps.two.body">Choisissez une photo, une vidéo ou quelques fichiers, ou copiez un texte. Un geste suffit.</p></div>
         </li>
-        <li class="step-card reveal">
-          <span class="step-num">3</span>
-          <h3 data-i18n="steps.three.title">C'est arrivé</h3>
-          <p data-i18n="steps.three.body">Le transfert apparaît sur l'autre appareil dans la seconde, prêt à ouvrir ou à coller.</p>
+        <li class="h-step reveal">
+          <div class="h-step-vis vis-live" aria-hidden="true"><img src="/assets/app/fr/live.webp" alt width="596" height="960" loading="lazy"></div>
+          <div class="h-step-copy"><span class="h-step-n">3</span><h3 data-i18n="steps.three.title">C'est arrivé</h3><p data-i18n="steps.three.body">Le transfert apparaît sur l'autre appareil dans la seconde, prêt à ouvrir ou à coller.</p></div>
         </li>
       </ol>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="h-section h-grey" id="features">
+      <div class="h-head reveal">
+        <p class="h-eyebrow" data-i18n="features.eyebrow">Tout ce qui voyage</p>
+        <h2 data-i18n="features.title">Plus que des photos, entre plus que deux appareils</h2>
+        <p class="h-sub" data-i18n="features.blurb">Fichiers, photos et vidéos en pleine qualité, et presse-papiers, en un geste, dans les deux sens.</p>
+      </div>
+      <div class="bento2">
+        <article class="tile tile-wide reveal">
+          <div class="tile-copy">
+            <h3 data-i18n="features.send.title">Envoyez tout, pas seulement des photos</h3>
+            <p data-i18n="features.send.body">Fichiers de tout type, plusieurs d'un coup, photos et vidéos en pleine qualité. Sans compression, jusqu'à 16 Go par fichier, et un transfert interrompu reprend là où il s'était arrêté.</p>
+          </div>
+          <div class="tile-vis vis-history" aria-hidden="true">
+            <div class="mini-mac"><div class="mac-bar"><i></i><i></i><i></i></div><img src="/assets/app/fr/desk-history.webp" alt width="1760" height="1120" loading="lazy"></div>
+          </div>
+        </article>
+
+        <article class="tile tile-blue reveal">
+          <div class="tile-copy">
+            <h3 data-i18n="features.clip.title">Presse-papiers bidirectionnel</h3>
+            <p data-i18n="features.clip.body">Copiez sur un appareil, un geste, et collez sur l'autre. Texte et liens traversent aussitôt, dans les deux sens.</p>
+          </div>
+          <div class="tile-vis vis-clip" aria-hidden="true">
+            <div class="clip-card clip-from"><span class="clip-key">C</span><span class="clip-tag" data-i18n="ui.copied">Copié</span><p data-i18n="ui.noteSample">Rendez-vous 14h · lundi</p></div>
+            <div class="clip-wire"><span></span></div>
+            <div class="clip-card clip-to"><span class="clip-key">V</span><span class="clip-tag" data-i18n="features.clip.paste">Collé ici</span><p data-i18n="ui.noteSample">Rendez-vous 14h · lundi</p></div>
+          </div>
+        </article>
+
+        <article class="tile reveal">
+          <div class="tile-vis vis-photo" aria-hidden="true">
+            <figure class="photo-card">
+              <img src="/assets/grid/p5.jpg" alt="" width="300" height="300" loading="lazy">
+              <figcaption><b translate="no">IMG_4128.HEIC</b><span>4032 × 3024 · <span data-i18n="features.quality.badge">Pleine qualité</span></span></figcaption>
+            </figure>
+          </div>
+          <div class="tile-copy">
+            <h3 data-i18n="features.quality.title">Les photos ne rétrécissent jamais</h3>
+            <p data-i18n="features.quality.body">Les originaux arrivent en pleine résolution, exactement comme vous les avez pris.</p>
+          </div>
+        </article>
+
+        <article class="tile tile-wide reveal">
+          <div class="tile-copy">
+            <h3 data-i18n="features.cross.title">Entre tous vos appareils</h3>
+            <p data-i18n="features.cross.body">iPhone, Android et Samsung d'un côté, Windows, Mac et Linux de l'autre, dans toutes les combinaisons.</p>
+            <ul class="os-chips" aria-hidden="true" translate="no">
+              <li>iPhone</li><li>Android</li><li>Samsung</li><li>Windows</li><li>Mac</li><li>Linux</li>
+            </ul>
+          </div>
+          <div class="tile-vis vis-devices" aria-hidden="true">
+            <img src="/assets/cross-devices.jpg" alt="" width="1672" height="941" loading="lazy">
+          </div>
+        </article>
+      </div>
     </section>
 
     <!-- COMPARE -->
@@ -367,175 +392,75 @@
     </section>
 
     <!-- SECURITY -->
-    <section class="section security" id="security">
-      <div class="sec-grid">
-        <div class="sec-visual reveal" aria-hidden="true">
-          <div class="sec-stage"><img class="devices-shot" src="/assets/secure-laptop.jpg" alt="" loading="lazy" width="1672" height="941"></div>
-        </div>
-        <div class="sec-body">
-        <div class="sec-copy reveal">
-          <p class="eyebrow" data-i18n="security.eyebrow">La confidentialité par conception</p>
+    <section class="h-dark" id="security">
+      <div class="h-dark-in">
+        <div class="h-head h-head-dark reveal">
+          <p class="h-eyebrow" data-i18n="security.eyebrow">La confidentialité par conception</p>
           <h2 data-i18n="security.title">Vos fichiers restent chez vous</h2>
-          <p class="section-sub" data-i18n="security.blurb">Tout est chiffré de bout en bout et voyage sur votre réseau local. Vos fichiers ne sont jamais stockés sur nos serveurs, parce qu'il n'y a pas de serveur au milieu.</p>
+          <p class="h-sub" data-i18n="security.blurb">Tout est chiffré de bout en bout et voyage sur votre réseau local. Vos fichiers ne sont jamais stockés sur nos serveurs, parce qu'il n'y a pas de serveur au milieu.</p>
         </div>
-        <ul class="sec-points">
-          <li class="sec-point reveal">
-            <span class="sec-ic" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.4"></rect><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"></path><path d="M12 14.6v2.4"></path></svg>
-            </span>
-            <div><h3 data-i18n="security.point.e2e.title">Chiffrement de bout en bout</h3><p data-i18n="security.point.e2e.body">Seuls vous et l'appareil qui reçoit pouvez lire ce qui passe. Personne d'autre, jamais.</p></div>
+
+        <div class="flow reveal" aria-hidden="true">
+          <div class="flow-node">
+            <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6"></rect><path d="M10.5 18.5h3"></path></svg>
+          </div>
+          <div class="flow-wire">
+            <span class="flow-packet"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9.5" rx="2.2"></rect><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3"></path></svg></span>
+            <span class="flow-label" data-i18n="security.flow.wifi">Votre Wi-Fi</span>
+          </div>
+          <div class="flow-node">
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="11.5" rx="1.8"></rect><path d="M1.5 19.5h21"></path></svg>
+          </div>
+          <div class="flow-cloud"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18.5h10a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.2 9.6 4.5 4.5 0 0 0 7 18.5z"></path><path d="M4 4l16 16"></path></svg><span data-i18n="security.flow.noserver">Aucun serveur au milieu</span></div>
+        </div>
+
+        <ul class="h-points">
+          <li class="reveal">
+            <span class="h-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2.4"></rect><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"></path><path d="M12 14.6v2.4"></path></svg></span>
+            <h3 data-i18n="security.point.e2e.title">Chiffrement de bout en bout</h3><p data-i18n="security.point.e2e.body">Seuls vous et l'appareil qui reçoit pouvez lire ce qui passe. Personne d'autre, jamais.</p>
           </li>
-          <li class="sec-point reveal">
-            <span class="sec-ic" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.5a11 11 0 0 1 15 0"></path><path d="M7.5 13a7 7 0 0 1 9 0"></path><path d="M10.3 16.3a3 3 0 0 1 3.4 0"></path><path d="M12 19.4h.01"></path></svg>
-            </span>
-            <div><h3 data-i18n="security.point.local.title">Sur votre Wi-Fi</h3><p data-i18n="security.point.local.body">Les fichiers vont directement d'un appareil à l'autre, sur votre réseau, sans détour par le cloud.</p></div>
+          <li class="reveal">
+            <span class="h-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 9.5a11 11 0 0 1 15 0"></path><path d="M7.5 13a7 7 0 0 1 9 0"></path><path d="M10.3 16.3a3 3 0 0 1 3.4 0"></path><path d="M12 19.4h.01"></path></svg></span>
+            <h3 data-i18n="security.point.local.title">Sur votre Wi-Fi</h3><p data-i18n="security.point.local.body">Les fichiers vont directement d'un appareil à l'autre, sur votre réseau, sans détour par le cloud.</p>
           </li>
-          <li class="sec-point reveal">
-            <span class="sec-ic" aria-hidden="true">
-              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8.2" r="3.4"></circle><path d="M4 19.5a6 6 0 0 1 10.6-3.8"></path><path d="M16.5 15.5l4 4M20.5 15.5l-4 4"></path></svg>
-            </span>
-            <div><h3 data-i18n="security.point.noaccount.title">Aucun compte</h3><p data-i18n="security.point.noaccount.body">Pas d'email à vérifier, pas de mot de passe à créer. Vous scannez, vous partagez.</p></div>
+          <li class="reveal">
+            <span class="h-ic" aria-hidden="true"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8.2" r="3.4"></circle><path d="M4 19.5a6 6 0 0 1 10.6-3.8"></path><path d="M16.5 15.5l4 4M20.5 15.5l-4 4"></path></svg></span>
+            <h3 data-i18n="security.point.noaccount.title">Aucun compte</h3><p data-i18n="security.point.noaccount.body">Pas d'email à vérifier, pas de mot de passe à créer. Vous scannez, vous partagez.</p>
           </li>
         </ul>
-        </div>
       </div>
     </section>
 
-    <!-- FEATURES (light Apple-style bento) -->
-    <section class="band band-light" id="features">
-      <div class="band-inner">
-        <div class="band-head reveal">
-          <p class="eyebrow eyebrow-blue" data-i18n="features.eyebrow">Tout ce qui voyage</p>
-          <h2 data-i18n="features.title">Plus que des photos, entre plus que deux appareils</h2>
-          <p class="band-sub" data-i18n="features.blurb">Fichiers, photos et vidéos en pleine qualité, et presse-papiers, en un geste, dans les deux sens.</p>
-        </div>
-
-        <div class="bento">
-          <!-- send anything (wide) : fanned transfer cards -->
-          <article class="bento-card b-wide reveal">
-            <div class="bc-copy">
-              <h3 data-i18n="features.send.title">Envoyez tout, pas seulement des photos</h3>
-              <p data-i18n="features.send.body">Fichiers de tout type, plusieurs d'un coup, photos et vidéos en pleine qualité. Sans compression, jusqu'à 16 Go par fichier, et un transfert interrompu reprend là où il s'était arrêté.</p>
-            </div>
-            <div class="bc-visual bv-stack" aria-hidden="true">
-              <div class="tcard tc-b2">
-                <div class="tc-head"><span class="tc-ic i-folder"></span><span class="tc-kind" data-i18n="features.kind.folder">Vidéo</span><span class="tc-time">now</span></div>
-                <div class="tc-rows"><span></span><span class="s"></span></div>
-              </div>
-              <div class="tcard tc-b1">
-                <div class="tc-head"><span class="tc-ic i-doc"></span><span class="tc-kind" data-i18n="features.kind.doc">Document</span><span class="tc-time">now</span></div>
-                <div class="tc-rows"><span></span><span class="s"></span><span></span></div>
-              </div>
-              <div class="tcard tc-front">
-                <div class="tc-head"><span class="tc-ic i-photo"></span><span class="tc-kind" data-i18n="features.kind.photo">Photo</span><span class="tc-time">now</span></div>
-                <div class="tc-photo"><img src="/assets/grid/p6.jpg" alt="" loading="lazy" width="216" height="150"></div>
-                <div class="tc-foot">
-                  <div class="tc-meta"><span class="tc-name" data-i18n="ui.samplePhoto">photo-plage.jpg</span><span class="tc-dim">4032 × 3024</span></div>
-                  <span class="tc-check"><svg viewBox="0 0 24 24" width="13" height="13"><path fill="#fff" d="M9 16.2 4.8 12l-1.5 1.4L9 19 20.6 7.4l-1.5-1.4z"></path></svg></span>
-                </div>
-              </div>
-            </div>
-          </article>
-
-          <!-- two-way clipboard (accent) : note travels to phone -->
-          <article class="bento-card b-tint reveal">
-            <div class="bc-visual bv-clip" aria-hidden="true">
-              <div class="note-card">
-                <div class="note-tag"><span class="note-key">C</span><span data-i18n="ui.copied">Copié</span></div>
-                <div class="note-text" data-i18n="ui.noteSample">Rendez-vous 14h · lundi</div>
-              </div>
-              <svg class="clip-flow" viewBox="0 0 72 48" width="72" height="48"><path d="M14 6v20a12 12 0 0 0 12 12h30" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path><path d="M50 31l10 7-11 4z" fill="currentColor"></path></svg>
-              <div class="paste-tile"><span class="pt-ph"></span><span class="pt-key">V</span><span class="pt-label" data-i18n="features.clip.paste">Collé ici</span></div>
-            </div>
-            <div class="bc-copy">
-              <h3 data-i18n="features.clip.title">Presse-papiers bidirectionnel</h3>
-              <p data-i18n="features.clip.body">Copiez sur un appareil, un geste, et collez sur l'autre. Texte et liens traversent aussitôt, dans les deux sens.</p>
-            </div>
-          </article>
-
-          <!-- every device (full width) : receiving window + phone -->
-          <article class="bento-card b-full reveal">
-            <div class="bc-copy">
-              <h3 data-i18n="features.cross.title">Entre tous vos appareils</h3>
-              <p data-i18n="features.cross.body">iPhone, Android et Samsung d'un côté, Windows, Mac et Linux de l'autre, dans toutes les combinaisons.</p>
-              <div class="os-row" aria-hidden="true">
-                <span class="os-badge">iPhone</span><span class="os-badge">Android</span><span class="os-badge">Samsung</span>
-                <span class="os-badge">Windows</span><span class="os-badge">Mac</span><span class="os-badge">Linux</span>
-              </div>
-            </div>
-            <div class="bc-visual bc-img" aria-hidden="true">
-              <img class="devices-shot" src="/assets/cross-devices.jpg" alt="" loading="lazy" width="1672" height="941">
-            </div>
-          </article>
-
-          <!-- pair with one scan : phone showing the QR -->
-          <article class="bento-card reveal">
-            <div class="bc-visual center">
-              <div class="pair-wrap">
-                <div class="qr-tile qr-tile-sm"><img class="qr-img" src="/assets/qr.svg" alt="" width="150" height="150"></div>
-                <span class="pair-badge"><svg viewBox="0 0 24 24" width="12" height="12"><path fill="#fff" d="M9 16.2 4.8 12l-1.5 1.4L9 19 20.6 7.4l-1.5-1.4z"></path></svg><span data-i18n="features.pair.badge">Lié</span></span>
-              </div>
-            </div>
-            <div class="bc-copy">
-              <h3 data-i18n="features.pair.title">Liez en un scan</h3>
-              <p data-i18n="features.pair.body">Rien à installer sur le téléphone. Scannez le QR code une fois, et le lien est fait pour de bon.</p>
-            </div>
-          </article>
-
-          <!-- full quality : transfer photo card -->
-          <article class="bento-card reveal">
-            <div class="bc-visual center">
-              <div class="tcard tc-solo">
-                <div class="tc-head"><span class="tc-ic i-photo"></span><span class="tc-kind" data-i18n="features.kind.photo">Photo</span><span class="tc-time" data-i18n="ui.received">Reçu</span></div>
-                <div class="tc-photo"><img src="/assets/grid/p5.jpg" alt="" loading="lazy" width="240" height="150"></div>
-                <div class="tc-foot">
-                  <div class="tc-meta"><span class="tc-name">sunset.jpg</span><span class="tc-dim">4032 × 3024 · <span data-i18n="features.quality.badge">Pleine qualité</span></span></div>
-                  <span class="tc-check"><svg viewBox="0 0 24 24" width="13" height="13"><path fill="#fff" d="M9 16.2 4.8 12l-1.5 1.4L9 19 20.6 7.4l-1.5-1.4z"></path></svg></span>
-                </div>
-              </div>
-            </div>
-            <div class="bc-copy">
-              <h3 data-i18n="features.quality.title">Les photos ne rétrécissent jamais</h3>
-              <p data-i18n="features.quality.body">Les originaux arrivent en pleine résolution, exactement comme vous les avez pris.</p>
-            </div>
-          </article>
-        </div>
+    <!-- PRICING -->
+    <section class="h-section" id="pricing">
+      <div class="h-head reveal">
+        <p class="h-eyebrow" data-i18n="price.eyebrow">Tarifs</p>
+        <h2 data-i18n="price.title">Gratuit tous les jours. Pro à vie.</h2>
+        <p class="h-sub" data-i18n="price.sub">Sans abonnement et sans compte. Chaque ordinateur a 14 jours de Pro pour essayer, gratuitement, sans carte.</p>
       </div>
-    </section>
-
-    <!-- SHOWCASE (dark band, personas) -->
-    <section class="band band-dark" id="showcase">
-      <div class="band-inner">
-        <div class="band-head reveal">
-          <h2 class="h-light" data-i18n="showcase.title">Un geste, et c'est sur tous vos écrans</h2>
-          <p class="band-sub band-sub-d" data-i18n="showcase.blurb">Un shooting, un build, une note ou un lien. Flitdrop le pose sur l'autre appareil en une seconde, chiffré, sur votre Wi-Fi.</p>
-        </div>
-        <div class="showcase-hero reveal" aria-hidden="true">
-          <img class="showcase-media" src="/assets/showcase-devices.jpg" alt="" loading="lazy" width="1672" height="941">
-        </div>
-        <div class="persona-grid">
-          <div class="persona reveal">
-            <span class="p-ic"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M9 3l-1.2 2H4a2 2 0 00-2 2v11a2 2 0 002 2h16a2 2 0 002-2V7a2 2 0 00-2-2h-3.8L15 3H9zm3 5a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6z"></path></svg></span>
-            <h3 data-i18n="showcase.photo.title">Photographes</h3>
-            <p data-i18n="showcase.photo.body">Envoyez un shooting entier vers le bureau en un geste, chaque photo en résolution originale.</p>
-          </div>
-          <div class="persona reveal">
-            <span class="p-ic"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M9.4 7.6L4.8 12l4.6 4.4-1.4 1.5L2 12l6-6 1.4 1.6zm5.2 0L19.2 12l-4.6 4.4 1.4 1.5L22 12l-6-6-1.4 1.6z"></path></svg></span>
-            <h3 data-i18n="showcase.dev.title">Développeurs</h3>
-            <p data-i18n="showcase.dev.body">Faites passer un build, un log ou une capture entre l'ordinateur et le téléphone, sans câble ni cloud.</p>
-          </div>
-          <div class="persona reveal">
-            <span class="p-ic"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 3a9 9 0 000 18c1.7 0 2-1.2 1.2-2-.8-.9-.5-2 .8-2H16a5 5 0 005-5c0-4.4-4-6-9-6zm-4 6a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm3-3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zm5 0a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"></path></svg></span>
-            <h3 data-i18n="showcase.design.title">Designers</h3>
-            <p data-i18n="showcase.design.body">Envoyez maquettes, assets et couleurs directement sur l'appareil où vous relisez.</p>
-          </div>
-          <div class="persona reveal">
-            <span class="p-ic"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 2l1.9 5.5L19 9l-5.1 1.5L12 16l-1.9-5.5L5 9l5.1-1.5z"></path></svg></span>
-            <h3 data-i18n="showcase.everyone.title">Et tout le monde</h3>
-            <p data-i18n="showcase.everyone.body">Des photos vers le portable familial, un lien vers votre téléphone, une note à un ami à côté.</p>
-          </div>
-        </div>
+      <div class="plans">
+        <article class="plan reveal">
+          <h3 data-i18n="price.free.name">Gratuit</h3>
+          <p class="plan-price"><b data-i18n="price.free.amount">0 €</b> <span data-i18n="price.free.per">pour toujours</span></p>
+          <ul class="plan-list">
+            <li data-i18n="price.free.l1">30 fichiers par jour, à pleine vitesse</li>
+            <li data-i18n="price.free.l2">Les textes et le presse-papiers ne comptent jamais</li>
+            <li data-i18n="price.free.l3">Les gros fichiers aussi, jusqu'à 16 Go chacun</li>
+            <li data-i18n="price.free.l4">Chiffré de bout en bout, toutes les mises à jour</li>
+          </ul>
+          <a class="btn btn-ghost btn-lg plan-cta" href="#download" data-i18n="hero.ctaPrimary">Télécharger Flitdrop</a>
+        </article>
+        <article class="plan plan-pro reveal">
+          <h3><span translate="no">Flitdrop Pro</span></h3>
+          <p class="plan-price"><b data-i18n="pro.price">5,99 €</b> <span data-i18n="price.pro.per">un seul paiement, à vie</span></p>
+          <ul class="plan-list">
+            <li data-i18n="price.pro.l1">Fichiers illimités, tous les jours</li>
+            <li data-i18n="price.pro.l2">Photos et vidéos rangées par mois</li>
+            <li data-i18n="price.pro.l3">Ce que vous copiez sur l'ordinateur arrive tout seul sur le téléphone</li>
+            <li data-i18n="price.pro.l4">Jusqu'à 5 de vos ordinateurs</li>
+          </ul>
+          <a class="btn btn-primary btn-lg plan-cta" href="/fr/pro" data-i18n="price.pro.cta">Découvrir Pro</a>
+        </article>
       </div>
     </section>
 
@@ -644,10 +569,10 @@
   <footer class="footer">
     <div class="footer-top">
       <div class="footer-brand">
-        <a class="brand" href="/fr/"><img src="/assets/icon.svg" alt="" width="26" height="26"><span>Flitdrop</span></a>
+        <a class="brand" href="/fr/"><img src="/assets/icon.svg" alt="" width="26" height="26"><span translate="no">Flitdrop</span></a>
         <p class="footer-tag" data-i18n="footer.tagline">Le partage direct entre tous vos appareils, sur votre Wi-Fi.</p>
       </div>
-      <nav class="footer-cols" aria-label="Footer">
+      <nav class="footer-cols" aria-label="Pied de page" data-i18n-aria="a11y.footer">
         <div class="footer-col">
           <h4 data-i18n="footer.product">Produit</h4>
           <a href="#features" data-i18n="footer.features">Fonctionnalités</a>
@@ -659,12 +584,13 @@
         <div class="footer-col">
           <h4 data-i18n="footer.resources">Ressources</h4>
           <a href="#support" data-i18n="support.eyebrow">Support</a>
-          <a href="https://github.com/MrFrosas/flitdrop" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/MrFrosas/flitdrop" target="_blank" rel="noopener" translate="no">GitHub</a>
           <a href="/brand" data-i18n="footer.brand">Marque</a>
           <a href="/privacy" data-i18n="footer.privacy">Confidentialité</a>
           <a href="/legal" data-i18n="footer.legal">Mentions légales</a>
           <a href="/fr/terms" data-i18n="footer.terms">Conditions de vente</a>
           <a href="/fr/refund" data-i18n="footer.refund">Remboursement</a>
+          <a href="#cookies" role="button" data-consent-open data-consent-link data-i18n="consent.link">Cookies</a>
         </div>
         <div class="footer-col">
           <h4 data-i18n="guides.title">Guides</h4>
@@ -700,7 +626,11 @@
     </div>
     <div class="footer-bottom">
       <p class="footer-rights" data-i18n="footer.rights">© 2026 CC's Global (Thomas Bidault EI). Tous droits réservés.</p>
-      <button class="lang-toggle" data-lang-toggle type="button">FR</button>
+      <div class="lang-seg" role="group" aria-label="Langue" data-i18n-aria="a11y.lang">
+        <button type="button" data-lang-set="en" translate="no">EN</button>
+        <button type="button" data-lang-set="fr" translate="no">FR</button>
+        <button type="button" data-lang-set="de" translate="no">DE</button>
+      </div>
     </div>
   </footer>
 </body>

@@ -10,15 +10,33 @@
   <link rel="icon" href="/assets/icon.svg">
   <link rel="stylesheet" href="/style.css">
   <script async src="/js/analytics.js"></script>
+  <script defer src="/js/doc.js"></script>
 </head>
-<body>
-  <div class="bg" aria-hidden="true"><div class="bg-aurora"></div></div>
-  <header class="nav">
-    <a class="brand" href="/"><img src="/assets/icon.svg" alt="" width="30" height="30"><span>Flitdrop</span></a>
-    <div class="nav-right" style="margin-left:auto"><button class="lang-toggle" id="langToggle">FR</button></div>
+<body class="page-legal">
+  <a class="skip" href="#main" data-i18n="common.skip">Skip to content</a>
+
+  <header class="nav" id="nav">
+    <a class="brand" href="/" aria-label="Flitdrop">
+      <img src="/assets/icon.svg" alt="" width="28" height="28">
+      <span translate="no">Flitdrop</span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="/#steps" data-i18n="nav.how">How it works</a>
+      <a href="/#features" data-i18n="footer.features">Features</a>
+      <a href="/#security" data-i18n="nav.security">Security</a>
+      <a href="/pro" data-i18n="nav.pro">Pro</a>
+    </nav>
+    <div class="nav-right">
+      <div class="lang-seg" role="group" aria-label="Language">
+        <button type="button" data-lang-set="en" translate="no">EN</button>
+        <button type="button" data-lang-set="fr" translate="no">FR</button>
+        <button type="button" data-lang-set="de" translate="no">DE</button>
+      </div>
+      <a class="btn btn-primary btn-sm" href="/#download" data-i18n="nav.download">Download</a>
+    </div>
   </header>
 
-  <main class="doc">
+  <main class="doc" id="main">
     <a class="back" href="/">← <span data-en="Home" data-fr="Accueil" data-de="Startseite">Home</span></a>
 
     <div class="lang-en">
@@ -76,14 +94,72 @@
     </div>
   </main>
 
-  <footer class="mini-foot">
-    <a href="/" data-i18n="foot.home">Home</a>
-    <a href="/pro" data-i18n="footer.pro">Flitdrop Pro</a>
-    <a href="/privacy" data-i18n="footer.privacy">Privacy</a>
-    <a href="/legal" data-i18n="footer.legal">Legal</a>
-    <a href="/terms" data-i18n="footer.terms">Terms of sale</a>
-    <a href="/refund" data-i18n="footer.refund">Refunds</a>
-    <a href="#cookies" role="button" data-consent-open data-consent-link data-i18n="consent.link">Cookies</a>
+  <footer class="footer">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="brand" href="/"><img src="/assets/icon.svg" alt="" width="26" height="26"><span translate="no">Flitdrop</span></a>
+        <p class="footer-tag" data-i18n="footer.tagline">Direct sharing between all your devices, on your Wi-Fi.</p>
+      </div>
+      <nav class="footer-cols" aria-label="Footer">
+        <div class="footer-col">
+          <h4 data-i18n="footer.product">Product</h4>
+          <a href="/#features" data-i18n="footer.features">Features</a>
+          <a href="/#compare" data-i18n="nav.compare">Comparison</a>
+          <a href="/#security" data-i18n="nav.security">Security</a>
+          <a href="/#download" data-i18n="nav.download">Download</a>
+          <a href="/pro" data-i18n="footer.pro">Flitdrop Pro</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="footer.resources">Resources</h4>
+          <a href="/#support" data-i18n="support.eyebrow">Support</a>
+          <a href="https://github.com/MrFrosas/flitdrop" target="_blank" rel="noopener" translate="no">GitHub</a>
+          <a href="/brand" data-i18n="footer.brand">Brand</a>
+          <a href="/privacy" data-i18n="footer.privacy">Privacy</a>
+          <a href="/legal" data-i18n="footer.legal">Legal</a>
+          <a href="/terms" data-i18n="footer.terms">Terms of sale</a>
+          <a href="/refund" data-i18n="footer.refund">Refunds</a>
+          <a href="#cookies" role="button" data-consent-open data-consent-link data-i18n="consent.link">Cookies</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="guides.title">Guides</h4>
+          <a href="/airdrop-windows" data-i18n="guides.windows">AirDrop for Windows</a>
+          <a href="/airdrop-linux" data-i18n="guides.linux">AirDrop for Linux</a>
+          <a href="/airdrop-iphone-android" data-i18n="guides.android">iPhone to Android</a>
+          <a href="/send-files-iphone-to-pc" data-i18n="guides.iphonepc">iPhone to PC</a>
+          <a href="/send-files-android-to-mac" data-i18n="guides.androidmac">Android to Mac</a>
+          <a href="/transfer-photos-iphone-to-pc-without-losing-quality" data-i18n="guides.photos">iPhone photos to PC</a>
+          <a href="/copy-paste-phone-to-pc" data-i18n="guides.clipboard">Phone to PC clipboard</a>
+          <a href="/send-files-without-app" data-i18n="guides.noapp">Send without an app</a>
+          <a href="/quick-share-to-iphone-not-working" data-i18n="guides.quickshare">Quick Share to iPhone</a>
+          <a href="/send-files-linux-to-iphone" data-i18n="guides.linuxiphone">Linux to iPhone</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="footer.comparisons">Comparisons</h4>
+          <a href="/best-airdrop-alternatives" data-i18n="guides.best">Best AirDrop alternatives</a>
+          <a href="/alternative-airdrop" data-i18n="guides.alt">AirDrop alternative</a>
+          <a href="/snapdrop-alternative" data-i18n="guides.snapdrop">Snapdrop alternative</a>
+          <a href="/localsend-alternative" data-i18n="guides.localsend">LocalSend alternative</a>
+          <a href="/xender-alternative" data-i18n="guides.xender">Xender alternative</a>
+          <a href="/send-anywhere-alternative" data-i18n="guides.sendanywhere">Send Anywhere alternative</a>
+          <a href="/pairdrop-alternative" data-i18n="guides.pairdrop">PairDrop alternative</a>
+        </div>
+        <div class="footer-col">
+          <h4 data-i18n="footer.versus">Flitdrop vs</h4>
+          <a href="/flitdrop-vs-airdrop" data-i18n="guides.vsairdrop">vs AirDrop</a>
+          <a href="/flitdrop-vs-localsend" data-i18n="guides.vslocalsend">vs LocalSend</a>
+          <a href="/flitdrop-vs-snapdrop" data-i18n="guides.vssnapdrop">vs Snapdrop</a>
+          <a href="/flitdrop-vs-nearby-share" data-i18n="guides.vsnearby">vs Quick Share</a>
+        </div>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-rights" data-i18n="footer.rights">© 2026 CC's Global (Thomas Bidault EI). All rights reserved.</p>
+      <div class="lang-seg" role="group" aria-label="Language">
+        <button type="button" data-lang-set="en" translate="no">EN</button>
+        <button type="button" data-lang-set="fr" translate="no">FR</button>
+        <button type="button" data-lang-set="de" translate="no">DE</button>
+      </div>
+    </div>
   </footer>
 
   <script src="/js/i18n-data.js"></script>
