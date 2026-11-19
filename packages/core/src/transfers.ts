@@ -64,6 +64,16 @@ export interface Transfer {
   failCounted?: boolean
 }
 
+/** Cause d'un échec d'écriture, pour un message utile au téléphone et dans les
+ *  statistiques : disque plein, dossier interdit (droits, disque en lecture
+ *  seule, « Dossiers protégés » de Windows Defender), ou autre. */
+export function diskErrorKey(e: unknown): 'diskFull' | 'diskDenied' | 'diskWrite' {
+  const code = (e as NodeJS.ErrnoException | null)?.code
+  if (code === 'ENOSPC' || code === 'EDQUOT') return 'diskFull'
+  if (code === 'EPERM' || code === 'EACCES' || code === 'EROFS') return 'diskDenied'
+  return 'diskWrite'
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -245,8 +255,9 @@ export class TransferManager {
       await handle.write(plain, 0, plain.length, index * t.chunkSize)
     } catch (e) {
       t.have.delete(index) // rollback : cet index n'a pas été écrit
-      await this.abort(t, 'erreur d’écriture disque', 'diskWrite', 500)
-      throw new ApiError('erreur d’écriture disque', 500, 'diskWrite')
+      const key = diskErrorKey(e)
+      await this.abort(t, 'erreur d’écriture disque', key, 500)
+      throw new ApiError('erreur d’écriture disque', 500, key)
     }
     settle?.()
     t.bytes += plain.length

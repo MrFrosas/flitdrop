@@ -788,6 +788,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   const app = express()
   app.disable('x-powered-by')
+  // chaîne de requête lue à plat (querystring de Node) : seuls des paramètres
+  // simples servent ici, et le module qs d'Express a des failles de déni de service
+  app.set('query parser', 'simple')
 
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff')
