@@ -226,3 +226,26 @@ export function systemOpener(platform: NodeJS.Platform = process.platform): stri
   if (platform === 'win32') return 'C:\\Windows\\explorer.exe'
   return 'xdg-open'
 }
+
+/** Fichiers qu'on peut ouvrir d'un clic : photos, vidéos, sons, documents.
+ *  Tout le reste (programmes, scripts, raccourcis, archives, documents à
+ *  macros) est seulement montré dans son dossier. */
+const OPEN_DIRECTLY = new Set([
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'avif', 'bmp', 'tif', 'tiff', 'dng',
+  'mp4', 'mov', 'm4v', 'avi', 'mkv', 'webm', '3gp',
+  'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus',
+  'pdf', 'txt', 'md', 'csv', 'rtf', 'docx', 'xlsx', 'pptx', 'odt', 'ods', 'odp',
+])
+
+export function opensDirectly(file: string): boolean {
+  const m = /\.([A-Za-z0-9]{1,5})$/.exec(file)
+  return !!m && OPEN_DIRECTLY.has((m[1] ?? '').toLowerCase())
+}
+
+/** Ouvre le dossier d'un fichier, le fichier sélectionné quand le système le
+ *  permet (Linux : le dossier seul). */
+export function revealCommand(file: string, platform: NodeJS.Platform = process.platform): [string, string[]] {
+  if (platform === 'darwin') return ['/usr/bin/open', ['-R', file]]
+  if (platform === 'win32') return ['C:\\Windows\\explorer.exe', [`/select,${file}`]]
+  return ['xdg-open', [path.dirname(file)]]
+}

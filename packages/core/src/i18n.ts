@@ -46,7 +46,7 @@ const en: Dict = {
   'live.title': 'Live', 'live.calm': 'All quiet', 'live.calmHint': 'Incoming transfers show up here in real time.',
   'radar.thisPc': 'This PC',
   // radar / réceptions
-  'feed.receiving': 'Receiving from {name}…', 'feed.openFolder': 'Open folder', 'feed.textCopied': 'Text copied to your clipboard', 'feed.copyAgain': 'Copy again',
+  'feed.receiving': 'Receiving from {name}…', 'feed.openFolder': 'Open folder', 'file.open': 'Open', 'file.reveal': 'Show in folder', 'toast.fileGone': 'This file is no longer there: it was moved or deleted.', 'feed.textCopied': 'Text copied to your clipboard', 'feed.copyAgain': 'Copy again',
   // historique
   'hist.empty': 'Nothing yet', 'hist.emptyHint': 'Files and texts you exchange appear here.',
   'hist.file': 'file', 'hist.text': 'text', 'hist.clip': 'clipboard', 'hist.from': 'from {name}', 'hist.to': 'to {name}', 'hist.open': 'Open folder',
@@ -325,7 +325,7 @@ const fr: Dict = {
   'header.pair': 'Appairer un téléphone',
   'live.title': 'En direct', 'live.calm': 'Tout est calme', 'live.calmHint': 'Les réceptions apparaissent ici en temps réel.',
   'radar.thisPc': 'Ce PC',
-  'feed.receiving': 'Réception depuis {name}…', 'feed.openFolder': 'Ouvrir le dossier', 'feed.textCopied': 'Texte copié dans ton presse-papiers', 'feed.copyAgain': 'Copier à nouveau',
+  'feed.receiving': 'Réception depuis {name}…', 'feed.openFolder': 'Ouvrir le dossier', 'file.open': 'Ouvrir', 'file.reveal': 'Afficher dans le dossier', 'toast.fileGone': 'Ce fichier n’est plus là : il a été déplacé ou supprimé.', 'feed.textCopied': 'Texte copié dans ton presse-papiers', 'feed.copyAgain': 'Copier à nouveau',
   'hist.empty': 'Rien pour l’instant', 'hist.emptyHint': 'Les fichiers et textes échangés apparaissent ici.',
   'hist.file': 'fichier', 'hist.text': 'texte', 'hist.clip': 'presse-papiers', 'hist.from': 'depuis {name}', 'hist.to': 'vers {name}', 'hist.open': 'Ouvrir le dossier',
   'radar.online': 'en ligne',
@@ -604,7 +604,7 @@ const de: Dict = {
   'live.calmHint': 'Eingehende Übertragungen erscheinen hier in Echtzeit.',
   'radar.thisPc': 'Dieser PC',
   'feed.receiving': 'Empfange von {name}…',
-  'feed.openFolder': 'Ordner öffnen',
+  'feed.openFolder': 'Ordner öffnen', 'file.open': 'Öffnen', 'file.reveal': 'Im Ordner zeigen', 'toast.fileGone': 'Diese Datei ist nicht mehr da: Sie wurde verschoben oder gelöscht.',
   'feed.textCopied': 'Text in deine Zwischenablage kopiert',
   'feed.copyAgain': 'Erneut kopieren',
   'hist.empty': 'Noch nichts',

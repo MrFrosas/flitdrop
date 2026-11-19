@@ -472,6 +472,9 @@ if (!gotLock) {
       openPath: (dir) => {
         if (typeof dir === 'string') void shell.openPath(dir).catch(() => {})
       },
+      revealPath: (file) => {
+        if (typeof file === 'string') shell.showItemInFolder(file)
+      },
       // Windows : pare-feu vérifié une fois quand aucun téléphone n'arrive, et
       // réparé seulement sur « Réparer » (règles de cet exécutable, pour le
       // réseau de la dernière vérification)

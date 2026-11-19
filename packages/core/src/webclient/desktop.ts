@@ -290,6 +290,29 @@ function histIcon(e: HistEntry): { txt: string; cls: string } {
   return { txt: '↓', cls: 'hicon' }
 }
 
+/** « Ouvrir » (photos, vidéos, documents) et « Afficher dans le dossier » pour
+ *  un fichier reçu ; un programme ou un script n'a que le second. */
+const OPEN_DIRECTLY = /\.(jpe?g|png|gif|webp|hei[cf]|avif|bmp|tiff?|dng|mp4|mov|m4v|avi|mkv|webm|3gp|mp3|m4a|aac|wav|flac|ogg|opus|pdf|txt|md|csv|rtf|docx|xlsx|pptx|odt|ods|odp)$/i
+
+function receivedButtons(historyId: string | undefined, name: string): HTMLButtonElement[] {
+  const make = (label: string, reveal: boolean) => {
+    const b = document.createElement('button')
+    b.className = 'hbtn'
+    b.textContent = label
+    b.onclick = () => {
+      const done = historyId
+        ? postJSON('/open-received', { id: historyId, reveal })
+        : postJSON('/open-folder', {})
+      void done.catch(() => toast(t('toast.fileGone')))
+    }
+    return b
+  }
+  const out: HTMLButtonElement[] = []
+  if (historyId && OPEN_DIRECTLY.test(name)) out.push(make(t('file.open'), false))
+  out.push(make(historyId ? t('file.reveal') : t('feed.openFolder'), true))
+  return out
+}
+
 function renderHistory() {
   if (!state) return
   const list = $('historyList')
@@ -314,11 +337,10 @@ function renderHistory() {
     main.append(name, sub)
     li.append(icon, main)
     if (e.dir === 'in' && e.kind === 'file' && e.status === 'ok') {
-      const b = document.createElement('button')
-      b.className = 'hbtn'
-      b.textContent = t('hist.open')
-      b.onclick = () => void postJSON('/open-folder', {}).catch(() => toast(t('common.copyFailed')))
-      li.appendChild(b)
+      const acts = document.createElement('div')
+      acts.className = 'hacts'
+      acts.append(...receivedButtons(e.id, e.name ?? ''))
+      li.appendChild(acts)
     }
     list.appendChild(li)
   }
@@ -978,7 +1000,7 @@ function feedTransferStart(d: { id: string; name: string; size: number; deviceNa
   progressCards.set(d.id, { li, bar: fill, sub, meter: new SpeedMeter() })
 }
 
-function feedTransferDone(d: { id: string; name: string; size: number; deviceName: string }) {
+function feedTransferDone(d: { id: string; historyId?: string; name: string; size: number; deviceName: string }) {
   const found = progressCards.get(d.id)
   const li = found?.li ?? feedCardBase()
   li.innerHTML = ''
@@ -992,11 +1014,10 @@ function feedTransferDone(d: { id: string; name: string; size: number; deviceNam
   const sub = document.createElement('div')
   sub.className = 'fsub'
   sub.textContent = `${fmtSize(d.size)} · ${t('hist.from', { name: d.deviceName })}`
-  const btn = document.createElement('button')
-  btn.className = 'hbtn'
-  btn.textContent = t('feed.openFolder')
-  btn.onclick = () => void postJSON('/open-folder', {}).catch(() => toast(t('toast.openFolderFailed')))
-  li.append(head, sub, btn)
+  const acts = document.createElement('div')
+  acts.className = 'hacts'
+  acts.append(...receivedButtons(d.historyId, d.name))
+  li.append(head, sub, acts)
   progressCards.delete(d.id)
 }
 

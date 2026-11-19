@@ -47,8 +47,10 @@ import {
   isLoopback,
   localIPv4s,
   moduleDir,
+  opensDirectly,
   parseCookies,
   reserveUniquePath,
+  revealCommand,
   systemOpener,
   sanitizeFilename,
   timingSafeEqualStr,
@@ -297,6 +299,9 @@ export interface StartOptions {
   openLink?: (url: string) => void
   /** App de bureau : ouvre un dossier (shell.openPath). */
   openPath?: (dir: string) => void
+  /** App de bureau : ouvre le dossier d'un fichier, le fichier sélectionné
+   *  (shell.showItemInFolder). */
+  revealPath?: (file: string) => void
 }
 
 export interface RunningServer {
@@ -1625,7 +1630,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       const refused = all.length - kept.length
       for (const f of saved) {
         transferOk('phone_to_pc', kindOf(f.mime), f.size)
-        history.add({
+        const entry = history.add({
           dir: 'in',
           kind: 'file',
           name: f.name,
@@ -1635,7 +1640,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
           status: 'ok',
           path: f.path,
         })
-        hub.broadcast('transfer-done', { id: randomToken(6), name: f.name, size: f.size, path: f.path, deviceName: dev.name })
+        hub.broadcast('transfer-done', { id: randomToken(6), historyId: entry.id, name: f.name, size: f.size, path: f.path, deviceName: dev.name })
       }
       devices.touch(dev.id)
       license.countFiles(saved.length)
@@ -2121,6 +2126,35 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       child.unref()
     }
     res.json({ ok: true })
+  })
+
+  // fichier reçu, désigné par sa ligne d'historique (jamais par un chemin venu
+  // de la page) : « Ouvrir » l'ouvre avec son application habituelle, seulement
+  // pour les photos, vidéos, sons et documents ; un programme ou un script n'est
+  // jamais lancé d'un clic, il est montré dans son dossier.
+  admin.post('/open-received', jsonSmall, (req, res) => {
+    const body = (req.body ?? {}) as { id?: unknown; reveal?: unknown }
+    const e = typeof body.id === 'string' ? history.list(300).find((x) => x.id === body.id) : undefined
+    if (!e || e.dir !== 'in' || e.kind !== 'file' || e.status !== 'ok' || !e.path || !path.isAbsolute(e.path)) {
+      return res.status(404).json({ code: 'fileGone' })
+    }
+    let st: fs.Stats
+    try {
+      st = fs.statSync(e.path)
+    } catch {
+      return res.status(404).json({ code: 'fileGone' })
+    }
+    if (!st.isFile()) return res.status(404).json({ code: 'fileGone' })
+    const open = body.reveal !== true && opensDirectly(e.path)
+    if (open && opts.openPath) opts.openPath(e.path)
+    else if (!open && opts.revealPath) opts.revealPath(e.path)
+    else {
+      const [cmd, args] = open ? [systemOpener(), [e.path]] : revealCommand(e.path)
+      const child = spawn(cmd, args, { detached: true, stdio: 'ignore' })
+      child.on('error', () => {})
+      child.unref()
+    }
+    res.json({ ok: true, opened: open })
   })
 
   admin.post('/open-url', jsonSmall, (req, res) => {

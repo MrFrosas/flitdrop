@@ -260,6 +260,7 @@ html[data-platform='mac'] .feed { background: light-dark(rgba(255,255,255,0.25),
 .hbtn { border: 1px solid var(--stroke-2); background: var(--control); color: var(--text); border-radius: var(--r-ctl); padding: 6px 12px; font: 600 12px var(--font-text); cursor: pointer; white-space: nowrap; transition: background 0.12s; }
 .hbtn:hover { background: var(--control-hover); }
 .hbtn.x { padding: 6px 9px; color: var(--muted); }
+.hacts { display: flex; gap: 6px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
 
 .empty { text-align: center; padding: 44px 20px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
 .empty p { font-family: var(--font); font-weight: 600; font-size: 16px; color: var(--text); }

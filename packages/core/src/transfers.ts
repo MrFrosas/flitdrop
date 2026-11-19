@@ -327,6 +327,7 @@ export class TransferManager {
     this.history.update(t.historyId, { status: 'ok', path: finalPath, name: path.basename(finalPath) })
     this.hub.broadcast('transfer-done', {
       id: t.id,
+      historyId: t.historyId,
       name: path.basename(finalPath),
       size: t.size,
       path: finalPath,
