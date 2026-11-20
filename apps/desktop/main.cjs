@@ -475,6 +475,14 @@ if (!gotLock) {
       revealPath: (file) => {
         if (typeof file === 'string') shell.showItemInFolder(file)
       },
+      // miniature du système pour la barre latérale : HEIC et vidéos compris
+      // (macOS, Windows ; Linux n'en a pas, le PC sert alors le fichier
+      // lui-même quand c'est une image que la fenêtre sait afficher)
+      thumbnail: async (file, size) => {
+        if (typeof file !== 'string' || process.platform === 'linux') return null
+        const img = await nativeImage.createThumbnailFromPath(file, { width: size, height: size })
+        return img.isEmpty() ? null : img.toPNG()
+      },
       // Windows : pare-feu vérifié une fois quand aucun téléphone n'arrive, et
       // réparé seulement sur « Réparer » (règles de cet exécutable, pour le
       // réseau de la dernière vérification)

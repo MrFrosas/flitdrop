@@ -14,6 +14,7 @@
   "dependencies": {
     "@fontsource/bricolage-grotesque": "^5.2.10",
     "@noble/ciphers": "^1.2.1",
+    "@noble/curves": "^1.9.7",
     "@noble/hashes": "^1.7.1",
     "busboy": "^1.6.0",
     "express": "^4.21.2",

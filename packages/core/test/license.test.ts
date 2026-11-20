@@ -23,6 +23,7 @@ import {
   stateKey,
   sessionKey,
   FREE_DAILY_FILES,
+  NEW_INSTALL_DAILY_FILES,
   LICENSE_PUBLIC_KEY,
   SUPPORT_MAILTO,
   type TokenPayload,
@@ -141,9 +142,12 @@ async function rig(o: {
   retryMs?: number[]
   store?: boolean
   lastVersion?: string
+  freeDailyFiles?: 10 | 30
 } = {}): Promise<Rig> {
   const home = o.home ?? newHome()
   const cfg = loadConfig(home)
+  // tests d'avant la 0.7.2 : limite de 30 ; une installation neuve en a 10
+  cfg.freeDailyFiles = o.freeDailyFiles ?? 30
   if (o.installedAt !== undefined || !fs.existsSync(path.join(home, '.keep'))) {
     cfg.installedAt = o.installedAt ?? '2026-03-01T00:00:00.000Z'
     fs.writeFileSync(path.join(home, '.keep'), '')
@@ -373,6 +377,30 @@ describe('plan', () => {
     expect(r.lic.plan()).toBe('free')
     expect(r.lic.monthFolders()).toBe(false)
     expect(r.lic.fullFeatures()).toBe(false)
+  })
+
+  it('limite du jour : 30 pour une installation d’avant la 0.7.2, 10 pour une neuve', async () => {
+    // config absente : installation neuve ; config déjà là sans le réglage : ancienne
+    const fresh = newHome()
+    expect(loadConfig(fresh).freeDailyFiles).toBe(NEW_INSTALL_DAILY_FILES)
+    expect(loadConfig(fresh).freeDailyFiles).toBe(NEW_INSTALL_DAILY_FILES)
+    const old = newHome()
+    fs.writeFileSync(path.join(old, 'config.json'), JSON.stringify({ installId: 'abcdefghijklmnopqrst', lastVersion: '0.7.1' }))
+    expect(loadConfig(old).freeDailyFiles).toBe(FREE_DAILY_FILES)
+    expect(loadConfig(old).freeDailyFiles).toBe(FREE_DAILY_FILES)
+    for (const [limit, n] of [[10, NEW_INSTALL_DAILY_FILES], [30, FREE_DAILY_FILES]] as const) {
+      const r = await rig({ freeDailyFiles: limit })
+      await r.lic.refreshConfig()
+      clock += 14 * DAY + 1000
+      expect(r.lic.plan()).toBe('free')
+      expect(r.lic.dailyLimit()).toBe(n)
+      r.lic.countFiles(n - 1)
+      expect(r.lic.canStartFile(0)).toBe(true)
+      expect(r.lic.quota()?.left).toBe(1)
+      r.lic.countFiles(1)
+      expect(r.lic.canStartFile(0)).toBe(false)
+      expect(r.lic.limitBody().limit).toBe(n)
+    }
   })
 
   it('installation neuve après le lancement : essai depuis son premier lancement', async () => {

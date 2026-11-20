@@ -26,12 +26,16 @@
       <div class="core"></div>
     </div>
     <h1 data-i18n="ph.scan.title">Connecte ce téléphone à ton PC</h1>
-    <p class="lead" data-i18n="ph.scan.lead">Ouvre Flitdrop sur le PC, clique sur « Appairer un téléphone » et scanne le QR code avec l’appareil photo.</p>
-    <div id="scanPaste" class="scan-paste hidden">
-      <p class="hint" data-i18n="ph.paste.hint">Depuis l’écran d’accueil, tu ne peux pas scanner. Sur le PC, ouvre « Appairer un téléphone » &gt; « Copier le lien d’appairage », puis colle-le ici :</p>
-      <input id="pastePairInput" type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" data-i18n-ph="ph.paste.placeholder" placeholder="Colle le lien d’appairage">
-      <button class="btn primary wide" id="btnPastePair" data-i18n="ph.paste.btn">Se connecter</button>
-    </div>
+    <p class="lead" id="scanLead" data-i18n="ph.scan.lead">Ouvre Flitdrop sur le PC, clique sur « Appairer un téléphone » et scanne le QR code avec l’appareil photo.</p>
+    <!-- code à 6 chiffres affiché sous le QR code du PC : seul moyen depuis
+         l'icône de l'écran d'accueil, qui ne peut pas scanner. Un lien
+         d'appairage collé ici marche aussi. -->
+    <form id="scanPaste" class="scan-paste scan-code" autocomplete="off">
+      <label class="hint" for="pastePairInput" data-i18n="ph.code.hint">Ou tape le code à 6 chiffres affiché sur le PC, sous le QR code :</label>
+      <input id="pastePairInput" type="text" inputmode="numeric" autocomplete="one-time-code" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="2048" placeholder="123 456" aria-describedby="pairCodeMsg">
+      <p class="hint code-msg" id="pairCodeMsg" aria-live="polite"></p>
+      <button class="btn primary wide" id="btnPastePair" type="submit" data-i18n="ph.paste.btn">Se connecter</button>
+    </form>
   </main>
 
   <!-- Erreur / PC injoignable -->

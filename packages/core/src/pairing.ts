@@ -3,6 +3,15 @@ import path from 'node:path'
 import { newKey, randomToken } from './crypto.js'
 
 const TWIN_SILENT_MS = 10 * 60 * 1000
+// ancien appairage du même téléphone, mis de côté : gardé 30 jours au cas où
+// ce serait en fait un autre téléphone (il revient alors tout seul)
+const RETIRED_KEEP_MS = 30 * 24 * 60 * 60 * 1000
+
+/** Empreinte du modèle donnée par la page du téléphone (taille d'écran,
+ *  densité, version du système) : lettres, chiffres et « .x@|_- » seulement. */
+export function cleanHw(raw: unknown): string {
+  return typeof raw === 'string' ? raw.replace(/[^\w.@|-]/g, '').slice(0, 64) : ''
+}
 
 /** Nom d'appareil donné par le téléphone (ou tapé sur le PC) : sans
  *  caractères de contrôle, invisibles ni de sens d'écriture, espaces
@@ -20,7 +29,19 @@ export interface Device {
   keyB64: string
   shortcutToken: string
   platform?: string
-  status: 'pending' | 'active'
+  // « retired » : ancien appairage du même téléphone, remplacé par un plus
+  // récent (voir retireTwins). Invisible et refusé, sauf son hello, qui le
+  // remet en service (c'était en fait un autre téléphone).
+  status: 'pending' | 'active' | 'retired'
+  retiredAt?: string
+  retiredFor?: string
+  // nom donné par le téléphone lui-même (« iPhone », modèle Android), même
+  // après un renommage sur le PC, et empreinte du modèle (cleanHw)
+  label?: string
+  hw?: string
+  // deux téléphones identiques sur ce PC (un appairage mis de côté est
+  // revenu) : plus jamais de mise de côté automatique pour celui-ci
+  noAutoMerge?: boolean
   createdAt: string
   lastSeenAt?: string
   // identité du PC qui a créé cet appairage. Un appareil dont l'instanceId ne
@@ -145,11 +166,14 @@ export class DeviceStore {
   }
 
   /** Retourne true si l'appareil vient d'être appairé (était en attente). */
-  activate(id: string, info: { name?: string; platform?: string }): boolean {
+  activate(id: string, info: { name?: string; platform?: string; hw?: unknown }): boolean {
     const d = this.devices.get(id)
-    if (!d) return false
+    if (!d || d.status === 'retired') return false
     const wasPending = d.status === 'pending'
     if (wasPending && info.name) d.name = cleanDeviceName(info.name) || d.name
+    if (info.name) d.label = cleanDeviceName(info.name) || d.label
+    const hw = cleanHw(info.hw)
+    if (hw) d.hw = hw
     if (info.platform) d.platform = info.platform.slice(0, 24)
     // premier téléphone de ce PC : il voit le presse-papiers du PC, comme
     // avant. Un téléphone de plus (celui d'un proche, par exemple) part sans.
@@ -190,6 +214,76 @@ export class DeviceStore {
   /** Identifiants des anciens appairages du même téléphone (voir twinsOf). */
   twinIds(id: string): string[] {
     return this.twinsOf(id).map((o) => o.id)
+  }
+
+  /** Le téléphone a prouvé (clé de son ancien appairage) qu'il remplace
+   *  `oldId` : l'ancien est oublié, le nouveau garde son nom (renommé sur le
+   *  PC, peut-être), son partage du presse-papiers et l'adresse de son
+   *  Raccourci iPhone. Rend true si `oldId` existait. */
+  replace(oldId: string, newId: string): boolean {
+    const o = this.devices.get(oldId)
+    const d = this.devices.get(newId)
+    if (!o || !d || oldId === newId || o.status === 'pending') return false
+    this.inherit(d, o)
+    this.devices.delete(oldId)
+    this.save()
+    return true
+  }
+
+  /** Anciens appairages du même téléphone (même système, même nom donné par
+   *  le téléphone, même empreinte de modèle), plus anciens que celui-ci et
+   *  silencieux depuis 10 minutes au moins : mis de côté (pas effacés), ils
+   *  n'encombrent plus la liste. Rend leurs identifiants. */
+  retireTwins(id: string): string[] {
+    const d = this.devices.get(id)
+    if (!d || d.status !== 'active' || !d.hw || !d.platform || d.noAutoMerge) return []
+    const label = d.label ?? d.name
+    const created = Date.parse(d.createdAt)
+    const now = Date.now()
+    const out: string[] = []
+    for (const o of this.devices.values()) {
+      if (o.id === id || o.status !== 'active' || o.noAutoMerge) continue
+      if (o.platform !== d.platform || o.hw !== d.hw || (o.label ?? o.name) !== label) continue
+      if (!(Date.parse(o.createdAt) < created)) continue
+      const seen = o.lastSeenAt ? Date.parse(o.lastSeenAt) : 0
+      if (now - seen < TWIN_SILENT_MS) continue
+      this.inherit(d, o)
+      o.status = 'retired'
+      o.retiredAt = new Date(now).toISOString()
+      o.retiredFor = id
+      out.push(o.id)
+    }
+    if (out.length > 0) this.save()
+    return out
+  }
+
+  /** Un appairage mis de côté dit bonjour : c'était un autre téléphone,
+   *  identique. Il revient tel quel, et ni lui ni celui qui l'avait remplacé
+   *  ne seront plus jamais mis de côté automatiquement. */
+  unretire(id: string): boolean {
+    const o = this.devices.get(id)
+    if (!o || o.status !== 'retired') return false
+    const d = o.retiredFor ? this.devices.get(o.retiredFor) : undefined
+    if (d) {
+      d.noAutoMerge = true
+      // le Raccourci iPhone de l'appairage revenu reste le sien
+      if (d.shortcutToken === o.shortcutToken) d.shortcutToken = randomToken(18)
+    }
+    o.status = 'active'
+    o.noAutoMerge = true
+    delete o.retiredAt
+    delete o.retiredFor
+    this.save()
+    return true
+  }
+
+  /** Ce que le nouvel appairage reprend de l'ancien (même téléphone). */
+  private inherit(d: Device, o: Device): void {
+    // renommé sur le PC (« iPhone de Léa ») : le nom reste
+    if (o.name !== (o.label ?? o.name) && d.name === (d.label ?? d.name)) d.name = o.name
+    if (o.clipShare === true) d.clipShare = true
+    // le Raccourci iPhone déjà réglé continue de marcher
+    d.shortcutToken = o.shortcutToken
   }
 
   touch(id: string): void {
@@ -253,7 +347,8 @@ export class DeviceStore {
     const now = Date.now()
     for (const d of [...this.devices.values()]) {
       const last = d.lastSeenAt ? Date.parse(d.lastSeenAt) : Date.parse(d.createdAt)
-      if (d.status === 'active' && now - last > maxIdleMs) {
+      const retired = d.status === 'retired' && now - Date.parse(d.retiredAt ?? d.createdAt) > RETIRED_KEEP_MS
+      if (retired || (d.status === 'active' && now - last > maxIdleMs)) {
         this.devices.delete(d.id)
         removed++
       }
@@ -271,7 +366,7 @@ export class DeviceStore {
   }
 
   listPublic() {
-    return [...this.devices.values()].map((d) => ({
+    return [...this.devices.values()].filter((d) => d.status !== 'retired').map((d) => ({
       id: d.id,
       name: d.name,
       platform: d.platform,

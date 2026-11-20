@@ -116,6 +116,10 @@ export interface Config {
   // invitations Pro dans la fenêtre : au plus une par jour (jour, carte,
   // rangée par « Plus tard »), et combien de fois chacune a été montrée
   proPromptsShown: { day: string; kind: '' | 'limit' | 'trial' | 'welcome'; closed: boolean; limit: number; trial: number; welcome: number }
+  // fichiers par jour de la version gratuite, décidé une fois : 30 pour une
+  // installation d'avant la 0.7.2 (config déjà là), 10 pour une neuve.
+  // Jamais baissé ensuite pour une installation existante.
+  freeDailyFiles: 10 | 30
 }
 
 /** État de la licence tel qu'enregistré (voir LicenseState dans license.ts),
@@ -231,6 +235,7 @@ export function loadConfig(home: string): Config {
     dailyLimitReportedDay: typeof stored.dailyLimitReportedDay === 'string' ? stored.dailyLimitReportedDay.slice(0, 10) : '',
     sortPhotosByMonth: stored.sortPhotosByMonth !== false,
     proPromptsShown: promptsFrom(stored.proPromptsShown),
+    freeDailyFiles: stored.freeDailyFiles === 10 || stored.freeDailyFiles === 30 ? stored.freeDailyFiles : existed ? 30 : 10,
   }
   // migration : absent d'un config.json plus ancien. Une installation qui a
   // déjà appairé un téléphone ou transféré quelque chose a forcément vu la page

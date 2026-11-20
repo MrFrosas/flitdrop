@@ -24,6 +24,7 @@ import {
 } from './constants.js'
 import { loadConfig, saveConfig, flitdropHome, clampInt, type Config } from './config.js'
 import { DeviceStore, type Device } from './pairing.js'
+import { PairCodes, pcHandshake, normalizeCode, formatCode, CODEPAIR_AAD } from './codepair.js'
 import { History } from './history.js'
 import { Outbox } from './outbox.js'
 import { Hub } from './events.js'
@@ -40,7 +41,7 @@ import { pcLink, type PcLink } from './wifi.js'
 import { Telemetry, UI_EVENTS, kindOf, type TelemetryOptions, type Direction, type Kind } from './telemetry.js'
 import { answerRating, countTransfer, ratingDue } from './rating.js'
 import { t as tr, tp, resolveLang, langFrom, acceptLang } from './i18n.js'
-import { License, FREE_CLIP_TEXTS, FREE_DAILY_FILES, SUPPORT_MAILTO, monthFolder, photoDate, isMedia, type CheckoutWhere, type TokenEnv } from './license.js'
+import { License, FREE_CLIP_TEXTS, SUPPORT_MAILTO, monthFolder, photoDate, isMedia, type CheckoutWhere, type TokenEnv } from './license.js'
 import { defaultMarkStore, fileMarkStore, type MarkStore } from './machineid.js'
 import {
   b64u,
@@ -302,6 +303,9 @@ export interface StartOptions {
   /** App de bureau : ouvre le dossier d'un fichier, le fichier sélectionné
    *  (shell.showItemInFolder). */
   revealPath?: (file: string) => void
+  /** App de bureau : miniature PNG d'une photo ou d'une vidéo reçue
+   *  (nativeImage.createThumbnailFromPath : HEIC, vidéos), ou null. */
+  thumbnail?: (file: string, size: number) => Promise<Buffer | null>
 }
 
 export interface RunningServer {
@@ -400,6 +404,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   let autostartOn = readAutostart()
 
   const devices = new DeviceStore(home)
+  // codes à 6 chiffres des appairages en attente (fenêtre d'appairage)
+  const pairCodes = new PairCodes()
   // hygiène au démarrage : on oublie les appairages inactifs de longue date
   devices.pruneIdle(DEVICE_MAX_IDLE_MS)
   const history = new History(home)
@@ -991,6 +997,23 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     60_000,
     (req) => `dev:${String(req.headers['x-wd-device'] ?? '')}|${req.socket.remoteAddress ?? '?'}`
   )
+  // Appairage par code à 6 chiffres (voir codepair.ts) : le téléphone est
+  // déjà sur la page de ce PC (icône de l'écran d'accueil, adresse tapée) et
+  // tape le code affiché à côté du QR code. Réponse chiffrée par l'échange
+  // X25519 : la clé d'appairage ne passe jamais en clair sur le wifi.
+  app.post('/api/pair/code', rateLimit(10, 60_000), jsonSmall, (req, res) => {
+    const body = (req.body ?? {}) as { code?: unknown; pub?: unknown }
+    const code = normalizeCode(body.code)
+    if (typeof body.pub !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(body.pub)) return res.status(400).json({ code: 'badRequest' })
+    const id = pairCodes.claim(code)
+    const dev = id ? devices.get(id) : undefined
+    if (!dev || dev.status !== 'pending') return res.status(404).json({ code: 'pairCodeWrong' })
+    const hs = pcHandshake(body.pub, code)
+    if (!hs) return res.status(400).json({ code: 'badRequest' })
+    telemetry.track('pair_code_used')
+    res.json({ pub: hs.pcPub, p: sealJSON(hs.key, { id: dev.id, keyB64: dev.keyB64, instanceId: cfg.instanceId }, CODEPAIR_AAD) })
+  })
+
   app.use('/api/phone', (req, res, next) => {
     const id = String(req.headers['x-wd-device'] ?? '')
     const dev = id ? devices.get(id) : undefined
@@ -1025,12 +1048,51 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     next()
   })
 
+  // Le même téléphone ne s'affiche qu'une fois : ses anciens appairages
+  // (rescanné, icône de l'écran d'accueil, adresse du PC changée) laissent la
+  // place au nouveau, qui reprend leur nom, le presse-papiers, ce qui les
+  // attendait et l'adresse du Raccourci iPhone.
+  const sameDeviceReplaced = (oldIds: string[], newId: string) => {
+    if (oldIds.length === 0) return
+    outbox.shareTargets(oldIds, newId)
+    if (oldIds.includes(cfg.lastSendTo)) {
+      cfg.lastSendTo = newId
+      saveConfig(home, cfg)
+    }
+    for (const id of oldIds) hub.broadcast('device-revoked', { id })
+  }
+  /** Preuve donnée par la page : son appairage d'avant (`prev.id`) a chiffré
+   *  l'identifiant du nouveau avec sa clé. Rend l'ancien identifiant, ou ''. */
+  const provenPrevious = (prev: unknown, newId: string): string => {
+    const p = prev as { id?: unknown; proof?: unknown } | null
+    if (!p || typeof p.id !== 'string' || typeof p.proof !== 'string' || p.id === newId) return ''
+    const old = devices.get(p.id)
+    if (!old || old.status === 'pending' || (old.instanceId && old.instanceId !== cfg.instanceId)) return ''
+    for (const cand of devices.candidateKeys(old.id)) {
+      try {
+        const body = openFreshJSON<{ id?: unknown }>(cand.key, p.proof, aad(old.id, 'replace'), nonces)
+        if (body.id === newId) return old.id
+      } catch {
+        // clé suivante
+      }
+    }
+    return ''
+  }
+
   app.post('/api/phone/hello', jsonSmall, phoneAuth('hello'), (req, res) => {
     const { dev, key, payload } = wd(req)
+    // appairage mis de côté qui revient : c'était un autre téléphone
+    if (dev.status === 'retired') devices.unretire(dev.id)
     const wasPending = devices.activate(dev.id, {
       name: typeof payload.deviceLabel === 'string' ? payload.deviceLabel : undefined,
       platform: typeof payload.platform === 'string' ? payload.platform : undefined,
+      hw: payload.hw,
     })
+    if (wasPending) {
+      const prevId = provenPrevious(payload.prev, dev.id)
+      if (prevId && devices.replace(prevId, dev.id)) sameDeviceReplaced([prevId], dev.id)
+    }
+    sameDeviceReplaced(devices.retireTwins(dev.id), dev.id)
     // Au TOUT PREMIER hello on démarre une rotation « make-before-break » : une
     // clé de session est générée EN ATTENTE (l'ancienne reste valide) et renvoyée
     // chiffrée sous l'ancienne (`key`, que le téléphone possède). On la re-renvoie
@@ -1038,6 +1100,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
     // ne bloque jamais le téléphone, et une photo du QR cesse de valoir dès que le
     // vrai téléphone confirme (1re requête sous la nouvelle clé -> promotion).
     if (wasPending) devices.beginRotation(dev.id)
+    // appairé (QR code ou code) : son code à 6 chiffres ne sert plus
+    if (wasPending) pairCodes.forget(dev.id)
     // un téléphone de plus : ce qui attendait « tous » reste aux téléphones
     // déjà appairés, le nouveau ne voit pas ce qui a été envoyé avant lui.
     // Le même téléphone rescanné, lui, retrouve ce qui attendait son ancien
@@ -1093,7 +1157,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
 
   app.post('/api/phone/transfer/init', jsonSmall, phoneAuth('init'), async (req, res) => {
     const { dev, key, payload } = wd(req)
-    // Flitdrop Pro, version gratuite : 30 fichiers par jour, refusés ici, au
+    // Flitdrop Pro, version gratuite : 30 fichiers par jour (10 si installé depuis la 0.7.2), refusés ici, au
     // début du transfert (jamais en route : un transfert commencé finit). Le
     // téléphone garde le reste en attente. Pas de `code` : une page plus
     // ancienne montre « Erreur 402 » plutôt qu'un texte faux.
@@ -1596,9 +1660,9 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
   }
   const shortcutLimited = (req: Request, res: Response) => {
     license.noteRefused()
-    res.setHeader('x-flitdrop-daily-limit', String(FREE_DAILY_FILES))
+    res.setHeader('x-flitdrop-daily-limit', String(license.dailyLimit()))
     res.setHeader('x-flitdrop-kept', '0')
-    return res.status(402).type('text/plain; charset=utf-8').send(st(req, 'srv.scDailyLimit', { n: FREE_DAILY_FILES, pc: cfg.deviceName }))
+    return res.status(402).type('text/plain; charset=utf-8').send(st(req, 'srv.scDailyLimit', { n: license.dailyLimit(), pc: cfg.deviceName }))
   }
 
   app.post('/api/shortcut/upload', rlShortcut, trackBody('sc', 0, (req) => !!shortcutDevice(req)), async (req, res) => {
@@ -1652,10 +1716,10 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
         // le texte), et en en-têtes pour un client qui les lit
         license.noteRefused()
         res.setHeader('x-flitdrop-refused', String(refused))
-        res.setHeader('x-flitdrop-daily-limit', String(FREE_DAILY_FILES))
+        res.setHeader('x-flitdrop-daily-limit', String(license.dailyLimit()))
         return res
           .type('text/plain; charset=utf-8')
-          .send(arrived + ' ' + tp(reqLang(req), 'srv.scLimitRest', refused, { n: refused, limit: FREE_DAILY_FILES, pc: cfg.deviceName }))
+          .send(arrived + ' ' + tp(reqLang(req), 'srv.scLimitRest', refused, { n: refused, limit: license.dailyLimit(), pc: cfg.deviceName }))
       }
       res.type('text/plain; charset=utf-8').send(arrived)
     } catch (e) {
@@ -1947,7 +2011,8 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       pairView = { ids: new Set([d.id]), qrSent: false, scanned: false, openedAt: Date.now(), fwAsked: false }
       telemetry.track('pair_qr_shown')
     }
-    res.json({ deviceId: d.id, url: pairUrl(d), ttlMs: PENDING_PAIRING_TTL_MS })
+    const code = pairCodes.issue(d.id, PENDING_PAIRING_TTL_MS)
+    res.json({ deviceId: d.id, url: pairUrl(d), ttlMs: PENDING_PAIRING_TTL_MS, code: formatCode(code) })
   })
 
   // La fenêtre d'appairage est refermée (Fermer, Terminer).
@@ -2091,7 +2156,7 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       const refused = saved.length - kept.length
       if (refused > 0) license.noteRefused()
       if (items.length > 0) hub.broadcast('outbox-changed', {})
-      res.json(refused > 0 ? { ok: true, ids: items.map((i) => i.id), refused, limit: FREE_DAILY_FILES } : { ok: true, ids: items.map((i) => i.id) })
+      res.json(refused > 0 ? { ok: true, ids: items.map((i) => i.id), refused, limit: license.dailyLimit() } : { ok: true, ids: items.map((i) => i.id) })
     } catch (e) {
       const err = e as Error & { code?: number }
       res.status(err.code === 413 ? 413 : 400).json({ code: err.code === 413 ? 'tooBig' : 'internal' })
@@ -2155,6 +2220,40 @@ export async function startServer(opts: StartOptions = {}): Promise<RunningServe
       child.unref()
     }
     res.json({ ok: true, opened: open })
+  })
+
+  // Miniature d'une photo ou d'une vidéo reçue, pour la barre latérale et
+  // l'historique : celle du système (app de bureau : HEIC, vidéos), sinon le
+  // fichier lui-même quand le navigateur sait l'afficher. Gardée en mémoire.
+  const thumbCache = new Map<string, Buffer>()
+  admin.get('/thumb/:id', async (req, res) => {
+    const e = history.list(300).find((x) => x.id === String(req.params.id))
+    if (!e || e.dir !== 'in' || e.kind !== 'file' || e.status !== 'ok' || !e.path || !path.isAbsolute(e.path) || !isMedia(undefined, e.path)) {
+      return res.status(404).end()
+    }
+    let st: fs.Stats
+    try {
+      st = fs.statSync(e.path)
+    } catch {
+      return res.status(404).end()
+    }
+    if (!st.isFile()) return res.status(404).end()
+    res.setHeader('Cache-Control', 'private, max-age=3600')
+    const cacheKey = `${e.id}|${st.mtimeMs}|${st.size}`
+    const hit = thumbCache.get(cacheKey)
+    if (hit) return res.type('png').send(hit)
+    if (opts.thumbnail) {
+      const png = await opts.thumbnail(e.path, 160).catch(() => null)
+      if (png && png.length > 0) {
+        thumbCache.set(cacheKey, png)
+        if (thumbCache.size > 300) thumbCache.delete(thumbCache.keys().next().value as string)
+        return res.type('png').send(png)
+      }
+    }
+    const ext = /\.(jpe?g|png|gif|webp|avif|bmp)$/i.exec(e.path)?.[1]?.toLowerCase()
+    if (!ext || st.size > 40 * 1024 * 1024) return res.status(404).end()
+    res.type(ext === 'jpg' ? 'jpeg' : ext)
+    fs.createReadStream(e.path).on('error', () => res.destroy()).pipe(res)
   })
 
   admin.post('/open-url', jsonSmall, (req, res) => {

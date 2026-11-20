@@ -50,6 +50,7 @@ function cfgWith(maxItems: number, maxDays: number): Config {
     dailyLimitReportedDay: '',
     sortPhotosByMonth: true,
     proPromptsShown: { day: '', kind: '', closed: false, limit: 0, trial: 0, welcome: 0 },
+    freeDailyFiles: 30,
   }
 }
 

@@ -407,6 +407,13 @@
       <div class="pair-scan" id="pairScan">
         <div class="qrbox"><img id="qrImg" alt=""></div>
         <div class="pairurl" id="pairUrlText"></div>
+        <!-- code à 6 chiffres : pour l'icône Flitdrop de l'écran d'accueil du
+             téléphone, qui ne peut pas scanner -->
+        <div class="paircode hidden" id="pairCodeBox">
+          <span class="paircode-label" data-i18n="pair.code">Ou tape ce code sur le téléphone</span>
+          <b class="paircode-num" id="pairCodeText"></b>
+          <small class="paircode-hint" data-i18n="pair.codeHint">Depuis l’icône Flitdrop de l’écran d’accueil, qui ne peut pas scanner.</small>
+        </div>
         <!-- le code se renouvelle tout seul tant que cette fenêtre est visible.
              Le compte à rebours n'est pas lu à voix haute (il change chaque
              seconde) : seul le renouvellement est annoncé, à part. -->

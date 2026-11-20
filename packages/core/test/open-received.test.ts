@@ -24,14 +24,17 @@ beforeAll(async () => {
   fs.mkdirSync(dl, { recursive: true })
   const photo = path.join(dl, 'IMG_0001.HEIC')
   const prog = path.join(dl, 'setup.exe')
+  const jpg = path.join(dl, 'IMG_0002.jpg')
   fs.writeFileSync(photo, 'x')
   fs.writeFileSync(prog, 'x')
+  fs.writeFileSync(jpg, 'jpegdata')
   const entry = (id: string, p: string, extra = {}) => ({ id, ts: new Date().toISOString(), dir: 'in', kind: 'file', name: path.basename(p), size: 1, status: 'ok', path: p, ...extra })
   fs.writeFileSync(
     path.join(home, 'history.json'),
     JSON.stringify([
       entry('photo', photo),
       entry('prog', prog),
+      entry('jpg', jpg),
       entry('gone', path.join(dl, 'parti.jpg')),
       entry('sent', photo, { dir: 'out' }),
       entry('failed', photo, { status: 'error' }),
@@ -44,6 +47,8 @@ beforeAll(async () => {
     disableClipboard: true,
     openPath: (p: string) => void opened.push(p),
     revealPath: (p: string) => void revealed.push(p),
+    // miniature du système : seulement pour la photo HEIC ici
+    thumbnail: async (p: string) => (p.endsWith('.HEIC') ? Buffer.from('png!') : null),
   })
   base = `http://127.0.0.1:${srv.port}`
 })
@@ -88,5 +93,24 @@ describe('fichier reçu ouvert d’un clic', () => {
     expect(revealCommand('/x/a.jpg', 'darwin')).toEqual(['/usr/bin/open', ['-R', '/x/a.jpg']])
     expect(revealCommand('C:\\x\\a.jpg', 'win32')).toEqual(['C:\\Windows\\explorer.exe', ['/select,C:\\x\\a.jpg']])
     expect(revealCommand('/x/a.jpg', 'linux')).toEqual(['xdg-open', ['/x']])
+  })
+})
+
+describe('miniature d’un fichier reçu', () => {
+  const thumb = (id: string, auth = true) =>
+    fetch(base + '/api/admin/thumb/' + id, { headers: auth ? { 'x-admin-token': srv.adminToken } : {} })
+
+  it('celle du système (HEIC), sinon l’image elle-même ; rien pour un programme ni sans jeton', async () => {
+    const heic = await thumb('photo')
+    expect(heic.status).toBe(200)
+    expect(heic.headers.get('content-type')).toContain('image/png')
+    expect(await heic.text()).toBe('png!')
+    const jpg = await thumb('jpg')
+    expect(jpg.status).toBe(200)
+    expect(jpg.headers.get('content-type')).toContain('image/jpeg')
+    expect(await jpg.text()).toBe('jpegdata')
+    expect((await thumb('prog')).status).toBe(404)
+    expect((await thumb('gone')).status).toBe(404)
+    expect((await thumb('photo', false)).status).toBe(401)
   })
 })

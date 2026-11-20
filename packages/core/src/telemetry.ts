@@ -75,6 +75,7 @@ export const EVENTS: Record<string, { tier: Tier; props: readonly string[] }> = 
   welcome_skipped: { tier: 'full', props: [] },
   pair_qr_shown: { tier: 'full', props: [] },
   pair_link_copied: { tier: 'full', props: [] },
+  pair_code_used: { tier: 'full', props: [] },
   phone_connect: { tier: 'full', props: ['platform'] },
   settings_changed: { tier: 'full', props: ['key'] },
   history_opened: { tier: 'full', props: [] },

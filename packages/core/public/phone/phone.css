@@ -313,6 +313,13 @@ html[data-os='android'] .install-banner { backdrop-filter: none; -webkit-backdro
   color: var(--text); font: 400 15px var(--font); padding: 13px 14px; outline: none;
 }
 .scan-paste input:focus { border-color: color-mix(in srgb, var(--blue) 55%, transparent); }
+.scan-code input {
+  font: 600 26px var(--font); text-align: center; letter-spacing: 0.18em;
+  font-variant-numeric: tabular-nums; padding: 12px 14px;
+}
+.scan-code input::placeholder { color: var(--muted); letter-spacing: 0.18em; }
+.scan-code .code-msg { min-height: 1.2em; margin: -4px 0 0; text-align: center; }
+.scan-code .code-msg.bad { color: var(--danger); }
 
 /* juste après le premier appairage : le bouton d'envoi est mis en avant une
    seule fois (trois pulsations d'un anneau uni, puis plus rien) */

@@ -261,6 +261,15 @@ html[data-platform='mac'] .feed { background: light-dark(rgba(255,255,255,0.25),
 .hbtn:hover { background: var(--control-hover); }
 .hbtn.x { padding: 6px 9px; color: var(--muted); }
 .hacts { display: flex; gap: 6px; flex: none; flex-wrap: wrap; justify-content: flex-end; }
+.hbtn.icon { padding: 6px 8px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-2); flex: none; }
+/* fichier reçu : miniature et nom forment un seul bouton qui l'ouvre */
+.hopen { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; border: 0; background: none; color: inherit; font: inherit; text-align: left; padding: 0; cursor: pointer; border-radius: var(--r-ctl); }
+.hopen:hover .hname, .hopen:hover .fname { color: var(--accent-text); }
+.hopen:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.hthumb { width: 34px; height: 34px; flex: none; border-radius: var(--r-ctl); object-fit: cover; background: var(--stroke); }
+.frow { display: flex; align-items: center; gap: 10px; }
+.frow .hthumb, .frow .hicon { width: 46px; height: 46px; }
+.ftexts { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 
 .empty { text-align: center; padding: 44px 20px; color: var(--muted); display: flex; flex-direction: column; gap: 6px; }
 .empty p { font-family: var(--font); font-weight: 600; font-size: 16px; color: var(--text); }
@@ -385,6 +394,10 @@ details summary { cursor: pointer; font-weight: 600; color: var(--accent-text); 
 .qrbox { background: #fff; border-radius: var(--r-card); padding: 14px; display: flex; align-items: center; justify-content: center; }
 .qrbox img { width: 100%; max-width: 300px; aspect-ratio: 1; }
 .pairurl { font-family: 'Cascadia Code', Consolas, monospace; font-size: 11.5px; color: var(--muted); text-align: center; word-break: break-all; }
+.paircode { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 12px; border-radius: var(--r-card); background: var(--layer); border: 1px solid var(--stroke); }
+.paircode-label { color: var(--text-2); font-size: 12.5px; }
+.paircode-num { font-family: var(--font); font-size: 30px; font-weight: 600; letter-spacing: 0.14em; font-variant-numeric: tabular-nums; color: var(--text); line-height: 1.2; user-select: all; }
+.paircode-hint { color: var(--muted); font-size: 11.5px; text-align: center; }
 .pairstate { display: flex; align-items: center; justify-content: center; gap: 9px; color: var(--muted); font-size: 13.5px; font-weight: 600; }
 .pairstate.ok { color: var(--ok); }
 .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--stroke-2); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }

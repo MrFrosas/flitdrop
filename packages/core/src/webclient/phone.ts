@@ -1,4 +1,6 @@
-import { b64uToBytes, seal, sealJSON, openJSON, open, jti } from './wdcrypto.js'
+import { b64uToBytes, bytesToB64u, seal, sealJSON, openJSON, open, jti } from './wdcrypto.js'
+import { x25519 } from '@noble/curves/ed25519'
+import { sha256 } from '@noble/hashes/sha2'
 import { t as tr, tp, rtf, fmtBytes, resolveLang, langFrom, type Lang } from '../i18n.js'
 import { applyI18n } from '../i18n-dom.js'
 import { KeyedNodes, VersionedList, reconcile } from './lists.js'
@@ -406,10 +408,36 @@ document.addEventListener('visibilitychange', retryNow)
 window.addEventListener('online', retryNow)
 window.addEventListener('pageshow', retryNow)
 
+/** Empreinte du modèle (taille d'écran, densité, version du système) : le PC
+ *  reconnaît le même téléphone quand il revient avec un appairage neuf. */
+function hwPrint(): string {
+  const w = Math.round(Math.min(screen.width, screen.height))
+  const h = Math.round(Math.max(screen.width, screen.height))
+  const ua = navigator.userAgent
+  const os = ua.match(/OS (\d+)[_.](\d+)/) ?? ua.match(/Android (\d+)(?:\.(\d+))?/)
+  return `${w}x${h}@${Math.round(devicePixelRatio * 100) / 100}|${os ? `${os[1]}.${os[2] ?? 0}` : ''}`
+}
+
+/** Appairage neuf alors que ce téléphone en avait un autre (rescanné, code
+ *  tapé) : preuve, chiffrée avec la clé de l'ancien, que c'est le même
+ *  téléphone. Le PC remplace l'ancien au lieu d'en afficher deux. */
+function previousProof(): { id: string; proof: string } | undefined {
+  if (!freshPairing || !previousPairing || !pair) return undefined
+  try {
+    const old = JSON.parse(previousPairing) as Pairing | null
+    if (!old?.id || !old.keyB64 || old.id === pair.id) return undefined
+    if (old.instanceId && pair.instanceId && old.instanceId !== pair.instanceId) return undefined
+    const proof = sealJSON(b64uToBytes(old.keyB64), { id: pair.id, ts: Date.now(), jti: jti() }, `wd1|${old.id}|replace`)
+    return { id: old.id, proof }
+  } catch {
+    return undefined
+  }
+}
+
 async function connect() {
   const { platform, label } = platformLabel()
   try {
-    hello = await post<HelloRes>('/api/phone/hello', 'hello', { deviceLabel: label, platform })
+    hello = await post<HelloRes>('/api/phone/hello', 'hello', { deviceLabel: label, platform, hw: hwPrint(), prev: previousProof() })
     // épinglage du PC : si on connaît déjà l'identité appairée, elle doit
     // correspondre ; sinon un AUTRE PC répond à cette adresse (wifi partagé,
     // IP recyclée) et on refuse plutôt que de mélanger les données.
@@ -455,6 +483,7 @@ async function connect() {
     // appairage tout neuf (clé de session reçue) : le bouton d'envoi d'abord
     if (hello.newKey) hintSendOnce()
     freshPairing = false
+    previousPairing = null
     maybeInstallBanner()
   } catch (e) {
     const err = e as ApiFail
@@ -1306,6 +1335,74 @@ function maybeInstallBanner() {
   if (ok) $('installBanner')?.classList.remove('hidden')
 }
 
+// ---------- appairage par code ----------
+
+let codeBusy = false
+
+/** Appairage reçu (code, lien collé) : il devient celui de ce téléphone. */
+function adoptPairing(p: Pairing) {
+  pair = p
+  notePairingSource(p)
+  localStorage.setItem(PAIR_KEY, JSON.stringify(p))
+  key = b64uToBytes(p.keyB64)
+  show('scan')
+  void connect()
+}
+
+/** Ce qui a été tapé ou collé sous « code » : six chiffres, ou un lien. */
+async function submitPairInput(raw: string) {
+  const msg = $('pairCodeMsg')
+  const fail = (text: string) => {
+    msg.textContent = text
+    msg.classList.add('bad')
+  }
+  const digits = raw.replace(/[\s.-]/g, '')
+  if (!/^\d{6}$/.test(digits)) {
+    const p = parseToken(raw.includes('#') ? raw.slice(raw.indexOf('#') + 1) : raw)
+    if (p) adoptPairing(p)
+    else fail(t('ph.code.invalid'))
+    return
+  }
+  if (codeBusy) return
+  codeBusy = true
+  const btn = $('btnPastePair') as unknown as HTMLButtonElement
+  btn.disabled = true
+  msg.classList.remove('bad')
+  msg.textContent = t('ph.code.checking')
+  try {
+    adoptPairing(await pairByCode(digits))
+  } catch (e) {
+    const status = (e as ApiFail).status
+    fail(status === 404 ? t('ph.code.wrong') : status === 429 ? t('ph.code.tooMany') : t('ph.err.notFound'))
+  } finally {
+    codeBusy = false
+    btn.disabled = false
+  }
+}
+
+/** Échange X25519 + code avec le PC (voir codepair.ts) : l'appairage arrive
+ *  chiffré, jamais en clair sur le wifi. */
+async function pairByCode(code: string): Promise<Pairing> {
+  const priv = x25519.utils.randomPrivateKey()
+  const pub = bytesToB64u(x25519.getPublicKey(priv))
+  const r = await fetch('/api/pair/code', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code, pub }),
+  })
+  if (!r.ok) throw new ApiFail('pair code', r.status)
+  const j = (await r.json()) as { pub?: string; p?: string }
+  if (typeof j.pub !== 'string' || typeof j.p !== 'string') throw new ApiFail('pair code', 500)
+  const shared = x25519.getSharedSecret(priv, b64uToBytes(j.pub))
+  const label = new TextEncoder().encode(`flitdrop-codepair-v1|${code}|${pub}|${j.pub}|`)
+  const buf = new Uint8Array(label.length + shared.length)
+  buf.set(label, 0)
+  buf.set(shared, label.length)
+  const p = openJSON<Pairing>(sha256(buf), j.p, 'wd1|codepair')
+  if (!p?.id || !p?.keyB64) throw new ApiFail('pair code', 500)
+  return p.instanceId ? { id: p.id, keyB64: p.keyB64, instanceId: p.instanceId } : { id: p.id, keyB64: p.keyB64 }
+}
+
 // ---------- interactions ----------
 
 function initUI() {
@@ -1365,10 +1462,7 @@ function initUI() {
   $('btnRetry').onclick = () => {
     show('scan')
     // plus d'appairage (code expiré sans appairage d'avant) : on rescanne
-    if (!pair || !key) {
-      if (isStandalone()) $('scanPaste')?.classList.remove('hidden')
-      return
-    }
+    if (!pair || !key) return
     void connect()
   }
   $('btnForget').onclick = forget
@@ -1438,21 +1532,19 @@ function initUI() {
     for (const p of parked) p.ui.state.textContent = t('ph.limit.row')
   }
 
-  // collage manuel d'un lien d'appairage : secours si on est bloqué dans la PWA
-  // (écran d'accueil) sans pouvoir scanner de QR code.
-  $('btnPastePair').onclick = () => {
-    const raw = ($('pastePairInput') as unknown as HTMLInputElement).value
-    const p = parseToken(raw)
-    if (!p) {
-      toast(t('ph.paste.invalid'))
-      return
-    }
-    pair = p
-    notePairingSource(p)
-    localStorage.setItem(PAIR_KEY, JSON.stringify(p))
-    key = b64uToBytes(p.keyB64)
-    show('scan')
-    void connect()
+  // code à 6 chiffres (ou lien d'appairage collé) : seul moyen depuis l'icône
+  // de l'écran d'accueil, qui ne peut pas scanner. Six chiffres tapés : on se
+  // connecte tout de suite, sans toucher de bouton.
+  const codeInput = $('pastePairInput') as unknown as HTMLInputElement
+  const codeForm = $('scanPaste') as unknown as HTMLFormElement
+  codeForm.onsubmit = (ev) => {
+    ev.preventDefault()
+    void submitPairInput(codeInput.value)
+  }
+  codeInput.oninput = () => {
+    $('pairCodeMsg').textContent = ''
+    $('pairCodeMsg').classList.remove('bad')
+    if (/^\s*\d{3}[\s.-]?\d{3}\s*$/.test(codeInput.value)) void submitPairInput(codeInput.value)
   }
   $('btnCloseImg').onclick = () => {
     const img = $('imgPreview') as HTMLImageElement
@@ -1481,9 +1573,9 @@ applyPhoneTheme()
 initUI()
 pair = loadPairing()
 if (!pair) {
-  // relancée depuis l'écran d'accueil sans appairage mémorisé : on propose le
-  // collage du lien plutôt que de laisser l'utilisateur bloqué sur le scan.
-  if (isStandalone()) $('scanPaste')?.classList.remove('hidden')
+  // pas encore appairé : QR code, ou code à 6 chiffres (seul moyen depuis
+  // l'icône de l'écran d'accueil, qui ne peut pas scanner)
+  if (isStandalone()) $('scanLead').textContent = t('ph.scan.leadCode')
   show('scan')
 } else {
   key = b64uToBytes(pair.keyB64)

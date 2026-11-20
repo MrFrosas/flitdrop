@@ -290,27 +290,59 @@ function histIcon(e: HistEntry): { txt: string; cls: string } {
   return { txt: '↓', cls: 'hicon' }
 }
 
-/** « Ouvrir » (photos, vidéos, documents) et « Afficher dans le dossier » pour
- *  un fichier reçu ; un programme ou un script n'a que le second. */
+/** Fichier reçu : un clic sur la ligne l'ouvre (photos, vidéos, sons,
+ *  documents) ; un programme ou un script est seulement montré dans son
+ *  dossier. Le petit bouton dossier le montre toujours, sélectionné. */
 const OPEN_DIRECTLY = /\.(jpe?g|png|gif|webp|hei[cf]|avif|bmp|tiff?|dng|mp4|mov|m4v|avi|mkv|webm|3gp|mp3|m4a|aac|wav|flac|ogg|opus|pdf|txt|md|csv|rtf|docx|xlsx|pptx|odt|ods|odp)$/i
+// photos et vidéos : une miniature à la place de l'icône
+const THUMBNAIL = /\.(jpe?g|png|gif|webp|hei[cf]|avif|bmp|tiff?|dng|mp4|mov|m4v|avi|mkv|webm|3gp)$/i
 
-function receivedButtons(historyId: string | undefined, name: string): HTMLButtonElement[] {
-  const make = (label: string, reveal: boolean) => {
-    const b = document.createElement('button')
-    b.className = 'hbtn'
-    b.textContent = label
-    b.onclick = () => {
-      const done = historyId
-        ? postJSON('/open-received', { id: historyId, reveal })
-        : postJSON('/open-folder', {})
-      void done.catch(() => toast(t('toast.fileGone')))
-    }
-    return b
+function openReceived(historyId: string | undefined, name: string, reveal: boolean) {
+  const done = historyId
+    ? postJSON('/open-received', { id: historyId, reveal: reveal || !OPEN_DIRECTLY.test(name) })
+    : postJSON('/open-folder', {})
+  void done.catch(() => toast(t('toast.fileGone')))
+}
+
+/** Bouton dossier (icône) : montre le fichier dans son dossier. */
+function revealButton(historyId: string | undefined, name: string): HTMLButtonElement {
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.className = 'hbtn icon'
+  const label = historyId ? t('file.reveal') : t('feed.openFolder')
+  b.title = label
+  b.setAttribute('aria-label', label)
+  b.innerHTML =
+    '<svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M2.5 5.5a1.5 1.5 0 0 1 1.5-1.5h3.6l1.8 2h6.6a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>'
+  b.onclick = (ev) => {
+    ev.stopPropagation()
+    openReceived(historyId, name, true)
   }
-  const out: HTMLButtonElement[] = []
-  if (historyId && OPEN_DIRECTLY.test(name)) out.push(make(t('file.open'), false))
-  out.push(make(historyId ? t('file.reveal') : t('feed.openFolder'), true))
-  return out
+  return b
+}
+
+/** Miniature d'une photo ou d'une vidéo reçue (sinon l'icône donnée). */
+function receivedThumb(historyId: string | undefined, name: string, fallback: HTMLElement): HTMLElement {
+  if (!historyId || !THUMBNAIL.test(name)) return fallback
+  const img = document.createElement('img')
+  img.className = 'hthumb'
+  img.alt = ''
+  img.loading = 'lazy'
+  img.decoding = 'async'
+  img.src = `/api/admin/thumb/${encodeURIComponent(historyId)}`
+  img.onerror = () => img.replaceWith(fallback)
+  return img
+}
+
+/** Zone cliquable d'un fichier reçu (miniature et nom) : l'ouvre. */
+function receivedOpener(historyId: string | undefined, name: string, ...content: HTMLElement[]): HTMLButtonElement {
+  const b = document.createElement('button')
+  b.type = 'button'
+  b.className = 'hopen'
+  b.title = historyId && OPEN_DIRECTLY.test(name) ? t('file.open') : historyId ? t('file.reveal') : t('feed.openFolder')
+  b.append(...content)
+  b.onclick = () => openReceived(historyId, name, false)
+  return b
 }
 
 function renderHistory() {
@@ -335,13 +367,11 @@ function renderHistory() {
     const who = e.deviceName ? (e.dir === 'in' ? t('hist.from', { name: e.deviceName }) : t('hist.to', { name: e.deviceName })) : ''
     sub.textContent = [what, who, rel(e.ts), e.error ?? ''].filter(Boolean).join(' · ')
     main.append(name, sub)
-    li.append(icon, main)
     if (e.dir === 'in' && e.kind === 'file' && e.status === 'ok') {
-      const acts = document.createElement('div')
-      acts.className = 'hacts'
-      acts.append(...receivedButtons(e.id, e.name ?? ''))
-      li.appendChild(acts)
-    }
+      // fichier reçu : la ligne l'ouvre, le bouton dossier le montre
+      const fname = e.name ?? ''
+      li.append(receivedOpener(e.id, fname, receivedThumb(e.id, fname, icon), main), revealButton(e.id, fname))
+    } else li.append(icon, main)
     list.appendChild(li)
   }
 }
@@ -1005,19 +1035,24 @@ function feedTransferDone(d: { id: string; historyId?: string; name: string; siz
   const li = found?.li ?? feedCardBase()
   li.innerHTML = ''
   li.classList.add('done')
-  const head = document.createElement('div')
-  head.className = 'fhead'
+  // miniature, nom et taille : un clic ouvre le fichier ; le bouton dossier
+  // le montre dans son dossier
+  const icon = document.createElement('div')
+  icon.className = 'hicon'
+  icon.textContent = '↓'
+  const text = document.createElement('div')
+  text.className = 'ftexts'
   const name = document.createElement('div')
   name.className = 'fname'
   name.textContent = `${d.name} ✓`
-  head.appendChild(name)
   const sub = document.createElement('div')
   sub.className = 'fsub'
   sub.textContent = `${fmtSize(d.size)} · ${t('hist.from', { name: d.deviceName })}`
-  const acts = document.createElement('div')
-  acts.className = 'hacts'
-  acts.append(...receivedButtons(d.historyId, d.name))
-  li.append(head, sub, acts)
+  text.append(name, sub)
+  const row = document.createElement('div')
+  row.className = 'frow'
+  row.append(receivedOpener(d.historyId, d.name, receivedThumb(d.historyId, d.name, icon), text), revealButton(d.historyId, d.name))
+  li.append(row)
   progressCards.delete(d.id)
 }
 
@@ -1059,8 +1094,10 @@ function connectWS() {
         if (pid && pairIds.has(pid) && isPairOpen()) {
           currentPairingId = pid
           pairPaired = true
-          // premier téléphone et rien encore échangé : la prochaine étape en grand
-          pairGuide = state?.config.firstTransferDone === false
+          // appairé, c'est tout : « Connecté » un instant, puis la fenêtre se
+          // ferme seule (le nom se change dans la fiche du téléphone, et la
+          // première étape s'affiche en grand sur le radar)
+          pairGuide = false
           clearTimeout(pairTimer)
           $('pairHint').classList.add('hidden')
           $('pairScan').classList.add('hidden')
@@ -1068,9 +1105,13 @@ function connectWS() {
           const st = $('pairState')
           st.classList.add('ok')
           st.textContent = t('pair.connected')
-          $('pairRenameRow').classList.remove('hidden')
-          ;($('pairRenameInput') as unknown as HTMLInputElement).value = (data as { name?: string }).name ?? ''
           renderGuide()
+          setTimeout(() => {
+            if (isPairOpen() && pairPaired && currentPairingId === pid) {
+              closePairModal()
+              void refresh()
+            }
+          }, 1400)
         }
         toast(t('toast.devicePaired'), (data as { name?: string }).name)
         void refresh()
@@ -1243,7 +1284,7 @@ function isPairOpen(): boolean {
 /** Demande un code au PC et l'affiche. `renew` : remplace le code d'une
  *  fenêtre restée ouverte, avant qu'il expire. */
 async function showPairCode(renew: boolean) {
-  const res = (await postJSON('/pair/new', { renew })) as unknown as { deviceId: string; url: string; ttlMs?: number }
+  const res = (await postJSON('/pair/new', { renew })) as unknown as { deviceId: string; url: string; ttlMs?: number; code?: string }
   pairIds.add(res.deviceId)
   currentPairingId = res.deviceId
   currentPairUrl = res.url
@@ -1251,6 +1292,9 @@ async function showPairCode(renew: boolean) {
   if (renew) pairRenewedAt = Date.now()
   ;($('qrImg') as unknown as HTMLImageElement).src = `/api/admin/pair/${res.deviceId}/qr.svg`
   $('pairUrlText').textContent = res.url.split('#')[0] + t('pair.orScan')
+  // code à 6 chiffres (absent d'un coeur plus ancien)
+  $('pairCodeText').textContent = res.code ?? ''
+  $('pairCodeBox').classList.toggle('hidden', !res.code)
 }
 
 /** Une fois par seconde, seulement fenêtre d'appairage ouverte, téléphone

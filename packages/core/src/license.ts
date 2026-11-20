@@ -1,6 +1,6 @@
 // Flitdrop Pro : ce à quoi cette installation a droit (« plan »), et tout ce
 // qui y mène : mode payant (interrupteur du serveur), essai de 14 jours,
-// limite de 30 fichiers par jour, achat, restauration, renouvellement du
+// limite de fichiers par jour (30, ou 10 pour une installation neuve), achat, restauration, renouvellement du
 // jeton de licence. Côté Node uniquement : la page du téléphone peut être
 // modifiée, la page du PC aussi ; seul ce module décide.
 //
@@ -12,7 +12,8 @@
 // - « trial » : 14 jours de Pro (installation existante : depuis la première
 //   fois que l'app voit le mode payant ; installation neuve : depuis le
 //   premier lancement).
-// - « free » : gratuit, 30 fichiers par jour local. Installation d'avant
+// - « free » : gratuit, 30 fichiers par jour local (10 pour une installation
+//   neuve depuis la 0.7.2). Installation d'avant
 //   Flitdrop Pro (config d'une version < 0.7.0 au premier lancement de
 //   celle-ci, noté une fois dans l'état signé : legacy) : la synchro
 //   automatique et tout l'historique du presse-papiers restent gratuits ;
@@ -91,7 +92,10 @@ export const LICENSE_CONFIG_URL = LICENSE_BASE_URL + '/api/license/config'
 export type TokenEnv = 'production' | 'sandbox'
 /** Écrire au support (achat utilisé sur trop d'ordinateurs). */
 export const SUPPORT_MAILTO = 'mailto:contact@flitdrop.com?subject=Flitdrop%20Pro'
+/** Fichiers par jour en gratuit : installation d'avant la 0.7.2. */
 export const FREE_DAILY_FILES = 30
+/** Fichiers par jour en gratuit : installation neuve (0.7.2 et après). */
+export const NEW_INSTALL_DAILY_FILES = 10
 export const FREE_CLIP_TEXTS = 20
 const DAY_MS = 86_400_000
 const HOUR_MS = 3_600_000
@@ -1215,6 +1219,11 @@ export class License {
     return this.plan() === 'free'
   }
 
+  /** Fichiers par jour de la version gratuite pour CETTE installation. */
+  dailyLimit(): number {
+    return this.cfg.freeDailyFiles === NEW_INSTALL_DAILY_FILES ? NEW_INSTALL_DAILY_FILES : FREE_DAILY_FILES
+  }
+
   /** Fichiers comptés aujourd'hui. Horloge reculée (jour plus ancien que le
    *  dernier compté) : le compteur de ce dernier jour, jamais un jour neuf. */
   dailyUsed(): number {
@@ -1225,13 +1234,13 @@ export class License {
 
   /** Fichiers encore possibles aujourd'hui (Infinity sans limite). */
   dailyLeft(): number {
-    return this.limited() ? Math.max(0, FREE_DAILY_FILES - this.dailyUsed()) : Infinity
+    return this.limited() ? Math.max(0, this.dailyLimit() - this.dailyUsed()) : Infinity
   }
 
   /** Un nouveau fichier peut-il commencer ? `inFlight` : fichiers déjà
    *  commencés et pas encore comptés (ils finiront quoi qu'il arrive). */
   canStartFile(inFlight = 0): boolean {
-    return !this.limited() || this.dailyUsed() + Math.max(0, inFlight) < FREE_DAILY_FILES
+    return !this.limited() || this.dailyUsed() + Math.max(0, inFlight) < this.dailyLimit()
   }
 
   /** Compte des fichiers arrivés ou envoyés (gratuit seulement), aussi dans
@@ -1246,7 +1255,7 @@ export class License {
     this.touchSeen()
     this.commit()
     this.writeMark()
-    if (this.st.dailyFiles.count >= FREE_DAILY_FILES) this.limitReached()
+    if (this.st.dailyFiles.count >= this.dailyLimit()) this.limitReached()
   }
 
   /** Un fichier a été refusé par la limite. */
@@ -1327,9 +1336,9 @@ export class License {
     if (!this.limited()) return null
     const used = this.dailyUsed()
     return {
-      limit: FREE_DAILY_FILES,
+      limit: this.dailyLimit(),
       used,
-      left: Math.max(0, FREE_DAILY_FILES - used),
+      left: Math.max(0, this.dailyLimit() - used),
       resetAt: new Date(nextLocalMidnight(this.now())).toISOString(),
       price: this.effectivePrice(),
     }
@@ -1339,7 +1348,7 @@ export class License {
   limitBody(): { error: 'daily_limit'; limit: number; left: number; resetAt: string; price: string } {
     return {
       error: 'daily_limit',
-      limit: FREE_DAILY_FILES,
+      limit: this.dailyLimit(),
       left: 0,
       resetAt: new Date(nextLocalMidnight(this.now())).toISOString(),
       price: this.effectivePrice(),
@@ -1359,7 +1368,7 @@ export class License {
     const p = this.cfg.proPromptsShown
     const today = localDay(this.now())
     const shownToday = p.day === today
-    if (plan === 'free' && this.dailyUsed() >= FREE_DAILY_FILES) {
+    if (plan === 'free' && this.dailyUsed() >= this.dailyLimit()) {
       if (!shownToday || (p.kind === 'limit' && !p.closed)) return 'limit'
     }
     // installation d'avant Flitdrop Pro : le début de l'essai expliqué, une fois
@@ -1696,9 +1705,9 @@ export class License {
     const early = this.earlyUntil()
     const out: ProState = {
       plan,
-      limit: FREE_DAILY_FILES,
+      limit: this.dailyLimit(),
       used,
-      left: Math.max(0, FREE_DAILY_FILES - used),
+      left: Math.max(0, this.dailyLimit() - used),
       resetAt: new Date(nextLocalMidnight(now)).toISOString(),
       price: this.price(),
       card: this.card(),

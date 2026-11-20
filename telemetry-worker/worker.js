@@ -108,6 +108,7 @@ const FULL_ONLY_EVENTS = {
   welcome_skipped: {},
   pair_qr_shown: {},
   pair_link_copied: {},
+  pair_code_used: {},
   phone_connect: { platform: PLATFORM },
   settings_changed: { key: str() },
   history_opened: {},
