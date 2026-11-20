@@ -86,7 +86,7 @@ Sur chaque évènement, PostHog reçoit aussi : `source: "desktop-app"`, `app_ve
 | `pro_prompt_shown` | `where` (`limit` : limite du jour atteinte, `trial` : essai qui finit dans 2 jours, `welcome` : carte d'accueil d'une installation d'avant Flitdrop Pro, au début de son essai) | Flitdrop Pro. La fenêtre du PC, visible, vient de montrer la carte (une carte, jamais une fenêtre). Au plus une carte par jour ; celle de fin d'essai et celle d'accueil une seule fois |
 | `pro_checkout_opened` | `where` (`limit`, `trial`, `settings`), `early` (booléen : prix de lancement de cette installation) | La personne a cliqué « Débloquer à vie » : la page d'achat s'ouvre dans son navigateur. Jamais l'identifiant d'achat (claim) |
 | `pro_unlocked` | `how` (`purchase` : achat depuis l'app, `restore` : « J'ai déjà acheté », code reçu par e-mail) | Flitdrop Pro vient d'être débloqué sur ce PC. Jamais l'adresse e-mail, le jeton ni l'identifiant d'appareil |
-| `daily_limit_reached` | aucune | Version gratuite : les 30 fichiers du jour (jour local du PC, dans les deux sens, textes et presse-papiers à part) sont atteints, ou un fichier vient d'être refusé. Au plus une fois par jour |
+| `daily_limit_reached` | aucune | Version gratuite : les fichiers du jour (30, ou 10 pour une installation neuve depuis la 0.7.2) (jour local du PC, dans les deux sens, textes et presse-papiers à part) sont atteints, ou un fichier vient d'être refusé. Au plus une fois par jour |
 | `worker_deploy_test` | aucune | Contrôle après un déploiement (voir plus bas) |
 
 `reason` doit être un code ou une catégorie (`ENOSPC`, `timeout`...), jamais un message. Par sécurité, le Worker remplace par `other` toute raison qui ressemble à un chemin, une adresse, une IP ou un e-mail.
